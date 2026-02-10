@@ -11,6 +11,32 @@ html, body, #root {
   font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
+body {
+  --azv-scroll-thumb: #b8bfcc;
+  --azv-scroll-thumb-hover: #8f98ab;
+  --azv-row-hover: rgba(22, 119, 255, 0.08);
+  --azv-bg-grid: none;
+}
+
+body[data-theme='light'] {
+  --azv-scroll-thumb: #b8bfcc;
+  --azv-scroll-thumb-hover: #8f98ab;
+  --azv-row-hover: rgba(22, 119, 255, 0.08);
+  --azv-bg-grid: none;
+}
+
+body[data-theme='dark'] {
+  --azv-scroll-thumb: #505a70;
+  --azv-scroll-thumb-hover: #6a7590;
+  --azv-row-hover: rgba(145, 182, 255, 0.15);
+  --azv-bg-grid: none;
+}
+
+#root {
+  background-image: var(--azv-bg-grid);
+  background-size: auto;
+}
+
 /* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 8px;
@@ -22,12 +48,12 @@ html, body, #root {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c4c4c4;
+  background: var(--azv-scroll-thumb);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a0a0a0;
+  background: var(--azv-scroll-thumb-hover);
 }
 
 /* Prevent text selection on UI chrome */
@@ -38,5 +64,5 @@ html, body, #root {
 
 /* Table row hover */
 .fui-TableRow:hover {
-  background: rgba(0, 0, 0, 0.04);
+  background: var(--azv-row-hover);
 }

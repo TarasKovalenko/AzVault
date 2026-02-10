@@ -6,6 +6,7 @@ import type {
   KeyVaultInfo,
   ItemTab,
   AzureEnvironment,
+  ThemeMode,
 } from '../types';
 
 interface AppStoreState {
@@ -29,6 +30,7 @@ interface AppStoreState {
   // Search
   searchQuery: string;
   environment: AzureEnvironment;
+  themeMode: ThemeMode;
   requireReauthForReveal: boolean;
 
   // Actions
@@ -42,8 +44,9 @@ interface AppStoreState {
   setActiveTab: (tab: ItemTab) => void;
   setSearchQuery: (query: string) => void;
   setEnvironment: (env: AzureEnvironment) => void;
+  setThemeMode: (mode: ThemeMode) => void;
   setRequireReauthForReveal: (enabled: boolean) => void;
-  addRecentVault: (name: string, uri: string) => void;
+  clearRecentVaults: () => void;
   signOut: () => void;
 }
 
@@ -63,6 +66,7 @@ export const useAppStore = create<AppStoreState>()(
       recentVaults: [],
       searchQuery: '',
       environment: 'azurePublic',
+      themeMode: 'light',
       requireReauthForReveal: false,
 
       setSignedIn: (signed, userName) =>
@@ -109,16 +113,11 @@ export const useAppStore = create<AppStoreState>()(
       setSearchQuery: (query) => set({ searchQuery: query }),
 
       setEnvironment: (environment) => set({ environment }),
+      setThemeMode: (themeMode) => set({ themeMode }),
 
       setRequireReauthForReveal: (requireReauthForReveal) => set({ requireReauthForReveal }),
 
-      addRecentVault: (name, uri) =>
-        set((state) => ({
-          recentVaults: [
-            { name, uri },
-            ...state.recentVaults.filter((v) => v.uri !== uri),
-          ].slice(0, 10),
-        })),
+      clearRecentVaults: () => set({ recentVaults: [] }),
 
       signOut: () =>
         set({
@@ -142,6 +141,7 @@ export const useAppStore = create<AppStoreState>()(
         selectedVaultName: state.selectedVaultName,
         recentVaults: state.recentVaults,
         environment: state.environment,
+        themeMode: state.themeMode,
         requireReauthForReveal: state.requireReauthForReveal,
       }),
     }

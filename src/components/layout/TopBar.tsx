@@ -1,7 +1,5 @@
 import {
-  Toolbar,
-  ToolbarButton,
-  ToolbarDivider,
+  Button,
   Input,
   Avatar,
   Dropdown,
@@ -18,6 +16,8 @@ import {
 import {
   Search24Regular,
   ArrowSync24Regular,
+  WeatherMoon24Regular,
+  WeatherSunny24Regular,
   PersonCircle24Regular,
   SignOut24Regular,
   Settings24Regular,
@@ -37,6 +37,8 @@ export function TopBar() {
     setSearchQuery,
     environment,
     setEnvironment,
+    themeMode,
+    setThemeMode,
     requireReauthForReveal,
     setRequireReauthForReveal,
     signOut: storeSignOut,
@@ -60,61 +62,69 @@ export function TopBar() {
     queryClient.invalidateQueries();
   };
 
+  const envLabel =
+    environment === 'azurePublic'
+      ? 'Azure Public'
+      : environment === 'azureUsGovernment'
+        ? 'Azure US Government'
+        : 'Azure China';
+
   return (
     <div
+      className="azv-pane"
       style={{
-        borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
-        background: tokens.colorNeutralBackground1,
-        padding: '0 16px',
+        borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+        background: tokens.colorNeutralBackground2,
+        margin: 0,
+        borderRadius: 0,
+        borderLeft: 'none',
+        borderRight: 'none',
+        borderTop: 'none',
+        padding: '8px 12px',
         display: 'flex',
         alignItems: 'center',
-        height: 48,
-        gap: 12,
+        minHeight: 50,
+        gap: 10,
       }}
     >
-      <Text weight="semibold" size={400} style={{ color: tokens.colorBrandForeground1 }}>
-        AzVault
-      </Text>
-
-      {selectedVaultName && (
-        <>
-          <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
-            /
+      <div style={{ minWidth: 210 }}>
+        <Text weight="semibold" size={400} style={{ color: tokens.colorBrandForeground1 }}>
+          AZVAULT
+        </Text>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Text className="azv-title">
+            {selectedVaultName ? `Vault: ${selectedVaultName}` : 'No vault selected'}
           </Text>
-          <Text size={300} weight="semibold">
-            {selectedVaultName}
-          </Text>
-        </>
-      )}
+          <span className="azv-kbd">Ctrl+K</span>
+        </div>
+      </div>
 
-      <div style={{ flex: 1, maxWidth: 400, margin: '0 16px' }}>
+      <div style={{ flex: 1, maxWidth: 520, margin: '0 8px' }}>
         <Input
-          placeholder="Search items..."
+          placeholder="Search secrets/keys/certs by prefix or contains..."
           contentBefore={<Search24Regular style={{ fontSize: 16 }} />}
           size="small"
           value={searchQuery}
           onChange={(_, d) => setSearchQuery(d.value)}
-          style={{ width: '100%' }}
+          style={{
+            width: '100%',
+            borderRadius: 4,
+            background: tokens.colorNeutralBackground1,
+          }}
         />
       </div>
 
-      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4 }}>
+      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
         <Dropdown
           size="small"
-          value={
-            environment === 'azurePublic'
-              ? 'Azure Public'
-              : environment === 'azureUsGovernment'
-                ? 'Azure US Government'
-                : 'Azure China'
-          }
+          value={envLabel}
           onOptionSelect={(_, data) => {
             const value = data.optionValue;
             if (value === 'azurePublic' || value === 'azureUsGovernment' || value === 'azureChina') {
               setEnvironment(value);
             }
           }}
-          style={{ minWidth: 170 }}
+          style={{ minWidth: 170, borderRadius: 4 }}
         >
           <Option value="azurePublic">Azure Public</Option>
           <Option value="azureUsGovernment">Azure US Government</Option>
@@ -122,23 +132,25 @@ export function TopBar() {
         </Dropdown>
 
         {mockMode && (
-          <Badge appearance="filled" color="success" size="small">
-            MOCK
+          <Badge appearance="filled" color="danger" size="small">
+            MOCK DATA
           </Badge>
         )}
 
-        <Toolbar size="small">
-          <ToolbarButton
-            icon={<ArrowSync24Regular />}
-            onClick={handleRefresh}
-            title="Refresh all"
-          />
-          <ToolbarDivider />
-        </Toolbar>
+        <Button
+          icon={themeMode === 'dark' ? <WeatherSunny24Regular /> : <WeatherMoon24Regular />}
+          appearance="subtle"
+          onClick={() => setThemeMode(themeMode === 'dark' ? 'light' : 'dark')}
+          title={themeMode === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+        />
+        <Button icon={<ArrowSync24Regular />} appearance="subtle" onClick={handleRefresh}>
+          Refresh
+        </Button>
 
         <Menu>
           <MenuTrigger>
-            <ToolbarButton
+            <Button
+              appearance="subtle"
               icon={
                 <Avatar
                   name={userName || 'User'}

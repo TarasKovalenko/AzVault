@@ -63,39 +63,47 @@ export function ItemTable<T>({
   }
 
   return (
-    <Table size="small" style={{ width: '100%' }}>
-      <TableHeader>
-        <TableRow>
-          {columns.map((col) => (
-            <TableHeaderCell key={col.key} style={{ width: col.width }}>
-              {col.label}
-            </TableHeaderCell>
-          ))}
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {items.map((item) => {
-          const id = getItemId(item);
-          return (
-            <TableRow
-              key={id}
-              onClick={() => onSelect?.(item)}
-              style={{
-                cursor: 'pointer',
-                background:
-                  selectedId === id
-                    ? tokens.colorBrandBackground2
-                    : undefined,
-              }}
-            >
-              {columns.map((col) => (
-                <TableCell key={col.key}>{col.render(item)}</TableCell>
-              ))}
-            </TableRow>
-          );
-        })}
-      </TableBody>
-    </Table>
+    <div className="azv-table-wrap">
+      <Table size="small" style={{ width: '100%' }}>
+        <TableHeader>
+          <TableRow>
+            <TableHeaderCell style={{ width: 56 }}>#</TableHeaderCell>
+            {columns.map((col) => (
+              <TableHeaderCell key={col.key} style={{ width: col.width }}>
+                {col.label}
+              </TableHeaderCell>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {items.map((item, index) => {
+            const id = getItemId(item);
+            return (
+              <TableRow
+                key={id}
+                onClick={() => onSelect?.(item)}
+                style={{
+                  cursor: 'pointer',
+                  background:
+                    selectedId === id
+                      ? tokens.colorBrandBackground2
+                      : undefined,
+                }}
+              >
+                <TableCell>
+                  <Text size={100} className="azv-mono">
+                    {String(index + 1).padStart(2, '0')}
+                  </Text>
+                </TableCell>
+                {columns.map((col) => (
+                  <TableCell key={col.key}>{col.render(item)}</TableCell>
+                ))}
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </div>
   );
 }
 
@@ -128,8 +136,8 @@ export function renderTags(tags: Record<string, string> | null) {
       {Object.entries(tags)
         .slice(0, 3)
         .map(([k, v]) => (
-          <Badge key={k} size="small" appearance="outline">
-            {k}={v}
+          <Badge key={k} size="small" appearance="outline" className="azv-tag-pill" title={`${k}=${v}`}>
+            <span className="azv-tag-text">{k}={v}</span>
           </Badge>
         ))}
       {Object.keys(tags).length > 3 && (

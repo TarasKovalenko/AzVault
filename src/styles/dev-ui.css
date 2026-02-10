@@ -1,0 +1,113 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+:root {
+  --azv-radius-sm: 4px;
+  --azv-radius-md: 6px;
+  --azv-radius-lg: 8px;
+  --azv-shadow: none;
+}
+
+body,
+.fui-FluentProvider {
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+}
+
+.azv-shell {
+  background: transparent;
+}
+
+.azv-pane {
+  border-radius: var(--azv-radius-sm);
+  border: 1px solid rgba(110, 122, 145, 0.22);
+  box-shadow: var(--azv-shadow);
+}
+
+.azv-title {
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 10px;
+  opacity: 0.72;
+}
+
+.azv-mono,
+code,
+pre {
+  font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.azv-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  display: inline-block;
+  margin-right: 6px;
+}
+
+.azv-list-item {
+  border: 1px solid transparent;
+  border-radius: var(--azv-radius-sm);
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+
+.azv-list-item:hover {
+  border-color: rgba(118, 150, 220, 0.35);
+  transform: none;
+}
+
+.azv-kbd {
+  border: 1px solid rgba(130, 145, 170, 0.45);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  opacity: 0.84;
+}
+
+.azv-tab-hint {
+  font-size: 11px;
+  opacity: 0.72;
+}
+
+.azv-table-wrap {
+  border-radius: var(--azv-radius-sm);
+  border: 1px solid rgba(110, 122, 145, 0.28);
+  overflow: hidden;
+}
+
+.azv-table-wrap .fui-TableHeader {
+  background: rgba(127, 145, 169, 0.08);
+}
+
+.azv-table-wrap .fui-TableCell,
+.azv-table-wrap .fui-TableHeaderCell {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.azv-table-wrap .fui-TableRow:nth-child(even) {
+  background: rgba(127, 145, 169, 0.035);
+}
+
+.azv-signin-terminal {
+  border: 1px solid rgba(120, 145, 180, 0.36);
+  border-radius: var(--azv-radius-sm);
+  padding: 12px;
+  background: rgba(17, 28, 43, 0.5);
+}
+
+.azv-signin-terminal p {
+  margin: 2px 0;
+}
+
+.azv-tag-pill {
+  max-width: 220px;
+}
+
+.azv-tag-text {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

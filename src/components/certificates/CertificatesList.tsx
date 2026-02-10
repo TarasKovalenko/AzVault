@@ -94,13 +94,17 @@ export function CertificatesList() {
           alignItems: 'center',
           padding: '12px 16px',
           borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+          background: tokens.colorNeutralBackground2,
         }}
       >
         <Text weight="semibold" size={300}>
           Certificates
         </Text>
+        <Text className="azv-title" style={{ marginLeft: 8 }}>
+          x509
+        </Text>
         {certsQuery.data && (
-          <Text size={200} style={{ color: tokens.colorNeutralForeground3, marginLeft: 8 }}>
+          <Text size={200} style={{ color: tokens.colorNeutralForeground3, marginLeft: 8 }} className="azv-mono">
             ({filteredCerts.length}
             {searchQuery ? ` of ${certsQuery.data.length}` : ''})
           </Text>

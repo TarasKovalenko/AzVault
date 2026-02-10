@@ -126,3 +126,4 @@ export interface SessionSettings {
 }
 
 export type AzureEnvironment = 'azurePublic' | 'azureUsGovernment' | 'azureChina';
+export type ThemeMode = 'light' | 'dark';

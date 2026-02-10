@@ -80,35 +80,45 @@ export function SignIn() {
 
   return (
     <div
+      className="azv-shell"
       style={{
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
         height: '100vh',
-        background: `linear-gradient(135deg, ${tokens.colorBrandBackground} 0%, ${tokens.colorBrandBackgroundPressed} 100%)`,
+        padding: 20,
       }}
     >
-      <Card style={{ width: 480, padding: '32px' }}>
+      <Card className="azv-pane" style={{ width: 560, padding: '24px 28px' }}>
         <CardHeader
           image={<ShieldKeyhole24Regular style={{ fontSize: 32, color: tokens.colorBrandForeground1 }} />}
           header={
-            <Text weight="bold" size={600}>
-              AzVault
-            </Text>
+            <div>
+              <Text weight="bold" size={600}>
+                AzVault Operator Login
+              </Text>
+              <Text block size={200} className="azv-title">
+                Azure Key Vault Explorer
+              </Text>
+            </div>
           }
-          description="Azure Key Vault Explorer"
         />
 
         <div style={{ padding: '24px 0' }}>
           {!deviceCode && !error && (
             <div style={{ textAlign: 'center' }}>
-              <Text block style={{ marginBottom: 16 }}>
+              <Text block style={{ marginBottom: 10 }}>
                 Sign in with your Azure account to browse and manage Key Vault secrets,
                 keys, and certificates.
               </Text>
-              <Text block size={200} style={{ marginBottom: 24, color: tokens.colorNeutralForeground3 }}>
+              <Text block size={200} style={{ marginBottom: 18, color: tokens.colorNeutralForeground3 }}>
                 Uses the device code flow for secure authentication.
               </Text>
+              <div className="azv-signin-terminal azv-mono" style={{ textAlign: 'left' }}>
+                <p>$ az login --use-device-code</p>
+                <p>&gt; scope: management.azure.com + vault.azure.net</p>
+                <p>&gt; session: secure-cache (keyring)</p>
+              </div>
             </div>
           )}
 
@@ -127,7 +137,7 @@ export function SignIn() {
                     gap: 8,
                     padding: '12px',
                     background: tokens.colorNeutralBackground3,
-                    borderRadius: tokens.borderRadiusMedium,
+                    borderRadius: tokens.borderRadiusLarge,
                     marginTop: 8,
                   }}
                 >
@@ -173,17 +183,17 @@ export function SignIn() {
           style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
         >
           {!deviceCode ? (
-            <Button appearance="primary" size="large" onClick={startSignIn} style={{ width: '100%' }}>
-              Sign in with Azure
+            <Button appearance="primary" size="large" onClick={startSignIn} style={{ width: '100%', borderRadius: 999 }}>
+              Start Device Code Login
             </Button>
           ) : (
             <Button
               appearance="primary"
               icon={<Open24Regular />}
               onClick={() => window.open(deviceCode.verification_uri, '_blank')}
-              style={{ width: '100%' }}
+              style={{ width: '100%', borderRadius: 999 }}
             >
-              Open sign-in page
+              Open Microsoft Login Page
             </Button>
           )}
 
@@ -204,7 +214,7 @@ export function SignIn() {
             <Button
               appearance="secondary"
               onClick={() => setSignedIn(true, 'demo@contoso.com')}
-              style={{ width: '100%' }}
+              style={{ width: '100%', borderRadius: 999 }}
             >
               Skip sign-in (Mock Data)
             </Button>

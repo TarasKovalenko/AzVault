@@ -70,8 +70,8 @@ export function ItemMetadataDrawer({
             <Field label="Tags">
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
                 {Object.entries(tags).map(([k, v]) => (
-                  <Badge key={k} appearance="outline">
-                    {k}: {v}
+                  <Badge key={k} appearance="outline" className="azv-tag-pill" title={`${k}: ${v}`}>
+                    <span className="azv-tag-text">{k}: {v}</span>
                   </Badge>
                 ))}
               </div>

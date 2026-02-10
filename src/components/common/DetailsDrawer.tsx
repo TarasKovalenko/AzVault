@@ -221,8 +221,8 @@ export function DetailsDrawer({ item, vaultUri, open, onClose, onRefresh }: Deta
               <Field label="Tags">
                 <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 4 }}>
                   {Object.entries(item.tags).map(([k, v]) => (
-                    <Badge key={k} appearance="outline" size="medium">
-                      {k}: {v}
+                    <Badge key={k} appearance="outline" size="medium" className="azv-tag-pill" title={`${k}: ${v}`}>
+                      <span className="azv-tag-text">{k}: {v}</span>
                     </Badge>
                   ))}
                 </div>

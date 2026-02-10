@@ -113,14 +113,16 @@ export function SecretsList() {
           justifyContent: 'space-between',
           padding: '12px 16px',
           borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+          background: tokens.colorNeutralBackground2,
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Text weight="semibold" size={300}>
             Secrets
           </Text>
+          <Text className="azv-title">data-plane</Text>
           {secretsQuery.data && (
-            <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+            <Text size={200} style={{ color: tokens.colorNeutralForeground3 }} className="azv-mono">
               ({filteredSecrets.length}
               {searchQuery ? ` of ${secretsQuery.data.length}` : ''})
             </Text>

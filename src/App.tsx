@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { FluentProvider, webLightTheme, tokens } from '@fluentui/react-components';
+import { FluentProvider, webDarkTheme, webLightTheme, tokens } from '@fluentui/react-components';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAppStore } from './stores/appStore';
 import { SignIn } from './components/auth/SignIn';
@@ -11,6 +11,7 @@ import { KeysList } from './components/keys/KeysList';
 import { CertificatesList } from './components/certificates/CertificatesList';
 import { AuditLog } from './components/logs/AuditLog';
 import { AccessView } from './components/access/AccessView';
+import { StatusBar } from './components/layout/StatusBar';
 import { authStatus } from './services/tauri';
 
 const queryClient = new QueryClient({
@@ -50,28 +51,32 @@ function MainContent() {
 
 function AppLayout() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+    <div className="azv-shell" style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
       <TopBar />
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <Sidebar />
         <div
+          className="azv-pane"
           style={{
             flex: 1,
             display: 'flex',
             flexDirection: 'column',
             background: tokens.colorNeutralBackground1,
             overflow: 'hidden',
+            marginLeft: 0,
+            borderLeft: 'none',
           }}
         >
           <MainContent />
         </div>
       </div>
+      <StatusBar />
     </div>
   );
 }
 
 function App() {
-  const { isSignedIn, setSignedIn } = useAppStore();
+  const { isSignedIn, setSignedIn, themeMode } = useAppStore();
 
   useEffect(() => {
     let mounted = true;
@@ -88,8 +93,12 @@ function App() {
     };
   }, [setSignedIn]);
 
+  useEffect(() => {
+    document.body.setAttribute('data-theme', themeMode);
+  }, [themeMode]);
+
   return (
-    <FluentProvider theme={webLightTheme}>
+    <FluentProvider theme={themeMode === 'dark' ? webDarkTheme : webLightTheme}>
       <QueryClientProvider client={queryClient}>
         {isSignedIn ? <AppLayout /> : <SignIn />}
       </QueryClientProvider>

@@ -37,27 +37,39 @@ export function ContentTabs() {
   }
 
   return (
-    <div style={{ borderBottom: `1px solid ${tokens.colorNeutralStroke1}` }}>
+    <div
+      className="azv-pane"
+      style={{
+        borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
+        margin: 0,
+        borderRadius: 0,
+        borderLeft: 'none',
+        borderRight: 'none',
+        borderTop: 'none',
+        padding: '2px 6px',
+        background: tokens.colorNeutralBackground2,
+      }}
+    >
       <TabList
         selectedValue={activeTab}
         onTabSelect={(_, d) => setActiveTab(d.value as ItemTab)}
         size="small"
-        style={{ padding: '0 16px' }}
+        style={{ padding: '0 8px', gap: 8 }}
       >
         <Tab value="secrets" icon={<Key24Regular />}>
-          Secrets
+          Secrets <span className="azv-tab-hint">/kv/secrets</span>
         </Tab>
         <Tab value="keys" icon={<LockClosed24Regular />}>
-          Keys
+          Keys <span className="azv-tab-hint">/kv/keys</span>
         </Tab>
         <Tab value="certificates" icon={<Certificate24Regular />}>
-          Certificates
+          Certificates <span className="azv-tab-hint">/kv/certs</span>
         </Tab>
         <Tab value="access" icon={<ShieldKeyhole24Regular />}>
-          Access
+          Access <span className="azv-tab-hint">rbac</span>
         </Tab>
         <Tab value="logs" icon={<DocumentText24Regular />}>
-          Activity Log
+          Logs <span className="azv-tab-hint">audit</span>
         </Tab>
       </TabList>
     </div>

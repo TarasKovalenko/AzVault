@@ -102,13 +102,17 @@ export function KeysList() {
           alignItems: 'center',
           padding: '12px 16px',
           borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+          background: tokens.colorNeutralBackground2,
         }}
       >
         <Text weight="semibold" size={300}>
           Keys
         </Text>
+        <Text className="azv-title" style={{ marginLeft: 8 }}>
+          crypto-assets
+        </Text>
         {keysQuery.data && (
-          <Text size={200} style={{ color: tokens.colorNeutralForeground3, marginLeft: 8 }}>
+          <Text size={200} style={{ color: tokens.colorNeutralForeground3, marginLeft: 8 }} className="azv-mono">
             ({filteredKeys.length}
             {searchQuery ? ` of ${keysQuery.data.length}` : ''})
           </Text>
