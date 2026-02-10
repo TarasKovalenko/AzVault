@@ -3,6 +3,7 @@ import {
   Button,
   Text,
   Badge,
+  Tooltip,
   tokens,
   Table,
   TableBody,
@@ -151,18 +152,45 @@ export function AuditLog() {
                     </Text>
                   </TableCell>
                   <TableCell>
-                    <Badge
-                      size="small"
-                      appearance="outline"
-                      color={entry.result === 'success' ? 'success' : 'danger'}
-                    >
-                      {entry.result}
-                    </Badge>
+                    <Tooltip content={entry.result} relationship="label">
+                      <Badge
+                        size="small"
+                        appearance="outline"
+                        color={entry.result === 'success' ? 'success' : 'danger'}
+                        title={entry.result}
+                        style={{ maxWidth: 120 }}
+                      >
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            maxWidth: 100,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {entry.result}
+                        </span>
+                      </Badge>
+                    </Tooltip>
                   </TableCell>
                   <TableCell>
-                    <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                      {entry.details || '-'}
-                    </Text>
+                    <Tooltip content={entry.details || '-'} relationship="label">
+                      <Text
+                        size={200}
+                        style={{
+                          color: tokens.colorNeutralForeground3,
+                          display: 'inline-block',
+                          maxWidth: 260,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                        title={entry.details || '-'}
+                      >
+                        {entry.details || '-'}
+                      </Text>
+                    </Tooltip>
                   </TableCell>
                 </TableRow>
               ))}

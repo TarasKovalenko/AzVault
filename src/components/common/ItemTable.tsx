@@ -7,6 +7,7 @@ import {
   TableHeaderCell,
   TableRow,
   Badge,
+  Checkbox,
   Text,
   Spinner,
   tokens,
@@ -28,6 +29,11 @@ interface ItemTableProps<T> {
   onSelect?: (item: T) => void;
   getItemId: (item: T) => string;
   emptyMessage?: string;
+  selectable?: boolean;
+  selectedIds?: Set<string>;
+  selectAllState?: boolean | 'mixed';
+  onToggleSelect?: (id: string, checked: boolean) => void;
+  onToggleSelectAll?: (checked: boolean) => void;
 }
 
 export function ItemTable<T>({
@@ -38,6 +44,11 @@ export function ItemTable<T>({
   onSelect,
   getItemId,
   emptyMessage = 'No items found',
+  selectable = false,
+  selectedIds,
+  selectAllState = false,
+  onToggleSelect,
+  onToggleSelectAll,
 }: ItemTableProps<T>) {
   if (loading) {
     return (
@@ -67,6 +78,14 @@ export function ItemTable<T>({
       <Table size="small" style={{ width: '100%' }}>
         <TableHeader>
           <TableRow>
+            {selectable && (
+              <TableHeaderCell style={{ width: 42 }}>
+                <Checkbox
+                  checked={selectAllState}
+                  onChange={(_, d) => onToggleSelectAll?.(!!d.checked)}
+                />
+              </TableHeaderCell>
+            )}
             <TableHeaderCell style={{ width: 56 }}>#</TableHeaderCell>
             {columns.map((col) => (
               <TableHeaderCell key={col.key} style={{ width: col.width }}>
@@ -90,6 +109,16 @@ export function ItemTable<T>({
                       : undefined,
                 }}
               >
+                {selectable && (
+                  <TableCell>
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
+                        checked={selectedIds?.has(id) ?? false}
+                        onChange={(_, d) => onToggleSelect?.(id, !!d.checked)}
+                      />
+                    </div>
+                  </TableCell>
+                )}
                 <TableCell>
                   <Text size={100} className="azv-mono">
                     {String(index + 1).padStart(2, '0')}

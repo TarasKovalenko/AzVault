@@ -190,7 +190,11 @@ export function Sidebar() {
       </div>
 
       <Divider />
-      {renderSectionHeader('tenant', 'Tenants')}
+      {renderSectionHeader(
+        'tenant',
+        'Directory / Tenants',
+        <Badge size="small" appearance="outline">{(tenantsQuery.data || []).length}</Badge>
+      )}
       {renderSectionBody(
         'tenant',
         tenantsQuery.isLoading ? (
@@ -230,7 +234,11 @@ export function Sidebar() {
       )}
 
       <Divider />
-      {renderSectionHeader('subscription', 'Subscriptions')}
+      {renderSectionHeader(
+        'subscription',
+        'Scope / Subscriptions',
+        <Badge size="small" appearance="outline">{(subsQuery.data || []).length}</Badge>
+      )}
       {renderSectionBody(
         'subscription',
         subsQuery.isLoading ? (
@@ -277,14 +285,17 @@ export function Sidebar() {
       <Divider />
       {renderSectionHeader(
         'vaults',
-        'Key Vaults',
-        <Button
-          icon={<ArrowSync24Regular />}
-          appearance="subtle"
-          size="small"
-          onClick={() => vaultsQuery.refetch()}
-          title="Refresh vaults"
-        />
+        'Vault Explorer',
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <Badge size="small" appearance="outline">{filteredVaults.length}</Badge>
+          <Button
+            icon={<ArrowSync24Regular />}
+            appearance="subtle"
+            size="small"
+            onClick={() => vaultsQuery.refetch()}
+            title="Refresh vaults"
+          />
+        </div>
       )}
       {renderSectionBody(
         'vaults',
@@ -350,15 +361,18 @@ export function Sidebar() {
       <Divider />
       {renderSectionHeader(
         'recent',
-        'Recent',
-        <Button
-          icon={<Delete24Regular />}
-          appearance="subtle"
-          size="small"
-          onClick={clearRecentVaults}
-          title="Clear recent vaults"
-          disabled={recentVaults.length === 0}
-        />
+        'Recent Vaults',
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <Badge size="small" appearance="outline">{recentVaults.length}</Badge>
+          <Button
+            icon={<Delete24Regular />}
+            appearance="subtle"
+            size="small"
+            onClick={clearRecentVaults}
+            title="Clear recent vaults"
+            disabled={recentVaults.length === 0}
+          />
+        </div>
       )}
       {renderSectionBody(
         'recent',
