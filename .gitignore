@@ -21,3 +21,7 @@ src-tauri/gen/
 
 # Logs
 *.log
+
+# Local security scan artifacts
+.secrets.baseline
+.secretscan-venv/

@@ -1,124 +1,121 @@
 # AzVault
 
-AzVault is a cross-platform desktop **Azure Key Vault Explorer** built with:
-- Tauri v2 (Rust backend)
-- React + TypeScript + Vite (frontend)
-- Fluent UI components
-- Azure device-code authentication flow (AAD OAuth2), with Azure CLI token fallback
+AzVault is a cross-platform desktop Azure Key Vault explorer built with:
+- Tauri v2 (Rust)
+- React + TypeScript + Vite
+- Fluent UI
+
+AzVault uses **Azure CLI authentication only**. You authenticate with `az login`, and the app requests short-lived tokens via `az account get-access-token`.
+
+## Status
+
+- `cargo test` passing
+- `cargo check` passing
+- `npm run lint` passing
+- `npm run build` passing
 
 ## Features
 
-- Device code sign-in for desktop UX
-- Tenant + subscription discovery from Azure Resource Manager
-- Key Vault discovery per subscription
-- Vault tabs: `Secrets`, `Keys`, `Certificates`, `Access` (read-only), `Activity Log`
-- Secret security controls:
-  - values are never auto-loaded
-  - explicit fetch confirmation required
-  - reveal toggle is local-only
-  - copy-to-clipboard is explicit with timed warning
-- Secret lifecycle:
-  - create/set secret (new version when name exists)
-  - delete, recover, purge
-- Metadata export for item lists (`JSON`/`CSV`)
-- Local audit log with sanitized export (redacts sensitive data)
-- Local persisted non-sensitive settings:
-  - selected tenant/subscription/vault
-  - recent vaults
-  - environment preference
-  - reveal-policy preference
+- Tenant/subscription/key vault discovery
+- Browse Secrets, Keys, Certificates
+- Secret metadata + explicit value fetch flow
+- Secret CRUD lifecycle (set/delete/recover/purge)
+- Bulk secret selection + one-click delete with confirmation
+- Local audit log with redaction/sanitized export
+- VS Code-like operator UI with light/dark themes
 
-## Security Notes
+## Authentication Model (CLI Only)
 
-- Secret values are fetched only on explicit user action.
-- Secret values are never written to disk by app logic.
-- Audit log redacts sensitive secret-related details.
-- Session refresh token is stored in OS secure storage via `keyring` when available.
-- If direct token refresh is unavailable, AzVault can fall back to `az account get-access-token`.
+1. Run `az login`
+2. (Optional) select default subscription: `az account set --subscription <id>`
+3. Open AzVault and click **Connect with Azure CLI**
 
-## Project Structure
+AzVault does not persist AAD refresh tokens or secret values.
 
-- Frontend: `/Users/taras/Projects/AzVault/src`
-- Backend (Tauri/Rust): `/Users/taras/Projects/AzVault/src-tauri/src`
+## Threat Model (Short)
 
-Key frontend files:
-- `/Users/taras/Projects/AzVault/src/App.tsx`
-- `/Users/taras/Projects/AzVault/src/services/tauri.ts`
-- `/Users/taras/Projects/AzVault/src/stores/appStore.ts`
-- `/Users/taras/Projects/AzVault/src/components/layout/Sidebar.tsx`
-- `/Users/taras/Projects/AzVault/src/components/common/DetailsDrawer.tsx`
+### In scope
+- Prevent accidental secret exposure in logs/UI
+- Restrict backend calls to Azure endpoints
+- Validate user-provided vault URIs and secret names
+- Keep audit data sanitized and size-bounded
 
-Key backend files:
-- `/Users/taras/Projects/AzVault/src-tauri/src/lib.rs`
-- `/Users/taras/Projects/AzVault/src-tauri/src/commands/mod.rs`
-- `/Users/taras/Projects/AzVault/src-tauri/src/auth/mod.rs`
-- `/Users/taras/Projects/AzVault/src-tauri/src/azure/mod.rs`
-- `/Users/taras/Projects/AzVault/src-tauri/src/audit/mod.rs`
+### Out of scope
+- Compromised local machine or compromised Azure CLI installation
+- Clipboard exfiltration outside app controls
+- Azure-side RBAC/access policy misconfiguration
 
-## Command Flow (Tauri)
+## Local Data Storage
 
-Implemented commands:
-- `auth_start`, `auth_poll`, `auth_status`, `auth_sign_out`, `set_tenant`
-- `list_tenants`, `list_subscriptions`, `list_keyvaults`
-- `list_secrets`, `list_keys`, `list_certificates`
-- `get_secret_metadata`, `get_secret_value`
-- `set_secret`, `delete_secret`, `recover_secret`, `purge_secret`
-- `read_audit_log`, `write_audit_log`, `get_audit_log`, `export_audit_log`, `clear_audit_log`
-- `export_items`
+Stored locally:
+- UI/session preferences (tenant/subscription/vault selection, recent vaults, theme)
+- Local audit log entries (sanitized/redacted)
 
-## UI Architecture
+Never stored locally by app logic:
+- Secret values
+- Refresh tokens
 
-- `zustand` store (`appStore`) controls global app/session state.
-- `react-query` handles command caching, refetch, retries, and loading states.
-- `services/tauri.ts` is the typed boundary between React and Rust commands.
-- Main shell layout:
-  - Left sidebar: tenant/subscription/vault selection + recent vaults
-  - Top bar: search, refresh, environment selector, profile menu
-  - Main content tabs: item views + access summary + activity log
-  - Details drawer: secret metadata/actions/reveal controls
+## Repository Layout
 
-## Azure Data Source Policy
-
-Default mode is Azure-backed only. Mock mode exists for UI development and is disabled unless enabled explicitly.
-
-To enable mock mode in development:
-
-```bash
-VITE_ENABLE_MOCK_MODE=true npm run dev
-```
+- `src/`: React frontend
+- `src-tauri/src/`: Rust backend
+- `.github/workflows/`: CI workflows
 
 ## Prerequisites
 
 - Node.js 20+
 - Rust stable toolchain
-- Tauri prerequisites for your OS: <https://v2.tauri.app/start/prerequisites/>
-- Azure account with Key Vault permissions
-- Optional Azure CLI for fallback token provider:
+- Azure CLI (`az`)
+- Tauri OS prerequisites: [Tauri v2 prerequisites](https://v2.tauri.app/start/prerequisites/)
 
-```bash
-az login
-```
+## Development
 
-## Install & Run
+Install deps:
 
 ```bash
 npm install
+```
+
+Run desktop app:
+
+```bash
 npm run tauri dev
 ```
 
-Frontend-only development:
+Frontend-only mode:
 
 ```bash
 npm run dev
 ```
 
-Production build:
+Optional mock mode for UI development:
 
 ```bash
-npm run tauri build
+VITE_ENABLE_MOCK_MODE=true npm run dev
 ```
 
-## Notes
+## Quality Gates
 
-- Environment selector is persisted in UI state; current backend APIs target Azure Public endpoints.
-- 403/429/network failures are surfaced with actionable hints and retry behavior where applicable.
+Frontend:
+
+```bash
+npm run lint
+npm run build
+```
+
+Rust:
+
+```bash
+cd src-tauri
+cargo fmt --check
+cargo test
+cargo check
+```
+
+## Security
+
+Please read `SECURITY.md` before reporting vulnerabilities.
+
+## License
+
+MIT (`LICENSE`).
