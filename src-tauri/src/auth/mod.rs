@@ -1,3 +1,10 @@
+//! Authentication module (Azure CLI only).
+//!
+//! Design notes:
+//! - AzVault does not own credentials and does not persist tokens.
+//! - We delegate authentication to `az login` and request short-lived access tokens on demand.
+//! - Tenant preference is app-local and only influences `az account get-access-token --tenant`.
+
 use serde_json::Value;
 use std::process::Command;
 use std::sync::Arc;
@@ -10,26 +17,31 @@ pub struct AuthManager {
 }
 
 impl AuthManager {
+    /// Creates a CLI-backed auth manager.
     pub fn new() -> Self {
         Self {
             tenant_id: Arc::new(RwLock::new(TENANT_DEFAULT.to_string())),
         }
     }
 
+    /// Persists tenant preference for subsequent Azure CLI token calls.
     pub async fn set_tenant(&self, tenant_id: &str) {
         let mut tid = self.tenant_id.write().await;
         *tid = tenant_id.to_string();
     }
 
+    /// Returns the tenant currently preferred by this app instance.
     pub async fn get_tenant(&self) -> String {
         self.tenant_id.read().await.clone()
     }
 
+    /// Requests an ARM token from Azure CLI.
     pub async fn get_management_token(&self) -> Result<String, String> {
         let tenant = self.get_tenant().await;
         self.get_az_cli_token("https://management.azure.com/", Some(&tenant))
     }
 
+    /// Requests a Key Vault data-plane token from Azure CLI.
     pub async fn get_vault_token(&self) -> Result<String, String> {
         let tenant = self.get_tenant().await;
         self.get_az_cli_token("https://vault.azure.net", Some(&tenant))
@@ -41,10 +53,12 @@ impl AuthManager {
         *tid = TENANT_DEFAULT.to_string();
     }
 
+    /// A session is considered signed in when Azure CLI can return a management token.
     pub async fn is_signed_in(&self) -> bool {
         self.get_management_token().await.is_ok()
     }
 
+    /// Calls `az account get-access-token` for an allow-listed resource scope.
     fn get_az_cli_token(&self, resource: &str, tenant: Option<&str>) -> Result<String, String> {
         if !Self::is_allowed_cli_resource(resource) {
             return Err("Unsupported Azure CLI resource scope.".to_string());
@@ -80,6 +94,7 @@ impl AuthManager {
         Self::parse_cli_access_token(&output.stdout)
     }
 
+    /// Restricts token acquisition to scopes used by AzVault.
     fn is_allowed_cli_resource(resource: &str) -> bool {
         matches!(
             resource,
@@ -87,6 +102,7 @@ impl AuthManager {
         )
     }
 
+    /// Parses Azure CLI JSON output and extracts `accessToken`.
     fn parse_cli_access_token(payload: &[u8]) -> Result<String, String> {
         let body: Value = serde_json::from_slice(payload)
             .map_err(|e| format!("Failed to parse Azure CLI token response: {}", e))?;

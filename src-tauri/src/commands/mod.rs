@@ -1,3 +1,8 @@
+//! Tauri command handlers.
+//!
+//! This module is the backend boundary consumed by the React UI.
+//! Keep handlers small: validate input, call service, write audit entry, return typed data.
+
 use crate::audit::AuditLogger;
 use crate::auth::AuthManager;
 use crate::azure::AzureClient;
@@ -11,8 +16,11 @@ pub struct AppState {
     pub audit: AuditLogger,
 }
 
+/// Upper bound on raw JSON payload received by `export_items`.
 const MAX_EXPORT_INPUT_BYTES: usize = 2_000_000;
+/// Upper bound on number of rows exported in one request.
 const MAX_EXPORT_ITEMS: usize = 20_000;
+/// Upper bound for individual audit fields before truncation.
 const MAX_AUDIT_FIELD_LEN: usize = 512;
 
 // ─── Auth Commands ───
@@ -120,7 +128,7 @@ pub async fn list_secrets(
             "list_secrets",
             "secret",
             "*",
-            if result.is_ok() { "success" } else { "error" },
+            result_status(&result),
             None,
         )
         .await;
@@ -145,7 +153,7 @@ pub async fn list_keys(
             "list_keys",
             "key",
             "*",
-            if result.is_ok() { "success" } else { "error" },
+            result_status(&result),
             None,
         )
         .await;
@@ -170,7 +178,7 @@ pub async fn list_certificates(
             "list_certificates",
             "certificate",
             "*",
-            if result.is_ok() { "success" } else { "error" },
+            result_status(&result),
             None,
         )
         .await;
@@ -201,7 +209,7 @@ pub async fn get_secret_value(
             "get_secret_value",
             "secret",
             &name,
-            if result.is_ok() { "success" } else { "error" },
+            result_status(&result),
             Some("[value retrieved - REDACTED]"),
         )
         .await;
@@ -232,7 +240,7 @@ pub async fn get_secret_metadata(
             "get_secret_metadata",
             "secret",
             &name,
-            if result.is_ok() { "success" } else { "error" },
+            result_status(&result),
             None,
         )
         .await;
@@ -265,7 +273,7 @@ pub async fn set_secret(
             "set_secret",
             "secret",
             &secret_name,
-            if result.is_ok() { "success" } else { "error" },
+            result_status(&result),
             Some("[value set - REDACTED]"),
         )
         .await;
@@ -293,7 +301,7 @@ pub async fn delete_secret(
             "delete_secret",
             "secret",
             &name,
-            if result.is_ok() { "success" } else { "error" },
+            result_status(&result),
             None,
         )
         .await;
@@ -321,7 +329,7 @@ pub async fn recover_secret(
             "recover_secret",
             "secret",
             &name,
-            if result.is_ok() { "success" } else { "error" },
+            result_status(&result),
             None,
         )
         .await;
@@ -349,7 +357,7 @@ pub async fn purge_secret(
             "purge_secret",
             "secret",
             &name,
-            if result.is_ok() { "success" } else { "error" },
+            result_status(&result),
             None,
         )
         .await;
@@ -497,6 +505,15 @@ fn extract_vault_name(vault_uri: &str) -> String {
         .next()
         .unwrap_or("unknown")
         .to_string()
+}
+
+/// Returns a stable status label for audit logs.
+fn result_status<T>(result: &Result<T, String>) -> &'static str {
+    if result.is_ok() {
+        "success"
+    } else {
+        "error"
+    }
 }
 
 fn validate_vault_uri(vault_uri: &str) -> Result<(), String> {

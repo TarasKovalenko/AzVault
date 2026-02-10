@@ -1,3 +1,10 @@
+//! Azure REST client used by command handlers.
+//!
+//! This module intentionally avoids broad SDK surface area and focuses on:
+//! - ARM discovery (tenants/subscriptions/vaults)
+//! - Key Vault data-plane operations for secrets/keys/certs
+//! - bounded retries and strict outbound host allowlist
+
 use crate::models::*;
 use reqwest::{Client, Method};
 use serde_json::Value;
@@ -17,6 +24,7 @@ pub struct AzureClient {
 }
 
 impl AzureClient {
+    /// Builds a shared HTTP client with conservative network timeouts.
     pub fn new() -> Self {
         let client = Client::builder()
             .connect_timeout(Duration::from_secs(10))
@@ -422,6 +430,8 @@ impl AzureClient {
         token: &str,
         payload: Option<Value>,
     ) -> Result<Value, String> {
+        // Defense-in-depth: command layer validates vault URIs, and transport layer
+        // re-validates every outbound URL before network access.
         if !Self::is_allowed_azure_url(url) {
             return Err("Blocked outbound request to non-Azure endpoint.".to_string());
         }

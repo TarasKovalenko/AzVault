@@ -1,3 +1,10 @@
+//! Local audit logging for user-visible activity history.
+//!
+//! Important guarantees:
+//! - Audit entries are persisted locally.
+//! - Sensitive data in `details` is redacted/truncated before storage/export.
+//! - Log size is bounded to avoid unbounded disk growth.
+
 use crate::models::AuditEntry;
 use std::fs::OpenOptions;
 use std::io::Write;
@@ -11,6 +18,7 @@ pub struct AuditLogger {
 }
 
 impl AuditLogger {
+    /// Initializes the logger and loads existing entries from disk (if present).
     pub fn new(app_data_dir: PathBuf) -> Self {
         let log_dir = app_data_dir.join("audit_logs");
         std::fs::create_dir_all(&log_dir).ok();
@@ -62,6 +70,7 @@ impl AuditLogger {
         result: &str,
         details: Option<&str>,
     ) {
+        // Sanitize `details` before writing so sensitive material never lands on disk.
         let entry = AuditEntry {
             timestamp: chrono::Utc::now().to_rfc3339(),
             vault_name: vault_name.to_string(),
@@ -120,6 +129,7 @@ impl AuditLogger {
     }
 
     pub(crate) fn sanitize_details(details: &str) -> String {
+        // Very defensive keyword check. We prefer occasional false positives over leaking secrets.
         let lower = details.to_ascii_lowercase();
         if lower.contains("secret")
             || lower.contains("token")
