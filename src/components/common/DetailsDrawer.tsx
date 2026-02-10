@@ -1,3 +1,14 @@
+/**
+ * DetailsDrawer.tsx – Secret details side panel.
+ *
+ * Provides:
+ * - Secret metadata display (name, dates, tags)
+ * - Secure fetch-on-demand for secret values (never auto-loaded)
+ * - Reveal/copy with auto-clipboard-clear after 30 seconds
+ * - Delete, recover, and purge actions with confirmation dialogs
+ * - Optional re-authentication gate before fetching values
+ */
+
 import { useState, useCallback } from 'react';
 import {
   DrawerBody,
@@ -57,6 +68,7 @@ export function DetailsDrawer({ item, vaultUri, open, onClose, onRefresh }: Deta
   const [clipboardWarning, setClipboardWarning] = useState(false);
   const { requireReauthForReveal } = useAppStore();
 
+  /** Fetch the secret value from Azure Key Vault. */
   const handleFetchValue = useCallback(async () => {
     if (!item) return;
     setFetching(true);
@@ -72,31 +84,33 @@ export function DetailsDrawer({ item, vaultUri, open, onClose, onRefresh }: Deta
     }
   }, [item, vaultUri]);
 
+  /** Gate fetch behind optional re-auth confirmation. */
   const confirmAndFetch = useCallback(async () => {
     if (requireReauthForReveal && !reauthConfirmed) {
-      setFetchError('Re-authentication confirmation is required before fetching a secret value.');
+      setFetchError('Re-authentication confirmation required before fetching secret values.');
       return;
     }
     setShowFetchConfirm(false);
     await handleFetchValue();
   }, [handleFetchValue, requireReauthForReveal, reauthConfirmed]);
 
+  /** Copy value to clipboard with auto-clear after 30 seconds. */
   const handleCopy = useCallback(() => {
-    if (secretValue?.value) {
-      navigator.clipboard.writeText(secretValue.value);
-      setCopied(true);
-      setClipboardWarning(true);
+    if (!secretValue?.value) return;
+    navigator.clipboard.writeText(secretValue.value);
+    setCopied(true);
+    setClipboardWarning(true);
 
-      // Clear clipboard after 30 seconds
-      setTimeout(() => {
-        navigator.clipboard.writeText('').catch(() => {});
-        setClipboardWarning(false);
-      }, 30000);
+    // Security: clear clipboard after 30s to prevent lingering secrets
+    setTimeout(() => {
+      navigator.clipboard.writeText('').catch(() => {});
+      setClipboardWarning(false);
+    }, 30_000);
 
-      setTimeout(() => setCopied(false), 2000);
-    }
+    setTimeout(() => setCopied(false), 2000);
   }, [secretValue]);
 
+  /** Delete secret (recoverable if soft-delete is enabled). */
   const handleDelete = useCallback(async () => {
     if (!item) return;
     setActionLoading(true);
@@ -112,6 +126,7 @@ export function DetailsDrawer({ item, vaultUri, open, onClose, onRefresh }: Deta
     }
   }, [item, vaultUri, onRefresh, onClose]);
 
+  /** Recover a soft-deleted secret. */
   const handleRecover = useCallback(async () => {
     if (!item) return;
     setActionLoading(true);
@@ -125,6 +140,7 @@ export function DetailsDrawer({ item, vaultUri, open, onClose, onRefresh }: Deta
     }
   }, [item, vaultUri, onRefresh]);
 
+  /** Permanently purge a deleted secret (irreversible). */
   const handlePurge = useCallback(async () => {
     if (!item) return;
     setActionLoading(true);
@@ -140,6 +156,7 @@ export function DetailsDrawer({ item, vaultUri, open, onClose, onRefresh }: Deta
     }
   }, [item, vaultUri, onRefresh, onClose]);
 
+  /** Reset transient state when closing the drawer. */
   const handleClose = () => {
     setSecretValue(null);
     setRevealed(false);
@@ -157,56 +174,58 @@ export function DetailsDrawer({ item, vaultUri, open, onClose, onRefresh }: Deta
     <>
       <OverlayDrawer
         open={open}
-        onOpenChange={(_, d) => { if (!d.open) handleClose(); }}
+        onOpenChange={(_, d) => {
+          if (!d.open) handleClose();
+        }}
         position="end"
         size="medium"
       >
         <DrawerHeader>
           <DrawerHeaderTitle
             action={
-              <Button
-                appearance="subtle"
-                icon={<Dismiss24Regular />}
-                onClick={handleClose}
-              />
+              <Button appearance="subtle" icon={<Dismiss24Regular />} onClick={handleClose} />
             }
           >
-            {item.name}
+            <span className="azv-mono">{item.name}</span>
           </DrawerHeaderTitle>
         </DrawerHeader>
+
         <DrawerBody style={{ padding: '0 24px 24px' }}>
           {/* Status badges */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-            <Badge
-              appearance="filled"
-              color={item.enabled ? 'success' : 'danger'}
-            >
-              {item.enabled ? 'Enabled' : 'Disabled'}
-            </Badge>
+          <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span
+                className="azv-status-dot"
+                style={{
+                  background: item.enabled ? 'var(--azv-success)' : 'var(--azv-danger)',
+                }}
+              />
+              <Text size={200}>{item.enabled ? 'Active' : 'Disabled'}</Text>
+            </div>
             {item.managed && (
-              <Badge appearance="outline" color="informative">
+              <Badge appearance="outline" color="informative" size="small">
                 Managed
               </Badge>
             )}
             {item.expires && new Date(item.expires) < new Date() && (
-              <Badge appearance="filled" color="danger">
+              <Badge appearance="filled" color="danger" size="small">
                 Expired
               </Badge>
             )}
           </div>
 
           {/* Metadata fields */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <MetadataField label="Name" value={item.name} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <MetadataField label="Name" value={item.name} mono />
             <MetadataField label="ID" value={item.id} mono />
-            <MetadataField label="Content Type" value={item.contentType || '-'} />
+            <MetadataField label="Content Type" value={item.contentType || '—'} />
             <MetadataField
               label="Created"
-              value={item.created ? format(new Date(item.created), 'PPpp') : '-'}
+              value={item.created ? format(new Date(item.created), 'PPpp') : '—'}
             />
             <MetadataField
               label="Updated"
-              value={item.updated ? format(new Date(item.updated), 'PPpp') : '-'}
+              value={item.updated ? format(new Date(item.updated), 'PPpp') : '—'}
             />
             <MetadataField
               label="Expires"
@@ -214,15 +233,23 @@ export function DetailsDrawer({ item, vaultUri, open, onClose, onRefresh }: Deta
             />
             <MetadataField
               label="Not Before"
-              value={item.notBefore ? format(new Date(item.notBefore), 'PPpp') : '-'}
+              value={item.notBefore ? format(new Date(item.notBefore), 'PPpp') : '—'}
             />
 
             {item.tags && Object.keys(item.tags).length > 0 && (
               <Field label="Tags">
                 <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 4 }}>
                   {Object.entries(item.tags).map(([k, v]) => (
-                    <Badge key={k} appearance="outline" size="medium" className="azv-tag-pill" title={`${k}: ${v}`}>
-                      <span className="azv-tag-text">{k}: {v}</span>
+                    <Badge
+                      key={k}
+                      appearance="outline"
+                      size="medium"
+                      className="azv-tag-pill"
+                      title={`${k}: ${v}`}
+                    >
+                      <span className="azv-tag-text">
+                        {k}: {v}
+                      </span>
                     </Badge>
                   ))}
                 </div>
@@ -233,22 +260,23 @@ export function DetailsDrawer({ item, vaultUri, open, onClose, onRefresh }: Deta
           <Divider style={{ margin: '20px 0' }} />
 
           {/* Secret Value Section */}
-          <Text weight="semibold" size={400} block style={{ marginBottom: 12 }}>
+          <Text weight="semibold" size={300} block style={{ marginBottom: 10 }}>
             Secret Value
           </Text>
 
           {!secretValue ? (
             <div>
               <Text block size={200} style={{ color: tokens.colorNeutralForeground3, marginBottom: 8 }}>
-                Secret values are not loaded automatically for security. Click below to fetch.
+                Values are never loaded automatically. Click to fetch on-demand.
               </Text>
               <Button
                 appearance="primary"
+                size="small"
                 icon={fetching ? <Spinner size="tiny" /> : <Eye24Regular />}
                 onClick={() => setShowFetchConfirm(true)}
                 disabled={fetching}
               >
-                {fetching ? 'Fetching...' : 'Fetch Secret Value'}
+                {fetching ? 'Fetching…' : 'Fetch Value'}
               </Button>
             </div>
           ) : (
@@ -259,19 +287,21 @@ export function DetailsDrawer({ item, vaultUri, open, onClose, onRefresh }: Deta
                     type={revealed ? 'text' : 'password'}
                     value={secretValue.value}
                     readOnly
-                    style={{ flex: 1, fontFamily: 'monospace' }}
+                    style={{ flex: 1, fontFamily: "'IBM Plex Mono', monospace", fontSize: 12 }}
                   />
                   <Tooltip content={revealed ? 'Hide' : 'Reveal'} relationship="label">
                     <Button
                       icon={revealed ? <EyeOff24Regular /> : <Eye24Regular />}
                       appearance="subtle"
+                      size="small"
                       onClick={() => setRevealed(!revealed)}
                     />
                   </Tooltip>
-                  <Tooltip content={copied ? 'Copied!' : 'Copy to clipboard'} relationship="label">
+                  <Tooltip content={copied ? 'Copied!' : 'Copy'} relationship="label">
                     <Button
                       icon={copied ? <Checkmark24Regular /> : <Copy24Regular />}
                       appearance="subtle"
+                      size="small"
                       onClick={handleCopy}
                     />
                   </Tooltip>
@@ -285,27 +315,31 @@ export function DetailsDrawer({ item, vaultUri, open, onClose, onRefresh }: Deta
                     alignItems: 'center',
                     gap: 6,
                     marginTop: 8,
-                    padding: '6px 10px',
+                    padding: '5px 10px',
                     background: tokens.colorPaletteYellowBackground1,
-                    borderRadius: tokens.borderRadiusMedium,
+                    borderRadius: 4,
+                    fontSize: 11,
                   }}
                 >
-                  <Warning24Regular style={{ fontSize: 14, color: tokens.colorPaletteYellowForeground1 }} />
-                  <Text size={200} style={{ color: tokens.colorPaletteYellowForeground1 }}>
-                    Secret copied. Clipboard will be cleared in 30 seconds.
+                  <Warning24Regular
+                    style={{ fontSize: 13, color: tokens.colorPaletteYellowForeground1 }}
+                  />
+                  <Text size={100} style={{ color: tokens.colorPaletteYellowForeground1 }}>
+                    Clipboard will be cleared in 30s
                   </Text>
                 </div>
               )}
             </div>
           )}
 
+          {/* Error banner */}
           {fetchError && (
             <div
               style={{
                 marginTop: 12,
-                padding: 12,
+                padding: 10,
                 background: tokens.colorPaletteRedBackground1,
-                borderRadius: tokens.borderRadiusMedium,
+                borderRadius: 4,
               }}
             >
               <Text size={200} style={{ color: tokens.colorPaletteRedForeground1 }}>
@@ -316,46 +350,52 @@ export function DetailsDrawer({ item, vaultUri, open, onClose, onRefresh }: Deta
 
           <Divider style={{ margin: '20px 0' }} />
 
-          {/* Actions */}
-          <Text weight="semibold" size={400} block style={{ marginBottom: 12 }}>
+          {/* Danger zone actions */}
+          <Text weight="semibold" size={300} block style={{ marginBottom: 10 }}>
             Actions
           </Text>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <Button
               appearance="secondary"
               icon={<ArrowUndo24Regular />}
+              size="small"
               onClick={handleRecover}
               disabled={actionLoading}
             >
-              Recover (if deleted)
+              Recover
             </Button>
             <Button
               appearance="secondary"
               icon={<Delete24Regular />}
+              size="small"
               onClick={() => setShowDeleteDialog(true)}
-              style={{ color: tokens.colorPaletteRedForeground1 }}
+              style={{ color: 'var(--azv-danger)' }}
             >
               Delete
             </Button>
             <Button
               appearance="secondary"
               icon={<Warning24Regular />}
+              size="small"
               onClick={() => setShowPurgeDialog(true)}
-              style={{ color: tokens.colorPaletteRedForeground1 }}
+              style={{ color: 'var(--azv-danger)' }}
             >
-              Purge (permanent)
+              Purge
             </Button>
           </div>
         </DrawerBody>
       </OverlayDrawer>
 
-      {/* Delete Confirmation */}
+      {/* ── Fetch confirmation dialog ── */}
       <Dialog open={showFetchConfirm} onOpenChange={(_, d) => setShowFetchConfirm(d.open)}>
         <DialogSurface>
           <DialogBody>
             <DialogTitle>Confirm Secret Fetch</DialogTitle>
             <DialogContent>
-              Secret values are sensitive. Fetching will request the value from Azure Key Vault and keep it in memory only for this session.
+              <Text size={200}>
+                Fetching will request the value from Azure Key Vault and hold it in
+                memory for this session only.
+              </Text>
               {requireReauthForReveal && (
                 <div style={{ marginTop: 10 }}>
                   <Button
@@ -363,7 +403,7 @@ export function DetailsDrawer({ item, vaultUri, open, onClose, onRefresh }: Deta
                     onClick={() => setReauthConfirmed((v) => !v)}
                     size="small"
                   >
-                    {reauthConfirmed ? 'Re-auth confirmed' : 'Confirm recent re-authentication'}
+                    {reauthConfirmed ? 'Re-auth confirmed' : 'Confirm re-authentication'}
                   </Button>
                 </div>
               )}
@@ -373,28 +413,32 @@ export function DetailsDrawer({ item, vaultUri, open, onClose, onRefresh }: Deta
                 Cancel
               </Button>
               <Button appearance="primary" onClick={confirmAndFetch} disabled={fetching}>
-                Fetch value
+                Fetch
               </Button>
             </DialogActions>
           </DialogBody>
         </DialogSurface>
       </Dialog>
 
-      {/* Delete Confirmation */}
+      {/* ── Delete confirmation dialog ── */}
       <Dialog open={showDeleteDialog} onOpenChange={(_, d) => setShowDeleteDialog(d.open)}>
         <DialogSurface>
           <DialogBody>
             <DialogTitle>Delete Secret</DialogTitle>
             <DialogContent>
-              Are you sure you want to delete <strong>{item.name}</strong>? If soft-delete is enabled,
-              the secret can be recovered.
+              Delete <strong className="azv-mono">{item.name}</strong>? Recoverable if soft-delete
+              is enabled on the vault.
             </DialogContent>
             <DialogActions>
               <Button appearance="secondary" onClick={() => setShowDeleteDialog(false)}>
                 Cancel
               </Button>
-              <Button appearance="primary" onClick={handleDelete} disabled={actionLoading}
-                style={{ background: tokens.colorPaletteRedBackground3 }}>
+              <Button
+                appearance="primary"
+                onClick={handleDelete}
+                disabled={actionLoading}
+                style={{ background: tokens.colorPaletteRedBackground3 }}
+              >
                 {actionLoading ? <Spinner size="tiny" /> : 'Delete'}
               </Button>
             </DialogActions>
@@ -402,27 +446,32 @@ export function DetailsDrawer({ item, vaultUri, open, onClose, onRefresh }: Deta
         </DialogSurface>
       </Dialog>
 
-      {/* Purge Confirmation */}
+      {/* ── Purge confirmation dialog ── */}
       <Dialog open={showPurgeDialog} onOpenChange={(_, d) => setShowPurgeDialog(d.open)}>
         <DialogSurface>
           <DialogBody>
             <DialogTitle>Purge Secret Permanently</DialogTitle>
             <DialogContent>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                <Warning24Regular style={{ color: tokens.colorPaletteRedForeground1 }} />
-                <Text weight="semibold" style={{ color: tokens.colorPaletteRedForeground1 }}>
-                  This action is irreversible!
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                <Warning24Regular style={{ color: 'var(--azv-danger)' }} />
+                <Text weight="semibold" style={{ color: 'var(--azv-danger)' }}>
+                  This action is irreversible.
                 </Text>
               </div>
-              Purging <strong>{item.name}</strong> will permanently remove it.
-              It cannot be recovered after purging.
+              <Text size={200}>
+                Purging <strong className="azv-mono">{item.name}</strong> will permanently remove it.
+              </Text>
             </DialogContent>
             <DialogActions>
               <Button appearance="secondary" onClick={() => setShowPurgeDialog(false)}>
                 Cancel
               </Button>
-              <Button appearance="primary" onClick={handlePurge} disabled={actionLoading}
-                style={{ background: tokens.colorPaletteRedBackground3 }}>
+              <Button
+                appearance="primary"
+                onClick={handlePurge}
+                disabled={actionLoading}
+                style={{ background: tokens.colorPaletteRedBackground3 }}
+              >
                 {actionLoading ? <Spinner size="tiny" /> : 'Purge Permanently'}
               </Button>
             </DialogActions>
@@ -433,16 +482,14 @@ export function DetailsDrawer({ item, vaultUri, open, onClose, onRefresh }: Deta
   );
 }
 
+/** Small helper to display a label + value metadata row. */
 function MetadataField({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
     <Field label={label}>
       <Text
         size={200}
         font={mono ? 'monospace' : undefined}
-        style={{
-          wordBreak: 'break-all',
-          color: tokens.colorNeutralForeground1,
-        }}
+        style={{ wordBreak: 'break-all', color: tokens.colorNeutralForeground1, fontSize: 12 }}
       >
         {value}
       </Text>

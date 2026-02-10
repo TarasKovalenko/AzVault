@@ -1,3 +1,10 @@
+/**
+ * TopBar.tsx – Application header bar.
+ *
+ * Contains the app logo, global search input, environment selector,
+ * theme toggle, refresh button, and user menu.
+ */
+
 import {
   Button,
   Input,
@@ -22,7 +29,7 @@ import {
   SignOut24Regular,
   Settings24Regular,
   Info24Regular,
-  ShieldKeyhole24Regular,
+  ShieldLock24Regular,
 } from '@fluentui/react-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAppStore } from '../../stores/appStore';
@@ -48,16 +55,18 @@ export function TopBar() {
   const mockAvailable = useMockStore((s) => s.mockAvailable);
   const setMockMode = useMockStore((s) => s.setMockMode);
 
+  /** Sign out – clear Tauri auth, Zustand state, and query cache. */
   const handleSignOut = async () => {
     try {
       await authSignOut();
     } catch {
-      // Ignore errors during sign out
+      // Ignore sign-out errors – we clear local state regardless
     }
     storeSignOut();
     queryClient.clear();
   };
 
+  /** Invalidate all cached queries to force a fresh fetch. */
   const handleRefresh = () => {
     queryClient.invalidateQueries();
   };
@@ -66,7 +75,7 @@ export function TopBar() {
     environment === 'azurePublic'
       ? 'Azure Public'
       : environment === 'azureUsGovernment'
-        ? 'Azure US Government'
+        ? 'US Government'
         : 'Azure China';
 
   return (
@@ -80,29 +89,46 @@ export function TopBar() {
         borderLeft: 'none',
         borderRight: 'none',
         borderTop: 'none',
-        padding: '8px 12px',
+        padding: '6px 12px',
         display: 'flex',
         alignItems: 'center',
-        minHeight: 50,
+        minHeight: 46,
         gap: 10,
       }}
     >
-      <div style={{ minWidth: 210 }}>
-        <Text weight="semibold" size={400} style={{ color: tokens.colorBrandForeground1 }}>
+      {/* Logo + vault context */}
+      <div style={{ minWidth: 200, display: 'flex', flexDirection: 'column' }}>
+        <Text
+          weight="bold"
+          size={300}
+          className="azv-mono"
+          style={{ color: tokens.colorBrandForeground1, letterSpacing: '0.08em' }}
+        >
           AZVAULT
         </Text>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Text className="azv-title">
-            {selectedVaultName ? `Vault: ${selectedVaultName}` : 'No vault selected'}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 1 }}>
+          <span
+            className="azv-status-dot"
+            style={{
+              background: selectedVaultName
+                ? 'var(--azv-success)'
+                : 'var(--azv-scroll-thumb)',
+              width: 6,
+              height: 6,
+            }}
+          />
+          <Text size={100} className="azv-mono" style={{ opacity: 0.7 }}>
+            {selectedVaultName ? selectedVaultName : 'no vault'}
           </Text>
           <span className="azv-kbd">Ctrl+K</span>
         </div>
       </div>
 
-      <div style={{ flex: 1, maxWidth: 520, margin: '0 8px' }}>
+      {/* Global search */}
+      <div style={{ flex: 1, maxWidth: 480, margin: '0 8px' }}>
         <Input
-          placeholder="Search secrets/keys/certs by prefix or contains..."
-          contentBefore={<Search24Regular style={{ fontSize: 16 }} />}
+          placeholder="Search secrets, keys, certificates…"
+          contentBefore={<Search24Regular style={{ fontSize: 15 }} />}
           size="small"
           value={searchQuery}
           onChange={(_, d) => setSearchQuery(d.value)}
@@ -110,54 +136,67 @@ export function TopBar() {
             width: '100%',
             borderRadius: 4,
             background: tokens.colorNeutralBackground1,
+            fontFamily: "'IBM Plex Mono', monospace",
+            fontSize: 12,
           }}
         />
       </div>
 
-      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+      {/* Right-side controls */}
+      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+        {/* Environment selector */}
         <Dropdown
           size="small"
           value={envLabel}
           onOptionSelect={(_, data) => {
             const value = data.optionValue;
-            if (value === 'azurePublic' || value === 'azureUsGovernment' || value === 'azureChina') {
+            if (
+              value === 'azurePublic' ||
+              value === 'azureUsGovernment' ||
+              value === 'azureChina'
+            ) {
               setEnvironment(value);
             }
           }}
-          style={{ minWidth: 170, borderRadius: 4 }}
+          style={{ minWidth: 140, borderRadius: 4, fontSize: 12 }}
         >
           <Option value="azurePublic">Azure Public</Option>
-          <Option value="azureUsGovernment">Azure US Government</Option>
+          <Option value="azureUsGovernment">US Government</Option>
           <Option value="azureChina">Azure China</Option>
         </Dropdown>
 
+        {/* Mock data indicator */}
         {mockMode && (
           <Badge appearance="filled" color="danger" size="small">
-            MOCK DATA
+            MOCK
           </Badge>
         )}
 
+        {/* Theme toggle */}
         <Button
           icon={themeMode === 'dark' ? <WeatherSunny24Regular /> : <WeatherMoon24Regular />}
           appearance="subtle"
+          size="small"
           onClick={() => setThemeMode(themeMode === 'dark' ? 'light' : 'dark')}
-          title={themeMode === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+          title={`Switch to ${themeMode === 'dark' ? 'light' : 'dark'} theme`}
         />
-        <Button icon={<ArrowSync24Regular />} appearance="subtle" onClick={handleRefresh}>
-          Refresh
-        </Button>
 
+        {/* Refresh */}
+        <Button
+          icon={<ArrowSync24Regular />}
+          appearance="subtle"
+          size="small"
+          onClick={handleRefresh}
+          title="Refresh all data"
+        />
+
+        {/* User menu */}
         <Menu>
           <MenuTrigger>
             <Button
               appearance="subtle"
-              icon={
-                <Avatar
-                  name={userName || 'User'}
-                  size={24}
-                  color="brand"
-                />
-              }
+              size="small"
+              icon={<Avatar name={userName || 'User'} size={20} color="brand" />}
             />
           </MenuTrigger>
           <MenuPopover>
@@ -173,14 +212,14 @@ export function TopBar() {
                   {mockMode ? 'Disable Mock Mode' : 'Enable Mock Mode'}
                 </MenuItem>
               )}
-              <MenuItem icon={<Info24Regular />} disabled>
-                AzVault v0.1.0
-              </MenuItem>
               <MenuItem
-                icon={<ShieldKeyhole24Regular />}
+                icon={<ShieldLock24Regular />}
                 onClick={() => setRequireReauthForReveal(!requireReauthForReveal)}
               >
-                {requireReauthForReveal ? 'Disable re-auth on reveal' : 'Enable re-auth on reveal'}
+                {requireReauthForReveal ? 'Disable re-auth on reveal' : 'Require re-auth on reveal'}
+              </MenuItem>
+              <MenuItem icon={<Info24Regular />} disabled>
+                AzVault v0.1.0
               </MenuItem>
               <MenuItem icon={<SignOut24Regular />} onClick={handleSignOut}>
                 Sign Out

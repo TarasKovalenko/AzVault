@@ -1,3 +1,11 @@
+/**
+ * Sidebar.tsx – Left navigation panel.
+ *
+ * Hierarchical selection flow: Tenant -> Subscription -> Key Vault.
+ * Each section is collapsible and resizable. A "recent vaults" section
+ * provides quick access to previously opened vaults.
+ */
+
 import { useState, useEffect, type ReactNode } from 'react';
 import {
   Tree,
@@ -14,7 +22,7 @@ import {
 import {
   Building24Regular,
   CreditCardPerson24Regular,
-  ShieldKeyhole24Regular,
+  ShieldLock24Regular,
   ArrowSync24Regular,
   Search24Regular,
   Star24Filled,
@@ -31,6 +39,7 @@ import {
   setTenant,
 } from '../../services/tauri';
 
+/** Section identifiers used for collapse/resize state. */
 type SectionKey = 'tenant' | 'subscription' | 'vaults' | 'recent';
 
 export function Sidebar() {
@@ -57,11 +66,13 @@ export function Sidebar() {
     recent: false,
   });
   const [sectionHeights, setSectionHeights] = useState<Record<SectionKey, number>>({
-    tenant: 140,
-    subscription: 150,
-    vaults: 280,
-    recent: 120,
+    tenant: 130,
+    subscription: 140,
+    vaults: 260,
+    recent: 110,
   });
+
+  // ── Data queries ──
 
   const tenantsQuery = useQuery({
     queryKey: ['tenants'],
@@ -80,6 +91,7 @@ export function Sidebar() {
     enabled: !!selectedSubscriptionId,
   });
 
+  // Sync query results into the Zustand store for cross-component access
   useEffect(() => {
     if (tenantsQuery.data) setTenants(tenantsQuery.data);
   }, [tenantsQuery.data, setTenants]);
@@ -92,6 +104,7 @@ export function Sidebar() {
     if (vaultsQuery.data) setKeyvaults(vaultsQuery.data);
   }, [vaultsQuery.data, setKeyvaults]);
 
+  // Auto-select the first tenant when data arrives and nothing is selected
   useEffect(() => {
     if (tenantsQuery.data?.length && !selectedTenantId) {
       const first = tenantsQuery.data[0];
@@ -100,20 +113,28 @@ export function Sidebar() {
     }
   }, [tenantsQuery.data, selectedTenantId, selectTenant]);
 
+  // ── Derived state ──
+
   const filteredVaults = (vaultsQuery.data || []).filter((v) =>
-    v.name.toLowerCase().includes(vaultFilter.toLowerCase())
+    v.name.toLowerCase().includes(vaultFilter.toLowerCase()),
   );
+
+  // ── Section helpers ──
 
   const toggleSection = (key: SectionKey) => {
     setCollapsed((s) => ({ ...s, [key]: !s[key] }));
   };
 
-  const renderSectionHeader = (
-    key: SectionKey,
-    title: string,
-    right?: ReactNode
-  ) => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px 4px' }}>
+  /** Renders a collapsible section header with optional right-side content. */
+  const renderSectionHeader = (key: SectionKey, title: string, right?: ReactNode) => (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 4,
+        padding: '5px 12px 3px',
+      }}
+    >
       <Button
         appearance="subtle"
         size="small"
@@ -127,22 +148,22 @@ export function Sidebar() {
     </div>
   );
 
+  /** Renders the collapsible body with resize-on-drag support. */
   const renderSectionBody = (key: SectionKey, children: ReactNode) => {
     if (collapsed[key]) return null;
-
     return (
       <div
         style={{
           height: sectionHeights[key],
-          minHeight: 72,
+          minHeight: 60,
           resize: 'vertical',
           overflow: 'auto',
-          padding: '0 12px 8px',
+          padding: '0 12px 6px',
         }}
         onMouseUp={(e) => {
-          const target = e.currentTarget;
-          const newHeight = Math.round(target.getBoundingClientRect().height);
-          setSectionHeights((s) => ({ ...s, [key]: Math.max(72, newHeight) }));
+          const el = e.currentTarget;
+          const h = Math.round(el.getBoundingClientRect().height);
+          setSectionHeights((s) => ({ ...s, [key]: Math.max(60, h) }));
         }}
       >
         {children}
@@ -154,8 +175,8 @@ export function Sidebar() {
     <div
       className="azv-pane"
       style={{
-        width: 300,
-        minWidth: 300,
+        width: 280,
+        minWidth: 280,
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
@@ -168,32 +189,36 @@ export function Sidebar() {
         borderBottom: 'none',
       }}
     >
-      <div style={{ padding: '10px 12px 8px' }}>
+      {/* Workspace context summary */}
+      <div style={{ padding: '8px 12px 6px' }}>
         <div
           style={{
-            padding: 8,
-            borderRadius: tokens.borderRadiusSmall,
+            padding: '6px 8px',
+            borderRadius: 4,
             border: `1px solid ${tokens.colorNeutralStroke1}`,
             background: tokens.colorNeutralBackground1,
           }}
         >
-          <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>
-            Workspace Context
+          <Text size={100} className="azv-title" style={{ color: tokens.colorNeutralForeground3 }}>
+            Context
+          </Text>
+          <Text size={100} className="azv-mono" block style={{ marginTop: 2 }}>
+            vault: {selectedVaultName || '—'}
           </Text>
           <Text size={100} className="azv-mono" block>
-            vault: {selectedVaultName || 'none'}
-          </Text>
-          <Text size={100} className="azv-mono" block>
-            sub: {selectedSubscriptionId || '-'}
+            sub: {selectedSubscriptionId ? selectedSubscriptionId.slice(0, 12) + '…' : '—'}
           </Text>
         </div>
       </div>
 
+      {/* ── Tenants section ── */}
       <Divider />
       {renderSectionHeader(
         'tenant',
-        'Directory / Tenants',
-        <Badge size="small" appearance="outline">{(tenantsQuery.data || []).length}</Badge>
+        'Tenants',
+        <Badge size="small" appearance="outline">
+          {(tenantsQuery.data || []).length}
+        </Badge>,
       )}
       {renderSectionBody(
         'tenant',
@@ -208,9 +233,10 @@ export function Sidebar() {
                   selectTenant(t.tenant_id);
                   setTenant(t.tenant_id);
                 }}
+                className="azv-list-item"
                 style={{
-                  padding: '6px 8px',
-                  borderRadius: tokens.borderRadiusSmall,
+                  padding: '5px 8px',
+                  borderRadius: 4,
                   cursor: 'pointer',
                   background:
                     selectedTenantId === t.tenant_id
@@ -219,25 +245,27 @@ export function Sidebar() {
                   display: 'flex',
                   alignItems: 'center',
                   gap: 8,
-                  marginBottom: 4,
+                  marginBottom: 3,
                 }}
-                className="azv-list-item"
               >
-                <Building24Regular style={{ fontSize: 16, flexShrink: 0 }} />
+                <Building24Regular style={{ fontSize: 14, flexShrink: 0, opacity: 0.7 }} />
                 <Text size={200} truncate wrap={false}>
                   {t.display_name || t.tenant_id.slice(0, 8)}
                 </Text>
               </div>
             ))}
           </div>
-        )
+        ),
       )}
 
+      {/* ── Subscriptions section ── */}
       <Divider />
       {renderSectionHeader(
         'subscription',
-        'Scope / Subscriptions',
-        <Badge size="small" appearance="outline">{(subsQuery.data || []).length}</Badge>
+        'Subscriptions',
+        <Badge size="small" appearance="outline">
+          {(subsQuery.data || []).length}
+        </Badge>,
       )}
       {renderSectionBody(
         'subscription',
@@ -249,9 +277,10 @@ export function Sidebar() {
               <div
                 key={s.subscriptionId}
                 onClick={() => selectSubscription(s.subscriptionId)}
+                className="azv-list-item"
                 style={{
-                  padding: '6px 8px',
-                  borderRadius: tokens.borderRadiusSmall,
+                  padding: '5px 8px',
+                  borderRadius: 4,
                   cursor: 'pointer',
                   background:
                     selectedSubscriptionId === s.subscriptionId
@@ -260,34 +289,35 @@ export function Sidebar() {
                   display: 'flex',
                   alignItems: 'center',
                   gap: 8,
-                  marginBottom: 4,
+                  marginBottom: 3,
                 }}
-                className="azv-list-item"
               >
-                <CreditCardPerson24Regular style={{ fontSize: 16, flexShrink: 0 }} />
-                <Text size={200} truncate wrap={false}>
+                <CreditCardPerson24Regular style={{ fontSize: 14, flexShrink: 0, opacity: 0.7 }} />
+                <Text size={200} truncate wrap={false} style={{ flex: 1 }}>
                   {s.displayName}
                 </Text>
-                <Badge
-                  size="small"
-                  appearance="outline"
-                  color={s.state === 'Enabled' ? 'success' : 'warning'}
-                  style={{ marginLeft: 'auto', flexShrink: 0 }}
-                >
-                  {s.state}
-                </Badge>
+                <span
+                  className="azv-status-dot"
+                  style={{
+                    background: s.state === 'Enabled' ? 'var(--azv-success)' : '#e8a317',
+                  }}
+                  title={s.state}
+                />
               </div>
             ))}
           </div>
-        )
+        ),
       )}
 
+      {/* ── Vaults section ── */}
       <Divider />
       {renderSectionHeader(
         'vaults',
-        'Vault Explorer',
+        'Key Vaults',
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <Badge size="small" appearance="outline">{filteredVaults.length}</Badge>
+          <Badge size="small" appearance="outline">
+            {filteredVaults.length}
+          </Badge>
           <Button
             icon={<ArrowSync24Regular />}
             appearance="subtle"
@@ -295,18 +325,18 @@ export function Sidebar() {
             onClick={() => vaultsQuery.refetch()}
             title="Refresh vaults"
           />
-        </div>
+        </div>,
       )}
       {renderSectionBody(
         'vaults',
         <>
           <Input
-            placeholder="Filter vaults..."
-            contentBefore={<Search24Regular style={{ fontSize: 16 }} />}
+            placeholder="Filter…"
+            contentBefore={<Search24Regular style={{ fontSize: 14 }} />}
             size="small"
             value={vaultFilter}
             onChange={(_, d) => setVaultFilter(d.value)}
-            style={{ margin: '4px 0 8px' }}
+            style={{ margin: '3px 0 6px', fontSize: 12 }}
           />
 
           {vaultsQuery.isLoading ? (
@@ -317,37 +347,49 @@ export function Sidebar() {
                 <TreeItem key={v.id} itemType="leaf">
                   <TreeItemLayout
                     onClick={() => selectVault(v.name, v.vaultUri)}
+                    className="azv-list-item"
                     style={{
                       background:
                         selectedVaultUri === v.vaultUri
                           ? tokens.colorBrandBackground2
                           : undefined,
-                      borderRadius: tokens.borderRadiusSmall,
+                      borderRadius: 4,
                       border: `1px solid ${
                         selectedVaultUri === v.vaultUri
                           ? tokens.colorBrandStroke1
                           : 'transparent'
                       }`,
                     }}
-                    className="azv-list-item"
                     iconBefore={
-                      <ShieldKeyhole24Regular
+                      <ShieldLock24Regular
                         style={{
-                          fontSize: 16,
+                          fontSize: 14,
                           color:
                             selectedVaultUri === v.vaultUri
                               ? tokens.colorBrandForeground1
                               : undefined,
+                          opacity: selectedVaultUri === v.vaultUri ? 1 : 0.6,
                         }}
                       />
                     }
                   >
                     <div>
-                      <Text size={200} weight={selectedVaultUri === v.vaultUri ? 'semibold' : 'regular'}>
+                      <Text
+                        size={200}
+                        weight={selectedVaultUri === v.vaultUri ? 'semibold' : 'regular'}
+                      >
                         {v.name}
                       </Text>
-                      <Text size={100} style={{ display: 'block', color: tokens.colorNeutralForeground3 }}>
-                        {v.location} | {v.resourceGroup}
+                      <Text
+                        size={100}
+                        className="azv-mono"
+                        style={{
+                          display: 'block',
+                          color: tokens.colorNeutralForeground3,
+                          fontSize: 10,
+                        }}
+                      >
+                        {v.location} · {v.resourceGroup}
                       </Text>
                     </div>
                   </TreeItemLayout>
@@ -355,15 +397,18 @@ export function Sidebar() {
               ))}
             </Tree>
           )}
-        </>
+        </>,
       )}
 
+      {/* ── Recent vaults section ── */}
       <Divider />
       {renderSectionHeader(
         'recent',
-        'Recent Vaults',
+        'Recent',
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <Badge size="small" appearance="outline">{recentVaults.length}</Badge>
+          <Badge size="small" appearance="outline">
+            {recentVaults.length}
+          </Badge>
           <Button
             icon={<Delete24Regular />}
             appearance="subtle"
@@ -372,7 +417,7 @@ export function Sidebar() {
             title="Clear recent vaults"
             disabled={recentVaults.length === 0}
           />
-        </div>
+        </div>,
       )}
       {renderSectionBody(
         'recent',
@@ -386,23 +431,25 @@ export function Sidebar() {
               <div
                 key={v.uri}
                 onClick={() => selectVault(v.name, v.uri)}
+                className="azv-list-item"
                 style={{
                   padding: '4px 8px',
-                  borderRadius: tokens.borderRadiusSmall,
+                  borderRadius: 4,
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 6,
-                  marginBottom: 4,
+                  marginBottom: 3,
                 }}
-                className="azv-list-item"
               >
-                <Star24Filled style={{ fontSize: 12, color: tokens.colorPaletteYellowForeground1 }} />
-                <Text size={200} truncate wrap={false}>{v.name}</Text>
+                <Star24Filled style={{ fontSize: 11, color: tokens.colorPaletteYellowForeground1 }} />
+                <Text size={200} truncate wrap={false} className="azv-mono">
+                  {v.name}
+                </Text>
               </div>
             ))}
           </>
-        )
+        ),
       )}
     </div>
   );

@@ -1,48 +1,69 @@
+/**
+ * AzVault – Dev-style UI layer
+ *
+ * Opinionated styles that give the app a "developer tool" feel:
+ * - IBM Plex Mono / Inter font stack
+ * - Tight spacing, monospace data fields
+ * - Terminal-like panels, subtle borders
+ * - VS Code / IDE-inspired chrome
+ */
+
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
 :root {
   --azv-radius-sm: 4px;
   --azv-radius-md: 6px;
   --azv-radius-lg: 8px;
-  --azv-shadow: none;
 }
 
+/* ── Typography ── */
 body,
 .fui-FluentProvider {
-  font-family: 'Inter', 'Segoe UI', sans-serif;
-}
-
-.azv-shell {
-  background: transparent;
-}
-
-.azv-pane {
-  border-radius: var(--azv-radius-sm);
-  border: 1px solid rgba(110, 122, 145, 0.22);
-  box-shadow: var(--azv-shadow);
-}
-
-.azv-title {
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  font-size: 10px;
-  opacity: 0.72;
+  font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 13px;
 }
 
 .azv-mono,
 code,
-pre {
+pre,
+.azv-terminal {
   font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
-.azv-status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  display: inline-block;
-  margin-right: 6px;
+/* ── Shell layout ── */
+.azv-shell {
+  background: transparent;
 }
 
+/* ── Pane borders (sidebar, topbar, statusbar) ── */
+.azv-pane {
+  border-radius: var(--azv-radius-sm);
+  border: 1px solid var(--azv-border-subtle);
+}
+
+/* ── Section label ("SECRETS", "DATA-PLANE", etc.) ── */
+.azv-title {
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 10px;
+  font-weight: 600;
+  opacity: 0.60;
+}
+
+/* ── Status dot indicator (green/red/yellow) ── */
+.azv-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.azv-status-dot--active { background: var(--azv-success); }
+.azv-status-dot--error  { background: var(--azv-danger); }
+.azv-status-dot--warn   { background: #e8a317; }
+
+/* ── List items (sidebar entries) ── */
 .azv-list-item {
   border: 1px solid transparent;
   border-radius: var(--azv-radius-sm);
@@ -50,56 +71,76 @@ pre {
 }
 
 .azv-list-item:hover {
-  border-color: rgba(118, 150, 220, 0.35);
-  transform: none;
+  border-color: var(--azv-accent-dim);
 }
 
+/* ── Keyboard shortcut badge ── */
 .azv-kbd {
-  border: 1px solid rgba(130, 145, 170, 0.45);
+  border: 1px solid rgba(130, 145, 170, 0.40);
   border-bottom-width: 2px;
-  border-radius: 4px;
-  padding: 1px 6px;
+  border-radius: 3px;
+  padding: 1px 5px;
   font-size: 10px;
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  opacity: 0.84;
+  opacity: 0.70;
+  line-height: 1.4;
 }
 
+/* ── Tab route hint ── */
 .azv-tab-hint {
-  font-size: 11px;
-  opacity: 0.72;
+  font-size: 10px;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  opacity: 0.50;
+  margin-left: 4px;
 }
 
+/* ── Data table wrapper ── */
 .azv-table-wrap {
   border-radius: var(--azv-radius-sm);
-  border: 1px solid rgba(110, 122, 145, 0.28);
+  border: 1px solid var(--azv-border-subtle);
   overflow: hidden;
 }
 
 .azv-table-wrap .fui-TableHeader {
-  background: rgba(127, 145, 169, 0.08);
+  background: rgba(127, 145, 169, 0.06);
 }
 
 .azv-table-wrap .fui-TableCell,
 .azv-table-wrap .fui-TableHeaderCell {
-  padding-top: 8px;
-  padding-bottom: 8px;
+  padding-top: 7px;
+  padding-bottom: 7px;
+  font-size: 12px;
 }
 
 .azv-table-wrap .fui-TableRow:nth-child(even) {
-  background: rgba(127, 145, 169, 0.035);
+  background: rgba(127, 145, 169, 0.03);
 }
 
-.azv-signin-terminal {
-  border: 1px solid rgba(120, 145, 180, 0.36);
+/* ── Terminal-style panel (used in sign-in) ── */
+.azv-terminal {
+  border: 1px solid rgba(80, 100, 130, 0.30);
   border-radius: var(--azv-radius-sm);
-  padding: 12px;
-  background: rgba(17, 28, 43, 0.5);
+  padding: 14px 16px;
+  background: var(--azv-terminal-bg);
+  color: var(--azv-terminal-fg);
+  font-size: 12px;
+  line-height: 1.7;
 }
 
-.azv-signin-terminal p {
-  margin: 2px 0;
+.azv-terminal .azv-prompt {
+  color: var(--azv-terminal-green);
 }
 
+.azv-terminal .azv-cmd {
+  color: var(--azv-terminal-cyan);
+}
+
+.azv-terminal .azv-comment {
+  color: var(--azv-terminal-yellow);
+  font-style: italic;
+}
+
+/* ── Tag pills (metadata badges) ── */
 .azv-tag-pill {
   max-width: 220px;
 }
@@ -110,4 +151,23 @@ pre {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+}
+
+/* ── Empty state ── */
+.azv-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 48px 24px;
+  text-align: center;
+  opacity: 0.70;
+}
+
+.azv-empty svg {
+  font-size: 40px;
+  opacity: 0.45;
 }

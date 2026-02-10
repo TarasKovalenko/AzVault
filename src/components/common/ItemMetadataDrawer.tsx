@@ -1,3 +1,10 @@
+/**
+ * ItemMetadataDrawer.tsx – Generic metadata side panel.
+ *
+ * Used by Keys and Certificates lists to display item details
+ * in a consistent drawer format with tags support.
+ */
+
 import {
   DrawerBody,
   DrawerHeader,
@@ -39,39 +46,62 @@ export function ItemMetadataDrawer({
     >
       <DrawerHeader>
         <DrawerHeaderTitle
-          action={<Button appearance="subtle" icon={<Dismiss24Regular />} onClick={onClose} />}
+          action={
+            <Button appearance="subtle" icon={<Dismiss24Regular />} onClick={onClose} />
+          }
         >
-          {title}
+          <span className="azv-mono">{title}</span>
         </DrawerHeaderTitle>
       </DrawerHeader>
+
       <DrawerBody style={{ padding: '0 24px 24px' }}>
+        {/* Enabled/disabled indicator */}
         {typeof enabled === 'boolean' && (
-          <div style={{ marginBottom: 16 }}>
-            <Badge appearance="filled" color={enabled ? 'success' : 'danger'}>
-              {enabled ? 'Enabled' : 'Disabled'}
-            </Badge>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16 }}>
+            <span
+              className="azv-status-dot"
+              style={{
+                background: enabled ? 'var(--azv-success)' : 'var(--azv-danger)',
+              }}
+            />
+            <Text size={200}>{enabled ? 'Active' : 'Disabled'}</Text>
           </div>
         )}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {/* Dynamic metadata fields */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {Object.entries(metadata).map(([label, value]) => (
             <Field key={label} label={label}>
               <Text
                 size={200}
-                style={{ wordBreak: 'break-all', color: tokens.colorNeutralForeground1 }}
+                style={{
+                  wordBreak: 'break-all',
+                  color: tokens.colorNeutralForeground1,
+                  fontSize: 12,
+                }}
                 font={label.toLowerCase().includes('id') ? 'monospace' : undefined}
               >
-                {value === null || value === undefined || value === '' ? '-' : String(value)}
+                {value === null || value === undefined || value === ''
+                  ? '—'
+                  : String(value)}
               </Text>
             </Field>
           ))}
 
+          {/* Tags */}
           {tags && Object.keys(tags).length > 0 && (
             <Field label="Tags">
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 4 }}>
                 {Object.entries(tags).map(([k, v]) => (
-                  <Badge key={k} appearance="outline" className="azv-tag-pill" title={`${k}: ${v}`}>
-                    <span className="azv-tag-text">{k}: {v}</span>
+                  <Badge
+                    key={k}
+                    appearance="outline"
+                    className="azv-tag-pill"
+                    title={`${k}: ${v}`}
+                  >
+                    <span className="azv-tag-text">
+                      {k}: {v}
+                    </span>
                   </Badge>
                 ))}
               </div>

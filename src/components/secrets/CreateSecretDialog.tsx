@@ -1,3 +1,14 @@
+/**
+ * CreateSecretDialog.tsx – Modal form for creating a new secret.
+ *
+ * Validates:
+ * - Name: required, alphanumeric + dashes only (Azure KV constraint)
+ * - Value: required, non-empty
+ *
+ * Supports optional content type, expiration, and tags.
+ * Creating with an existing name creates a new version (Azure KV behaviour).
+ */
+
 import { useState } from 'react';
 import {
   Dialog,
@@ -25,7 +36,12 @@ interface CreateSecretDialogProps {
   onCreated: () => void;
 }
 
-export function CreateSecretDialog({ open, vaultUri, onClose, onCreated }: CreateSecretDialogProps) {
+export function CreateSecretDialog({
+  open,
+  vaultUri,
+  onClose,
+  onCreated,
+}: CreateSecretDialogProps) {
   const [name, setName] = useState('');
   const [value, setValue] = useState('');
   const [contentType, setContentType] = useState('');
@@ -35,6 +51,7 @@ export function CreateSecretDialog({ open, vaultUri, onClose, onCreated }: Creat
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  /** Reset all form fields to defaults. */
   const reset = () => {
     setName('');
     setValue('');
@@ -45,15 +62,16 @@ export function CreateSecretDialog({ open, vaultUri, onClose, onCreated }: Creat
     setError(null);
   };
 
+  /** Validate input and submit the create request. */
   const handleCreate = async () => {
     if (!name.trim() || !value.trim()) {
-      setError('Name and value are required');
+      setError('Name and value are required.');
       return;
     }
 
-    // Validate name (alphanumeric, dashes only)
+    // Azure Key Vault secret names: alphanumeric and dashes only
     if (!/^[a-zA-Z0-9-]+$/.test(name)) {
-      setError('Name can only contain alphanumeric characters and dashes');
+      setError('Name may only contain letters, numbers, and dashes.');
       return;
     }
 
@@ -61,6 +79,7 @@ export function CreateSecretDialog({ open, vaultUri, onClose, onCreated }: Creat
     setError(null);
 
     try {
+      // Parse comma-separated key=value pairs into a tag map
       let tags: Record<string, string> | null = null;
       if (tagsInput.trim()) {
         tags = {};
@@ -92,17 +111,26 @@ export function CreateSecretDialog({ open, vaultUri, onClose, onCreated }: Creat
   };
 
   return (
-    <Dialog open={open} onOpenChange={(_, d) => { if (!d.open) { reset(); onClose(); } }}>
+    <Dialog
+      open={open}
+      onOpenChange={(_, d) => {
+        if (!d.open) {
+          reset();
+          onClose();
+        }
+      }}
+    >
       <DialogSurface>
         <DialogBody>
-          <DialogTitle>Create New Secret</DialogTitle>
+          <DialogTitle>Create Secret</DialogTitle>
           <DialogContent>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 8 }}>
-              <Field label="Name" required hint="Alphanumeric characters and dashes only">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingTop: 8 }}>
+              <Field label="Name" required hint="Alphanumeric and dashes only">
                 <Input
                   value={name}
                   onChange={(_, d) => setName(d.value)}
                   placeholder="my-secret-name"
+                  style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12 }}
                 />
               </Field>
 
@@ -110,9 +138,9 @@ export function CreateSecretDialog({ open, vaultUri, onClose, onCreated }: Creat
                 <Textarea
                   value={value}
                   onChange={(_, d) => setValue(d.value)}
-                  placeholder="Secret value..."
+                  placeholder="Secret value…"
                   rows={3}
-                  style={{ fontFamily: 'monospace' }}
+                  style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12 }}
                 />
               </Field>
 
@@ -124,7 +152,7 @@ export function CreateSecretDialog({ open, vaultUri, onClose, onCreated }: Creat
                 />
               </Field>
 
-              <Field label="Expiration Date">
+              <Field label="Expiration">
                 <Input
                   type="datetime-local"
                   value={expires}
@@ -137,12 +165,13 @@ export function CreateSecretDialog({ open, vaultUri, onClose, onCreated }: Creat
                   value={tagsInput}
                   onChange={(_, d) => setTagsInput(d.value)}
                   placeholder="env=prod, team=backend"
+                  style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12 }}
                 />
               </Field>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Switch checked={enabled} onChange={(_, d) => setEnabled(d.checked)} />
-                <Text>Enabled</Text>
+                <Text size={200}>Enabled</Text>
               </div>
 
               {error && (
@@ -150,7 +179,7 @@ export function CreateSecretDialog({ open, vaultUri, onClose, onCreated }: Creat
                   style={{
                     padding: 8,
                     background: tokens.colorPaletteRedBackground1,
-                    borderRadius: tokens.borderRadiusMedium,
+                    borderRadius: 4,
                   }}
                 >
                   <Text size={200} style={{ color: tokens.colorPaletteRedForeground1 }}>
@@ -160,16 +189,22 @@ export function CreateSecretDialog({ open, vaultUri, onClose, onCreated }: Creat
               )}
 
               <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>
-                Creating a secret with an existing name will create a new version.
+                Creating with an existing name produces a new version.
               </Text>
             </div>
           </DialogContent>
           <DialogActions>
-            <Button appearance="secondary" onClick={() => { reset(); onClose(); }}>
+            <Button
+              appearance="secondary"
+              onClick={() => {
+                reset();
+                onClose();
+              }}
+            >
               Cancel
             </Button>
             <Button appearance="primary" onClick={handleCreate} disabled={loading}>
-              {loading ? <Spinner size="tiny" /> : 'Create Secret'}
+              {loading ? <Spinner size="tiny" /> : 'Create'}
             </Button>
           </DialogActions>
         </DialogBody>

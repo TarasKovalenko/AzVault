@@ -1,3 +1,11 @@
+/**
+ * SignIn.tsx – Azure CLI authentication screen.
+ *
+ * Shows a terminal-style panel with instructions for `az login`,
+ * then validates the CLI session via the Tauri backend.
+ * Mock-mode toggle is available when VITE_ENABLE_MOCK_MODE=true.
+ */
+
 import { useState } from 'react';
 import {
   Card,
@@ -9,7 +17,11 @@ import {
   Spinner,
   tokens,
 } from '@fluentui/react-components';
-import { ShieldKeyhole24Regular, ArrowSync24Regular } from '@fluentui/react-icons';
+import {
+  PlugConnected24Regular,
+  ArrowSync24Regular,
+  ShieldLock24Regular,
+} from '@fluentui/react-icons';
 import { authStatus } from '../../services/tauri';
 import { useAppStore } from '../../stores/appStore';
 import { useMockStore } from '../../stores/mockStore';
@@ -22,6 +34,7 @@ export function SignIn() {
   const mockAvailable = useMockStore((s) => s.mockAvailable);
   const setMockMode = useMockStore((s) => s.setMockMode);
 
+  /** Probe Azure CLI for an active session. */
   const checkCliSession = async () => {
     setError(null);
     setLoading(true);
@@ -50,15 +63,19 @@ export function SignIn() {
         padding: 20,
       }}
     >
-      <Card className="azv-pane" style={{ width: 560, padding: '24px 28px' }}>
+      <Card className="azv-pane" style={{ width: 560, padding: '28px 32px' }}>
         <CardHeader
-          image={<ShieldKeyhole24Regular style={{ fontSize: 32, color: tokens.colorBrandForeground1 }} />}
+          image={
+            <ShieldLock24Regular
+              style={{ fontSize: 28, color: tokens.colorBrandForeground1 }}
+            />
+          }
           header={
             <div>
-              <Text weight="bold" size={600}>
-                AzVault CLI Authentication
+              <Text weight="bold" size={500} style={{ letterSpacing: '-0.01em' }}>
+                AzVault
               </Text>
-              <Text block size={200} className="azv-title">
+              <Text block size={200} className="azv-title" style={{ marginTop: 2 }}>
                 Azure Key Vault Explorer
               </Text>
             </div>
@@ -66,25 +83,41 @@ export function SignIn() {
         />
 
         <div style={{ padding: '20px 0' }}>
-          <Text block style={{ marginBottom: 10 }}>
-            This app uses your existing Azure CLI identity.
+          <Text block size={200} style={{ marginBottom: 12, color: tokens.colorNeutralForeground2 }}>
+            Authenticate using your existing Azure CLI identity.
           </Text>
-          <div className="azv-signin-terminal azv-mono" style={{ textAlign: 'left' }}>
-            <p>$ az login</p>
-            <p>$ az account set --subscription &lt;subscription-id&gt; (optional)</p>
-            <p>$ open AzVault and click "Connect with Azure CLI"</p>
+
+          {/* Terminal-style instruction panel */}
+          <div className="azv-terminal">
+            <p>
+              <span className="azv-prompt">$</span>{' '}
+              <span className="azv-cmd">az login</span>
+            </p>
+            <p>
+              <span className="azv-prompt">$</span>{' '}
+              <span className="azv-cmd">az account set</span>{' '}
+              <span className="azv-comment">--subscription &lt;id&gt;</span>{' '}
+              <span style={{ opacity: 0.5 }}># optional</span>
+            </p>
+            <p style={{ marginTop: 6, opacity: 0.6 }}>
+              Then click Connect below to verify the session.
+            </p>
           </div>
 
+          {/* Error banner */}
           {error && (
             <div
               style={{
                 marginTop: 14,
-                padding: 12,
+                padding: '10px 12px',
                 background: tokens.colorPaletteRedBackground1,
-                borderRadius: tokens.borderRadiusMedium,
+                borderRadius: 4,
+                fontSize: 12,
               }}
             >
-              <Text style={{ color: tokens.colorPaletteRedForeground1 }}>{error}</Text>
+              <Text size={200} style={{ color: tokens.colorPaletteRedForeground1 }}>
+                {error}
+              </Text>
             </div>
           )}
         </div>
@@ -94,13 +127,14 @@ export function SignIn() {
             appearance="primary"
             size="large"
             onClick={checkCliSession}
-            icon={loading ? <Spinner size="tiny" /> : <ArrowSync24Regular />}
-            style={{ width: '100%', borderRadius: 999 }}
+            icon={loading ? <Spinner size="tiny" /> : <PlugConnected24Regular />}
+            style={{ width: '100%', borderRadius: 4 }}
             disabled={loading}
           >
-            {loading ? 'Checking Azure CLI session...' : 'Connect with Azure CLI'}
+            {loading ? 'Checking Azure CLI session…' : 'Connect with Azure CLI'}
           </Button>
 
+          {/* Mock mode controls (dev builds only) */}
           {mockAvailable && (
             <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 8 }}>
               <Badge
@@ -117,8 +151,9 @@ export function SignIn() {
           {mockAvailable && mockMode && (
             <Button
               appearance="secondary"
+              icon={<ArrowSync24Regular />}
               onClick={() => setSignedIn(true, 'demo@contoso.com')}
-              style={{ width: '100%', borderRadius: 999 }}
+              style={{ width: '100%', borderRadius: 4 }}
             >
               Continue with Mock Data
             </Button>

@@ -1,10 +1,18 @@
+/**
+ * StatusBar.tsx – Bottom status bar.
+ *
+ * Displays the current Azure environment, tenant/subscription IDs,
+ * active vault, and theme mode in a compact, terminal-inspired bar.
+ */
+
 import { Badge, Text, tokens } from '@fluentui/react-components';
 import { useAppStore } from '../../stores/appStore';
 
+/** Maps environment key to a concise display label. */
 function envLabel(env: string): string {
-  if (env === 'azureUsGovernment') return 'Azure US Gov';
-  if (env === 'azureChina') return 'Azure China';
-  return 'Azure Public';
+  if (env === 'azureUsGovernment') return 'US Gov';
+  if (env === 'azureChina') return 'China';
+  return 'Public';
 }
 
 export function StatusBar() {
@@ -20,7 +28,7 @@ export function StatusBar() {
     <div
       className="azv-pane"
       style={{
-        height: 30,
+        height: 26,
         borderTop: `1px solid ${tokens.colorNeutralStroke1}`,
         display: 'flex',
         alignItems: 'center',
@@ -32,16 +40,32 @@ export function StatusBar() {
         borderLeft: 'none',
         borderRight: 'none',
         borderBottom: 'none',
+        fontSize: 11,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <Badge appearance="outline" size="small" color="informative">{envLabel(environment)}</Badge>
-        <Text size={100} font="monospace">tenant: {selectedTenantId || '-'}</Text>
-        <Text size={100} font="monospace">sub: {selectedSubscriptionId || '-'}</Text>
+      {/* Left – environment and IDs */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }} className="azv-mono">
+        <Badge appearance="outline" size="small" color="informative">
+          {envLabel(environment)}
+        </Badge>
+        <Text size={100} font="monospace">
+          tenant:{selectedTenantId ? selectedTenantId.slice(0, 8) : '—'}
+        </Text>
+        <Text size={100} font="monospace">
+          sub:{selectedSubscriptionId ? selectedSubscriptionId.slice(0, 8) : '—'}
+        </Text>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <Text size={100}>vault: {selectedVaultName || 'none'}</Text>
-        <Badge appearance="outline" size="small" color={themeMode === 'dark' ? 'important' : 'success'}>
+
+      {/* Right – vault and theme */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }} className="azv-mono">
+        <Text size={100} font="monospace">
+          vault:{selectedVaultName || '—'}
+        </Text>
+        <Badge
+          appearance="outline"
+          size="small"
+          color={themeMode === 'dark' ? 'important' : 'success'}
+        >
           {themeMode}
         </Badge>
       </div>

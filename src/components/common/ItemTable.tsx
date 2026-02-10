@@ -1,3 +1,16 @@
+/**
+ * ItemTable.tsx – Reusable data table for vault items.
+ *
+ * Supports:
+ * - Typed column definitions with custom renderers
+ * - Optional row selection with select-all
+ * - Loading / empty states
+ * - Row numbering and highlight on selection
+ *
+ * Also exports shared cell renderers (renderEnabled, renderDate, renderTags)
+ * used across Secrets, Keys, and Certificates lists.
+ */
+
 /* eslint-disable react-refresh/only-export-components */
 import {
   Table,
@@ -14,12 +27,16 @@ import {
 } from '@fluentui/react-components';
 import { format } from 'date-fns';
 
+// ── Column type ──
+
 export interface Column<T> {
   key: string;
   label: string;
   width?: string;
   render: (item: T) => React.ReactNode;
 }
+
+// ── Props ──
 
 interface ItemTableProps<T> {
   items: T[];
@@ -29,12 +46,15 @@ interface ItemTableProps<T> {
   onSelect?: (item: T) => void;
   getItemId: (item: T) => string;
   emptyMessage?: string;
+  /** Enable row checkboxes for bulk operations. */
   selectable?: boolean;
   selectedIds?: Set<string>;
   selectAllState?: boolean | 'mixed';
   onToggleSelect?: (id: string, checked: boolean) => void;
   onToggleSelectAll?: (checked: boolean) => void;
 }
+
+// ── Component ──
 
 export function ItemTable<T>({
   items,
@@ -53,21 +73,14 @@ export function ItemTable<T>({
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}>
-        <Spinner label="Loading..." />
+        <Spinner label="Loading…" />
       </div>
     );
   }
 
   if (items.length === 0) {
     return (
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'center',
-          padding: 48,
-          color: tokens.colorNeutralForeground3,
-        }}
-      >
+      <div className="azv-empty">
         <Text>{emptyMessage}</Text>
       </div>
     );
@@ -79,14 +92,14 @@ export function ItemTable<T>({
         <TableHeader>
           <TableRow>
             {selectable && (
-              <TableHeaderCell style={{ width: 42 }}>
+              <TableHeaderCell style={{ width: 38 }}>
                 <Checkbox
                   checked={selectAllState}
                   onChange={(_, d) => onToggleSelectAll?.(!!d.checked)}
                 />
               </TableHeaderCell>
             )}
-            <TableHeaderCell style={{ width: 56 }}>#</TableHeaderCell>
+            <TableHeaderCell style={{ width: 46 }}>#</TableHeaderCell>
             {columns.map((col) => (
               <TableHeaderCell key={col.key} style={{ width: col.width }}>
                 {col.label}
@@ -104,13 +117,12 @@ export function ItemTable<T>({
                 style={{
                   cursor: 'pointer',
                   background:
-                    selectedId === id
-                      ? tokens.colorBrandBackground2
-                      : undefined,
+                    selectedId === id ? tokens.colorBrandBackground2 : undefined,
                 }}
               >
                 {selectable && (
                   <TableCell>
+                    {/* Stop propagation so row-click doesn't also fire */}
                     <div onClick={(e) => e.stopPropagation()}>
                       <Checkbox
                         checked={selectedIds?.has(id) ?? false}
@@ -120,7 +132,7 @@ export function ItemTable<T>({
                   </TableCell>
                 )}
                 <TableCell>
-                  <Text size={100} className="azv-mono">
+                  <Text size={100} className="azv-mono" style={{ opacity: 0.5 }}>
                     {String(index + 1).padStart(2, '0')}
                   </Text>
                 </TableCell>
@@ -136,37 +148,55 @@ export function ItemTable<T>({
   );
 }
 
-// Utility renderers
+// ── Shared cell renderers ──
+
+/** Renders an enabled/disabled status badge with dot indicator. */
 export function renderEnabled(enabled: boolean) {
   return (
-    <Badge
-      size="small"
-      appearance="filled"
-      color={enabled ? 'success' : 'danger'}
-    >
-      {enabled ? 'Enabled' : 'Disabled'}
-    </Badge>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <span
+        className="azv-status-dot"
+        style={{ background: enabled ? 'var(--azv-success)' : 'var(--azv-danger)' }}
+      />
+      <Text size={200}>{enabled ? 'Active' : 'Disabled'}</Text>
+    </div>
   );
 }
 
+/** Formats an ISO date string to a compact readable format. */
 export function renderDate(dateStr: string | null) {
-  if (!dateStr) return <Text size={200}>-</Text>;
+  if (!dateStr) return <Text size={200} style={{ opacity: 0.5 }}>—</Text>;
   try {
-    return <Text size={200}>{format(new Date(dateStr), 'MMM d, yyyy HH:mm')}</Text>;
+    return (
+      <Text size={200} className="azv-mono" style={{ fontSize: 11 }}>
+        {format(new Date(dateStr), 'MMM d, yyyy HH:mm')}
+      </Text>
+    );
   } catch {
     return <Text size={200}>{dateStr}</Text>;
   }
 }
 
+/** Renders tag key=value pairs as compact badge pills. */
 export function renderTags(tags: Record<string, string> | null) {
-  if (!tags || Object.keys(tags).length === 0) return <Text size={200}>-</Text>;
+  if (!tags || Object.keys(tags).length === 0) {
+    return <Text size={200} style={{ opacity: 0.4 }}>—</Text>;
+  }
   return (
     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
       {Object.entries(tags)
         .slice(0, 3)
         .map(([k, v]) => (
-          <Badge key={k} size="small" appearance="outline" className="azv-tag-pill" title={`${k}=${v}`}>
-            <span className="azv-tag-text">{k}={v}</span>
+          <Badge
+            key={k}
+            size="small"
+            appearance="outline"
+            className="azv-tag-pill"
+            title={`${k}=${v}`}
+          >
+            <span className="azv-tag-text">
+              {k}={v}
+            </span>
           </Badge>
         ))}
       {Object.keys(tags).length > 3 && (

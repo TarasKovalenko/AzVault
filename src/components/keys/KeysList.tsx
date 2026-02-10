@@ -1,3 +1,10 @@
+/**
+ * KeysList.tsx – Cryptographic keys browser.
+ *
+ * Displays key metadata (type, operations, dates) in a paginated table.
+ * Individual keys can be inspected in the metadata drawer.
+ */
+
 import { useState } from 'react';
 import { Text, Badge, Button, tokens } from '@fluentui/react-components';
 import { useQuery } from '@tanstack/react-query';
@@ -8,13 +15,14 @@ import { ItemMetadataDrawer } from '../common/ItemMetadataDrawer';
 import type { Column } from '../common/ItemTable';
 import type { KeyItem } from '../../types';
 
+/** Column definitions for the keys table. */
 const columns: Column<KeyItem>[] = [
   {
     key: 'name',
     label: 'Name',
     width: '25%',
     render: (item) => (
-      <Text weight="semibold" size={200}>
+      <Text weight="semibold" size={200} className="azv-mono">
         {item.name}
       </Text>
     ),
@@ -31,7 +39,7 @@ const columns: Column<KeyItem>[] = [
     width: '10%',
     render: (item) => (
       <Badge appearance="outline" size="small">
-        {item.keyType || 'Unknown'}
+        {item.keyType || '?'}
       </Badge>
     ),
   },
@@ -40,7 +48,7 @@ const columns: Column<KeyItem>[] = [
     label: 'Operations',
     width: '25%',
     render: (item) => (
-      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
         {(item.keyOps || []).map((op) => (
           <Badge key={op} size="small" appearance="outline" color="informative">
             {op}
@@ -60,10 +68,10 @@ const columns: Column<KeyItem>[] = [
     label: 'Expires',
     width: '15%',
     render: (item) => {
-      if (!item.expires) return <Text size={200}>Never</Text>;
+      if (!item.expires) return <Text size={200} style={{ opacity: 0.4 }}>Never</Text>;
       const expired = new Date(item.expires) < new Date();
       return (
-        <Text size={200} style={{ color: expired ? tokens.colorPaletteRedForeground1 : undefined }}>
+        <Text size={200} style={{ color: expired ? 'var(--azv-danger)' : undefined }}>
           {renderDate(item.expires)}
         </Text>
       );
@@ -84,23 +92,25 @@ export function KeysList() {
   });
 
   const filteredKeys = (keysQuery.data || []).filter((k) =>
-    k.name.toLowerCase().includes(searchQuery.toLowerCase())
+    k.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
   const visibleKeys = filteredKeys.slice(0, visibleCount);
 
-  const extractVersion = (id: string) => {
+  /** Extract version segment from a key ID URL. */
+  const extractVersion = (id: string): string => {
     const parts = id.split('/');
     const idx = parts.findIndex((p) => p === 'keys');
-    return idx >= 0 ? parts[idx + 2] || '-' : '-';
+    return idx >= 0 ? parts[idx + 2] || '—' : '—';
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Toolbar */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
-          padding: '12px 16px',
+          padding: '8px 16px',
           borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
           background: tokens.colorNeutralBackground2,
         }}
@@ -109,16 +119,17 @@ export function KeysList() {
           Keys
         </Text>
         <Text className="azv-title" style={{ marginLeft: 8 }}>
-          crypto-assets
+          crypto
         </Text>
         {keysQuery.data && (
-          <Text size={200} style={{ color: tokens.colorNeutralForeground3, marginLeft: 8 }} className="azv-mono">
+          <Text size={200} className="azv-mono" style={{ color: tokens.colorNeutralForeground3, marginLeft: 8 }}>
             ({filteredKeys.length}
-            {searchQuery ? ` of ${keysQuery.data.length}` : ''})
+            {searchQuery ? ` / ${keysQuery.data.length}` : ''})
           </Text>
         )}
       </div>
 
+      {/* Table */}
       <div style={{ flex: 1, overflow: 'auto', padding: '0 16px' }}>
         <ItemTable
           items={visibleKeys}
@@ -136,14 +147,15 @@ export function KeysList() {
           }
         />
         {filteredKeys.length > visibleCount && (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: 16 }}>
-            <Button onClick={() => setVisibleCount((c) => c + 50)} appearance="secondary">
+          <div style={{ display: 'flex', justifyContent: 'center', padding: 12 }}>
+            <Button onClick={() => setVisibleCount((c) => c + 50)} appearance="secondary" size="small">
               Load 50 more
             </Button>
           </div>
         )}
       </div>
 
+      {/* Metadata Drawer */}
       <ItemMetadataDrawer
         title={selectedKey?.name || 'Key'}
         open={drawerOpen}
@@ -152,9 +164,9 @@ export function KeysList() {
         tags={selectedKey?.tags}
         metadata={{
           Name: selectedKey?.name,
-          Version: selectedKey ? extractVersion(selectedKey.id) : '-',
+          Version: selectedKey ? extractVersion(selectedKey.id) : '—',
           'Key Type': selectedKey?.keyType,
-          'Key Ops': selectedKey?.keyOps?.join(', ') || '-',
+          'Key Ops': selectedKey?.keyOps?.join(', ') || '—',
           Created: selectedKey?.created,
           Updated: selectedKey?.updated,
           Expires: selectedKey?.expires || 'Never',

@@ -1,3 +1,13 @@
+/**
+ * App.tsx – Root component for AzVault.
+ *
+ * Responsibilities:
+ * - Initialise React-Query client with sane defaults for Azure API calls
+ * - Auto-detect existing Azure CLI session on mount
+ * - Toggle Fluent UI theme based on user preference
+ * - Gate main layout behind authentication
+ */
+
 import { useEffect } from 'react';
 import { FluentProvider, webDarkTheme, webLightTheme, tokens } from '@fluentui/react-components';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -14,12 +24,14 @@ import { AccessView } from './components/access/AccessView';
 import { StatusBar } from './components/layout/StatusBar';
 import { authStatus } from './services/tauri';
 
+/** Shared React-Query client – 30s stale time, no retry on 401/403. */
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 30_000,
       retry: (failureCount, error) => {
         const msg = String(error);
+        // Never retry auth failures – surface them immediately
         if (msg.includes('401') || msg.includes('403')) return false;
         return failureCount < 2;
       },
@@ -28,6 +40,10 @@ const queryClient = new QueryClient({
   },
 });
 
+/**
+ * Renders the currently active tab content based on sidebar selection.
+ * Shows the empty-state ContentTabs placeholder when no vault is selected.
+ */
 function MainContent() {
   const { activeTab, selectedVaultName } = useAppStore();
 
@@ -49,6 +65,7 @@ function MainContent() {
   );
 }
 
+/** Shell layout – top bar, sidebar, content pane, status bar. */
 function AppLayout() {
   return (
     <div className="azv-shell" style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
@@ -75,9 +92,12 @@ function AppLayout() {
   );
 }
 
+/** App entry – wraps providers, checks session, renders sign-in or layout. */
 function App() {
   const { isSignedIn, setSignedIn, themeMode } = useAppStore();
 
+  // On mount, probe for an existing Azure CLI session so the user
+  // doesn't have to click "Connect" if they're already logged in.
   useEffect(() => {
     let mounted = true;
     authStatus()
@@ -93,6 +113,7 @@ function App() {
     };
   }, [setSignedIn]);
 
+  // Sync theme attribute so CSS custom properties update
   useEffect(() => {
     document.body.setAttribute('data-theme', themeMode);
   }, [themeMode]);

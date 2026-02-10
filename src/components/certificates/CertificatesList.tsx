@@ -1,3 +1,10 @@
+/**
+ * CertificatesList.tsx – X.509 certificate browser.
+ *
+ * Displays certificate metadata (subject, thumbprint, dates) in a
+ * paginated table. Individual certs open in the metadata drawer.
+ */
+
 import { useState } from 'react';
 import { Text, Button, tokens } from '@fluentui/react-components';
 import { useQuery } from '@tanstack/react-query';
@@ -8,13 +15,14 @@ import { ItemMetadataDrawer } from '../common/ItemMetadataDrawer';
 import type { Column } from '../common/ItemTable';
 import type { CertificateItem } from '../../types';
 
+/** Column definitions for the certificates table. */
 const columns: Column<CertificateItem>[] = [
   {
     key: 'name',
     label: 'Name',
     width: '20%',
     render: (item) => (
-      <Text weight="semibold" size={200}>
+      <Text weight="semibold" size={200} className="azv-mono">
         {item.name}
       </Text>
     ),
@@ -29,15 +37,19 @@ const columns: Column<CertificateItem>[] = [
     key: 'subject',
     label: 'Subject',
     width: '20%',
-    render: (item) => <Text size={200}>{item.subject || '-'}</Text>,
+    render: (item) => (
+      <Text size={200} className="azv-mono" style={{ opacity: item.subject ? 1 : 0.4 }}>
+        {item.subject || '—'}
+      </Text>
+    ),
   },
   {
     key: 'thumbprint',
     label: 'Thumbprint',
     width: '15%',
     render: (item) => (
-      <Text size={200} font="monospace">
-        {item.thumbprint ? item.thumbprint.slice(0, 16) + '...' : '-'}
+      <Text size={200} className="azv-mono" style={{ fontSize: 10, opacity: 0.8 }}>
+        {item.thumbprint ? item.thumbprint.slice(0, 16) + '…' : '—'}
       </Text>
     ),
   },
@@ -52,10 +64,10 @@ const columns: Column<CertificateItem>[] = [
     label: 'Expires',
     width: '15%',
     render: (item) => {
-      if (!item.expires) return <Text size={200}>Never</Text>;
+      if (!item.expires) return <Text size={200} style={{ opacity: 0.4 }}>Never</Text>;
       const expired = new Date(item.expires) < new Date();
       return (
-        <Text size={200} style={{ color: expired ? tokens.colorPaletteRedForeground1 : undefined }}>
+        <Text size={200} style={{ color: expired ? 'var(--azv-danger)' : undefined }}>
           {renderDate(item.expires)}
         </Text>
       );
@@ -76,23 +88,25 @@ export function CertificatesList() {
   });
 
   const filteredCerts = (certsQuery.data || []).filter((c) =>
-    c.name.toLowerCase().includes(searchQuery.toLowerCase())
+    c.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
   const visibleCerts = filteredCerts.slice(0, visibleCount);
 
-  const extractVersion = (id: string) => {
+  /** Extract version segment from a certificate ID URL. */
+  const extractVersion = (id: string): string => {
     const parts = id.split('/');
     const idx = parts.findIndex((p) => p === 'certificates');
-    return idx >= 0 ? parts[idx + 2] || '-' : '-';
+    return idx >= 0 ? parts[idx + 2] || '—' : '—';
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Toolbar */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
-          padding: '12px 16px',
+          padding: '8px 16px',
           borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
           background: tokens.colorNeutralBackground2,
         }}
@@ -104,13 +118,14 @@ export function CertificatesList() {
           x509
         </Text>
         {certsQuery.data && (
-          <Text size={200} style={{ color: tokens.colorNeutralForeground3, marginLeft: 8 }} className="azv-mono">
+          <Text size={200} className="azv-mono" style={{ color: tokens.colorNeutralForeground3, marginLeft: 8 }}>
             ({filteredCerts.length}
-            {searchQuery ? ` of ${certsQuery.data.length}` : ''})
+            {searchQuery ? ` / ${certsQuery.data.length}` : ''})
           </Text>
         )}
       </div>
 
+      {/* Table */}
       <div style={{ flex: 1, overflow: 'auto', padding: '0 16px' }}>
         <ItemTable
           items={visibleCerts}
@@ -128,14 +143,15 @@ export function CertificatesList() {
           }
         />
         {filteredCerts.length > visibleCount && (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: 16 }}>
-            <Button onClick={() => setVisibleCount((c) => c + 50)} appearance="secondary">
+          <div style={{ display: 'flex', justifyContent: 'center', padding: 12 }}>
+            <Button onClick={() => setVisibleCount((c) => c + 50)} appearance="secondary" size="small">
               Load 50 more
             </Button>
           </div>
         )}
       </div>
 
+      {/* Metadata Drawer */}
       <ItemMetadataDrawer
         title={selectedCert?.name || 'Certificate'}
         open={drawerOpen}
@@ -144,7 +160,7 @@ export function CertificatesList() {
         tags={selectedCert?.tags}
         metadata={{
           Name: selectedCert?.name,
-          Version: selectedCert ? extractVersion(selectedCert.id) : '-',
+          Version: selectedCert ? extractVersion(selectedCert.id) : '—',
           Subject: selectedCert?.subject,
           Thumbprint: selectedCert?.thumbprint,
           Created: selectedCert?.created,

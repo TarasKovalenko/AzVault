@@ -1,3 +1,10 @@
+/**
+ * AzVault – Global base styles
+ *
+ * Provides CSS resets, scrollbar theming, and theme-aware CSS custom
+ * properties consumed by components and dev-ui.css.
+ */
+
 * {
   margin: 0;
   padding: 0;
@@ -8,39 +15,47 @@ html, body, #root {
   height: 100%;
   width: 100%;
   overflow: hidden;
-  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-body {
-  --azv-scroll-thumb: #b8bfcc;
-  --azv-scroll-thumb-hover: #8f98ab;
-  --azv-row-hover: rgba(22, 119, 255, 0.08);
-  --azv-bg-grid: none;
-}
-
+/* ── Light theme tokens ── */
+body,
 body[data-theme='light'] {
-  --azv-scroll-thumb: #b8bfcc;
-  --azv-scroll-thumb-hover: #8f98ab;
-  --azv-row-hover: rgba(22, 119, 255, 0.08);
-  --azv-bg-grid: none;
+  --azv-scroll-thumb: #b0b8c8;
+  --azv-scroll-thumb-hover: #8892a6;
+  --azv-row-hover: rgba(0, 120, 212, 0.07);
+  --azv-accent: #0078d4;
+  --azv-accent-dim: rgba(0, 120, 212, 0.12);
+  --azv-terminal-bg: rgba(30, 30, 30, 0.96);
+  --azv-terminal-fg: #d4d4d4;
+  --azv-terminal-green: #4ec9b0;
+  --azv-terminal-cyan: #9cdcfe;
+  --azv-terminal-yellow: #dcdcaa;
+  --azv-border-subtle: rgba(0, 0, 0, 0.08);
+  --azv-danger: #d13438;
+  --azv-success: #107c10;
 }
 
+/* ── Dark theme tokens ── */
 body[data-theme='dark'] {
-  --azv-scroll-thumb: #505a70;
-  --azv-scroll-thumb-hover: #6a7590;
-  --azv-row-hover: rgba(145, 182, 255, 0.15);
-  --azv-bg-grid: none;
+  --azv-scroll-thumb: #4a5568;
+  --azv-scroll-thumb-hover: #606d80;
+  --azv-row-hover: rgba(100, 160, 255, 0.10);
+  --azv-accent: #4fc3f7;
+  --azv-accent-dim: rgba(79, 195, 247, 0.14);
+  --azv-terminal-bg: rgba(18, 18, 22, 0.98);
+  --azv-terminal-fg: #cccccc;
+  --azv-terminal-green: #4ec9b0;
+  --azv-terminal-cyan: #9cdcfe;
+  --azv-terminal-yellow: #dcdcaa;
+  --azv-border-subtle: rgba(255, 255, 255, 0.06);
+  --azv-danger: #f48771;
+  --azv-success: #73c991;
 }
 
-#root {
-  background-image: var(--azv-bg-grid);
-  background-size: auto;
-}
-
-/* Scrollbar styling */
+/* ── Scrollbar ── */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
 }
 
 ::-webkit-scrollbar-track {
@@ -56,13 +71,13 @@ body[data-theme='dark'] {
   background: var(--azv-scroll-thumb-hover);
 }
 
-/* Prevent text selection on UI chrome */
+/* ── Prevent text selection on UI chrome ── */
 .fui-TreeItemLayout,
 .fui-TabList {
   user-select: none;
 }
 
-/* Table row hover */
+/* ── Table row hover ── */
 .fui-TableRow:hover {
   background: var(--azv-row-hover);
 }

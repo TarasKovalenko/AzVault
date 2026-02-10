@@ -1,5 +1,27 @@
+/**
+ * SecretsList.tsx – Secrets data-plane browser.
+ *
+ * Features:
+ * - Paginated table of secrets with search filtering
+ * - Bulk selection & delete with confirmation dialog
+ * - JSON / CSV export (metadata only, no secret values)
+ * - Details drawer for individual secret inspection
+ * - Create dialog for new secrets
+ */
+
 import { useEffect, useMemo, useState } from 'react';
-import { Button, Text, tokens, Dialog, DialogSurface, DialogBody, DialogTitle, DialogContent, DialogActions, Spinner } from '@fluentui/react-components';
+import {
+  Button,
+  Text,
+  tokens,
+  Dialog,
+  DialogSurface,
+  DialogBody,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Spinner,
+} from '@fluentui/react-components';
 import { Add24Regular, ArrowDownload24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { useQuery } from '@tanstack/react-query';
 import { listSecrets, exportItems, deleteSecret } from '../../services/tauri';
@@ -10,13 +32,14 @@ import { CreateSecretDialog } from './CreateSecretDialog';
 import type { Column } from '../common/ItemTable';
 import type { SecretItem } from '../../types';
 
+/** Column definitions for the secrets table. */
 const columns: Column<SecretItem>[] = [
   {
     key: 'name',
     label: 'Name',
     width: '30%',
     render: (item) => (
-      <Text weight="semibold" size={200}>
+      <Text weight="semibold" size={200} className="azv-mono">
         {item.name}
       </Text>
     ),
@@ -29,9 +52,13 @@ const columns: Column<SecretItem>[] = [
   },
   {
     key: 'contentType',
-    label: 'Content Type',
+    label: 'Type',
     width: '15%',
-    render: (item) => <Text size={200}>{item.contentType || '-'}</Text>,
+    render: (item) => (
+      <Text size={200} className="azv-mono" style={{ opacity: item.contentType ? 1 : 0.4 }}>
+        {item.contentType || '—'}
+      </Text>
+    ),
   },
   {
     key: 'updated',
@@ -44,10 +71,17 @@ const columns: Column<SecretItem>[] = [
     label: 'Expires',
     width: '15%',
     render: (item) => {
-      if (!item.expires) return <Text size={200}>Never</Text>;
+      if (!item.expires) return <Text size={200} style={{ opacity: 0.4 }}>Never</Text>;
       const expired = new Date(item.expires) < new Date();
       return (
-        <Text size={200} style={{ color: expired ? tokens.colorPaletteRedForeground1 : undefined }}>
+        <Text
+          size={200}
+          className="azv-mono"
+          style={{
+            color: expired ? 'var(--azv-danger)' : undefined,
+            fontSize: 11,
+          }}
+        >
           {renderDate(item.expires)}
         </Text>
       );
@@ -78,14 +112,17 @@ export function SecretsList() {
     enabled: !!selectedVaultUri,
   });
 
+  // ── Derived / filtered data ──
+
   const filteredSecrets = (secretsQuery.data || []).filter((s) =>
-    s.name.toLowerCase().includes(searchQuery.toLowerCase())
+    s.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
   const visibleSecrets = filteredSecrets.slice(0, visibleCount);
+
   const visibleIds = useMemo(() => visibleSecrets.map((s) => s.id), [visibleSecrets]);
   const selectedVisibleCount = useMemo(
     () => visibleIds.filter((id) => selectedIds.has(id)).length,
-    [visibleIds, selectedIds]
+    [visibleIds, selectedIds],
   );
   const selectAllState: boolean | 'mixed' =
     selectedVisibleCount === 0
@@ -94,6 +131,7 @@ export function SecretsList() {
         ? true
         : 'mixed';
 
+  // Clean up stale selections when data refreshes
   useEffect(() => {
     const existingIds = new Set((secretsQuery.data || []).map((s) => s.id));
     setSelectedIds((prev) => {
@@ -105,6 +143,7 @@ export function SecretsList() {
     });
   }, [secretsQuery.data, selectedVaultUri]);
 
+  // Close drawer if the selected secret was deleted
   useEffect(() => {
     if (!selectedSecret) return;
     const stillExists = (secretsQuery.data || []).some((s) => s.id === selectedSecret.id);
@@ -114,27 +153,31 @@ export function SecretsList() {
     }
   }, [selectedSecret, secretsQuery.data]);
 
+  // ── Handlers ──
+
   const handleSelect = (item: SecretItem) => {
     setSelectedSecret(item);
     setDrawerOpen(true);
   };
 
+  /** Export metadata (never secret values) as JSON or CSV. */
   const handleExport = async (format: 'json' | 'csv') => {
-    const metadata = filteredSecrets.map(({ name, enabled, created, updated, expires, contentType, tags }) => ({
-      name,
-      enabled,
-      created,
-      updated,
-      expires,
-      contentType,
-      tags: tags ? JSON.stringify(tags) : '',
-    }));
+    const metadata = filteredSecrets.map(
+      ({ name, enabled, created, updated, expires, contentType, tags }) => ({
+        name,
+        enabled,
+        created,
+        updated,
+        expires,
+        contentType,
+        tags: tags ? JSON.stringify(tags) : '',
+      }),
+    );
     try {
       const result = await exportItems(JSON.stringify(metadata), format);
-      // Copy to clipboard for now
       await navigator.clipboard.writeText(result);
     } catch {
-      // Error handled silently
+      // Export errors are non-critical – silently ignored
     }
   };
 
@@ -150,28 +193,25 @@ export function SecretsList() {
   const toggleSelectAll = (checked: boolean) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (checked) {
-        visibleIds.forEach((id) => next.add(id));
-      } else {
-        visibleIds.forEach((id) => next.delete(id));
-      }
+      if (checked) visibleIds.forEach((id) => next.add(id));
+      else visibleIds.forEach((id) => next.delete(id));
       return next;
     });
   };
 
+  /** Bulk-delete selected secrets with error reporting. */
   const handleBulkDelete = async () => {
     if (!selectedVaultUri) return;
-
     setBulkDeleteLoading(true);
     setBulkDeleteError(null);
     try {
-      const selectedItems = filteredSecrets.filter((s) => selectedIds.has(s.id));
+      const items = filteredSecrets.filter((s) => selectedIds.has(s.id));
       const results = await Promise.allSettled(
-        selectedItems.map((s) => deleteSecret(selectedVaultUri, s.name))
+        items.map((s) => deleteSecret(selectedVaultUri, s.name)),
       );
       const failed = results.filter((r) => r.status === 'rejected').length;
       if (failed > 0) {
-        setBulkDeleteError(`${failed} secret(s) failed to delete. Check permissions and retry.`);
+        setBulkDeleteError(`${failed} secret(s) failed to delete. Check permissions.`);
       } else {
         setShowBulkDeleteConfirm(false);
       }
@@ -192,7 +232,7 @@ export function SecretsList() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '12px 16px',
+          padding: '8px 16px',
           borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
           background: tokens.colorNeutralBackground2,
         }}
@@ -203,25 +243,25 @@ export function SecretsList() {
           </Text>
           <Text className="azv-title">data-plane</Text>
           {secretsQuery.data && (
-            <Text size={200} style={{ color: tokens.colorNeutralForeground3 }} className="azv-mono">
+            <Text size={200} className="azv-mono" style={{ color: tokens.colorNeutralForeground3 }}>
               ({filteredSecrets.length}
-              {searchQuery ? ` of ${secretsQuery.data.length}` : ''})
+              {searchQuery ? ` / ${secretsQuery.data.length}` : ''})
             </Text>
           )}
           {selectedIds.size > 0 && (
-            <Text size={200} style={{ color: tokens.colorBrandForeground1 }} className="azv-mono">
-              selected: {selectedIds.size}
+            <Text size={200} className="azv-mono" style={{ color: tokens.colorBrandForeground1 }}>
+              {selectedIds.size} selected
             </Text>
           )}
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 6 }}>
           <Button
             appearance="subtle"
             icon={<ArrowDownload24Regular />}
             size="small"
             onClick={() => handleExport('json')}
           >
-            Export JSON
+            JSON
           </Button>
           <Button
             appearance="subtle"
@@ -229,7 +269,7 @@ export function SecretsList() {
             size="small"
             onClick={() => handleExport('csv')}
           >
-            Export CSV
+            CSV
           </Button>
           <Button
             appearance="primary"
@@ -237,7 +277,7 @@ export function SecretsList() {
             size="small"
             onClick={() => setCreateOpen(true)}
           >
-            New Secret
+            New
           </Button>
           <Button
             appearance="secondary"
@@ -246,7 +286,7 @@ export function SecretsList() {
             disabled={selectedIds.size === 0}
             onClick={() => setShowBulkDeleteConfirm(true)}
           >
-            Delete Selected
+            Delete
           </Button>
         </div>
       </div>
@@ -272,8 +312,8 @@ export function SecretsList() {
           }
         />
         {filteredSecrets.length > visibleCount && (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: 16 }}>
-            <Button onClick={() => setVisibleCount((c) => c + 50)} appearance="secondary">
+          <div style={{ display: 'flex', justifyContent: 'center', padding: 12 }}>
+            <Button onClick={() => setVisibleCount((c) => c + 50)} appearance="secondary" size="small">
               Load 50 more
             </Button>
           </div>
@@ -297,21 +337,28 @@ export function SecretsList() {
         onCreated={() => secretsQuery.refetch()}
       />
 
-      <Dialog open={showBulkDeleteConfirm} onOpenChange={(_, d) => setShowBulkDeleteConfirm(d.open)}>
+      {/* Bulk Delete Confirmation */}
+      <Dialog
+        open={showBulkDeleteConfirm}
+        onOpenChange={(_, d) => setShowBulkDeleteConfirm(d.open)}
+      >
         <DialogSurface>
           <DialogBody>
             <DialogTitle>Delete Selected Secrets</DialogTitle>
             <DialogContent>
-              You are about to delete <strong>{selectedIds.size}</strong> secret(s).
-              This action is reversible only if soft-delete is enabled on the vault.
+              <Text size={200}>
+                Delete <strong>{selectedIds.size}</strong> secret(s)? Recoverable only if
+                soft-delete is enabled.
+              </Text>
               {bulkDeleteError && (
                 <div
                   style={{
                     marginTop: 10,
                     padding: 8,
-                    borderRadius: tokens.borderRadiusSmall,
+                    borderRadius: 4,
                     background: tokens.colorPaletteRedBackground1,
                     color: tokens.colorPaletteRedForeground1,
+                    fontSize: 12,
                   }}
                 >
                   {bulkDeleteError}
@@ -319,11 +366,20 @@ export function SecretsList() {
               )}
             </DialogContent>
             <DialogActions>
-              <Button appearance="secondary" onClick={() => setShowBulkDeleteConfirm(false)} disabled={bulkDeleteLoading}>
+              <Button
+                appearance="secondary"
+                onClick={() => setShowBulkDeleteConfirm(false)}
+                disabled={bulkDeleteLoading}
+              >
                 Cancel
               </Button>
-              <Button appearance="primary" onClick={handleBulkDelete} disabled={bulkDeleteLoading}>
-                {bulkDeleteLoading ? <Spinner size="tiny" /> : 'Delete all selected'}
+              <Button
+                appearance="primary"
+                onClick={handleBulkDelete}
+                disabled={bulkDeleteLoading}
+                style={{ background: tokens.colorPaletteRedBackground3 }}
+              >
+                {bulkDeleteLoading ? <Spinner size="tiny" /> : 'Delete All Selected'}
               </Button>
             </DialogActions>
           </DialogBody>
