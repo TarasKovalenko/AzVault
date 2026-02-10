@@ -3,6 +3,7 @@ use crate::auth::AuthManager;
 use crate::azure::AzureClient;
 use crate::models::*;
 use tauri::State;
+use url::Url;
 
 pub struct AppState {
     pub auth: AuthManager,
@@ -10,27 +11,11 @@ pub struct AppState {
     pub audit: AuditLogger,
 }
 
+const MAX_EXPORT_INPUT_BYTES: usize = 2_000_000;
+const MAX_EXPORT_ITEMS: usize = 20_000;
+const MAX_AUDIT_FIELD_LEN: usize = 512;
+
 // ─── Auth Commands ───
-
-#[tauri::command]
-pub async fn auth_start(state: State<'_, AppState>) -> Result<DeviceCodeResponse, String> {
-    state.auth.start_device_code_flow().await
-}
-
-#[tauri::command]
-pub async fn auth_poll(state: State<'_, AppState>, device_code: String) -> Result<bool, String> {
-    match state.auth.poll_device_code(&device_code).await {
-        Ok(_) => {
-            state
-                .audit
-                .log_action("system", "sign_in", "auth", "user", "success", None)
-                .await;
-            Ok(true)
-        }
-        Err(e) if e == "authorization_pending" || e == "slow_down" => Ok(false),
-        Err(e) => Err(e),
-    }
-}
 
 #[tauri::command]
 pub async fn auth_status(state: State<'_, AppState>) -> Result<AuthState, String> {
@@ -82,10 +67,7 @@ pub async fn list_keyvaults(
     subscription_id: String,
 ) -> Result<Vec<KeyVaultInfo>, String> {
     let token = state.auth.get_management_token().await?;
-    let result = state
-        .azure
-        .list_keyvaults(&token, &subscription_id)
-        .await;
+    let result = state.azure.list_keyvaults(&token, &subscription_id).await;
 
     match &result {
         Ok(vaults) => {
@@ -126,6 +108,7 @@ pub async fn list_secrets(
     state: State<'_, AppState>,
     vault_uri: String,
 ) -> Result<Vec<SecretItem>, String> {
+    validate_vault_uri(&vault_uri)?;
     let token = state.auth.get_vault_token().await?;
     let vault_name = extract_vault_name(&vault_uri);
     let result = state.azure.list_secrets(&token, &vault_uri).await;
@@ -150,6 +133,7 @@ pub async fn list_keys(
     state: State<'_, AppState>,
     vault_uri: String,
 ) -> Result<Vec<KeyItem>, String> {
+    validate_vault_uri(&vault_uri)?;
     let token = state.auth.get_vault_token().await?;
     let vault_name = extract_vault_name(&vault_uri);
     let result = state.azure.list_keys(&token, &vault_uri).await;
@@ -174,6 +158,7 @@ pub async fn list_certificates(
     state: State<'_, AppState>,
     vault_uri: String,
 ) -> Result<Vec<CertificateItem>, String> {
+    validate_vault_uri(&vault_uri)?;
     let token = state.auth.get_vault_token().await?;
     let vault_name = extract_vault_name(&vault_uri);
     let result = state.azure.list_certificates(&token, &vault_uri).await;
@@ -199,10 +184,15 @@ pub async fn get_secret_value(
     vault_uri: String,
     name: String,
 ) -> Result<SecretValue, String> {
+    validate_vault_uri(&vault_uri)?;
+    validate_secret_name(&name)?;
     let token = state.auth.get_vault_token().await?;
     let vault_name = extract_vault_name(&vault_uri);
 
-    let result = state.azure.get_secret_value(&token, &vault_uri, &name).await;
+    let result = state
+        .azure
+        .get_secret_value(&token, &vault_uri, &name)
+        .await;
 
     state
         .audit
@@ -225,10 +215,15 @@ pub async fn get_secret_metadata(
     vault_uri: String,
     name: String,
 ) -> Result<SecretItem, String> {
+    validate_vault_uri(&vault_uri)?;
+    validate_secret_name(&name)?;
     let token = state.auth.get_vault_token().await?;
     let vault_name = extract_vault_name(&vault_uri);
 
-    let result = state.azure.get_secret_metadata(&token, &vault_uri, &name).await;
+    let result = state
+        .azure
+        .get_secret_metadata(&token, &vault_uri, &name)
+        .await;
 
     state
         .audit
@@ -251,6 +246,12 @@ pub async fn set_secret(
     vault_uri: String,
     request: CreateSecretRequest,
 ) -> Result<SecretItem, String> {
+    validate_vault_uri(&vault_uri)?;
+    validate_secret_name(&request.name)?;
+    if request.value.is_empty() || request.value.len() > 25_000 {
+        return Err("Secret value must be between 1 and 25000 characters.".to_string());
+    }
+
     let token = state.auth.get_vault_token().await?;
     let vault_name = extract_vault_name(&vault_uri);
     let secret_name = request.name.clone();
@@ -278,6 +279,8 @@ pub async fn delete_secret(
     vault_uri: String,
     name: String,
 ) -> Result<(), String> {
+    validate_vault_uri(&vault_uri)?;
+    validate_secret_name(&name)?;
     let token = state.auth.get_vault_token().await?;
     let vault_name = extract_vault_name(&vault_uri);
 
@@ -304,6 +307,8 @@ pub async fn recover_secret(
     vault_uri: String,
     name: String,
 ) -> Result<(), String> {
+    validate_vault_uri(&vault_uri)?;
+    validate_secret_name(&name)?;
     let token = state.auth.get_vault_token().await?;
     let vault_name = extract_vault_name(&vault_uri);
 
@@ -330,6 +335,8 @@ pub async fn purge_secret(
     vault_uri: String,
     name: String,
 ) -> Result<(), String> {
+    validate_vault_uri(&vault_uri)?;
+    validate_secret_name(&name)?;
     let token = state.auth.get_vault_token().await?;
     let vault_name = extract_vault_name(&vault_uri);
 
@@ -378,6 +385,13 @@ pub async fn write_audit_log(
     result: String,
     details: Option<String>,
 ) -> Result<(), String> {
+    let vault_name = truncate_for_audit(vault_name);
+    let action = truncate_for_audit(action);
+    let item_type = truncate_for_audit(item_type);
+    let item_name = truncate_for_audit(item_name);
+    let result = truncate_for_audit(result);
+    let details = details.map(truncate_for_audit);
+
     state
         .audit
         .log_action(
@@ -406,12 +420,22 @@ pub async fn clear_audit_log(state: State<'_, AppState>) -> Result<(), String> {
 // ─── Export Commands ───
 
 #[tauri::command]
-pub async fn export_items(
-    items_json: String,
-    format: String,
-) -> Result<String, String> {
+pub async fn export_items(items_json: String, format: String) -> Result<String, String> {
+    if items_json.len() > MAX_EXPORT_INPUT_BYTES {
+        return Err(format!(
+            "Export payload too large (max {} bytes).",
+            MAX_EXPORT_INPUT_BYTES
+        ));
+    }
+
     let items: Vec<serde_json::Value> =
         serde_json::from_str(&items_json).map_err(|e| format!("Invalid JSON: {}", e))?;
+    if items.len() > MAX_EXPORT_ITEMS {
+        return Err(format!(
+            "Too many items to export (max {}).",
+            MAX_EXPORT_ITEMS
+        ));
+    }
 
     match format.as_str() {
         "json" => serde_json::to_string_pretty(&items).map_err(|e| format!("Export error: {}", e)),
@@ -426,7 +450,13 @@ pub async fn export_items(
             if let Some(first) = items.first() {
                 if let Some(obj) = first.as_object() {
                     let headers: Vec<&String> = obj.keys().collect();
-                    csv.push_str(&headers.iter().map(|h| h.as_str()).collect::<Vec<_>>().join(","));
+                    csv.push_str(
+                        &headers
+                            .iter()
+                            .map(|h| h.as_str())
+                            .collect::<Vec<_>>()
+                            .join(","),
+                    );
                     csv.push('\n');
 
                     for item in &items {
@@ -434,9 +464,12 @@ pub async fn export_items(
                             let row: Vec<String> = headers
                                 .iter()
                                 .map(|h| {
-                                    let val = obj.get(*h).cloned().unwrap_or(serde_json::Value::Null);
+                                    let val =
+                                        obj.get(*h).cloned().unwrap_or(serde_json::Value::Null);
                                     match val {
-                                        serde_json::Value::String(s) => format!("\"{}\"", s.replace('"', "\"\"")),
+                                        serde_json::Value::String(s) => {
+                                            format!("\"{}\"", s.replace('"', "\"\""))
+                                        }
                                         serde_json::Value::Null => String::new(),
                                         other => other.to_string(),
                                     }
@@ -464,4 +497,93 @@ fn extract_vault_name(vault_uri: &str) -> String {
         .next()
         .unwrap_or("unknown")
         .to_string()
+}
+
+fn validate_vault_uri(vault_uri: &str) -> Result<(), String> {
+    let parsed = Url::parse(vault_uri).map_err(|_| "Invalid vault URI.".to_string())?;
+    if parsed.scheme() != "https" {
+        return Err("Vault URI must use HTTPS.".to_string());
+    }
+
+    let host = parsed
+        .host_str()
+        .ok_or_else(|| "Vault URI must include a host.".to_string())?;
+    let allowed = host.ends_with(".vault.azure.net")
+        || host.ends_with(".vault.usgovcloudapi.net")
+        || host.ends_with(".vault.azure.cn");
+    if !allowed {
+        return Err("Vault URI must target an Azure Key Vault endpoint.".to_string());
+    }
+
+    Ok(())
+}
+
+fn validate_secret_name(name: &str) -> Result<(), String> {
+    if name.is_empty() || name.len() > 127 {
+        return Err("Secret name must be between 1 and 127 characters.".to_string());
+    }
+    if !name.chars().all(|c| c.is_ascii_alphanumeric() || c == '-') {
+        return Err("Secret name may only contain letters, numbers, and '-'.".to_string());
+    }
+    Ok(())
+}
+
+fn truncate_for_audit(value: String) -> String {
+    value.chars().take(MAX_AUDIT_FIELD_LEN).collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn validates_azure_vault_uris() {
+        assert!(validate_vault_uri("https://demo.vault.azure.net").is_ok());
+        assert!(validate_vault_uri("https://demo.vault.usgovcloudapi.net").is_ok());
+        assert!(validate_vault_uri("https://demo.vault.azure.cn").is_ok());
+        assert!(validate_vault_uri("http://demo.vault.azure.net").is_err());
+        assert!(validate_vault_uri("https://evil.example.com").is_err());
+    }
+
+    #[test]
+    fn validates_secret_names() {
+        assert!(validate_secret_name("valid-name-01").is_ok());
+        assert!(validate_secret_name("").is_err());
+        assert!(validate_secret_name("bad_name").is_err());
+    }
+
+    #[test]
+    fn truncates_for_audit() {
+        let long = "a".repeat(2048);
+        let truncated = truncate_for_audit(long);
+        assert_eq!(truncated.len(), MAX_AUDIT_FIELD_LEN);
+    }
+
+    #[test]
+    fn extracts_vault_name_from_uri() {
+        assert_eq!(
+            extract_vault_name("https://my-vault.vault.azure.net"),
+            "my-vault".to_string()
+        );
+    }
+
+    #[tokio::test]
+    async fn exports_items_as_csv() {
+        let input = r#"[{"name":"n1","enabled":true},{"name":"n2","enabled":false}]"#.to_string();
+        let out = export_items(input, "csv".to_string())
+            .await
+            .expect("csv export should succeed");
+        assert!(out.lines().next().is_some());
+        assert!(out.contains("\"n1\""));
+        assert!(out.contains("\"n2\""));
+    }
+
+    #[tokio::test]
+    async fn rejects_oversized_export_payload() {
+        let huge = "a".repeat(MAX_EXPORT_INPUT_BYTES + 10);
+        let err = export_items(huge, "json".to_string())
+            .await
+            .expect_err("should reject oversized payload");
+        assert!(err.contains("too large"));
+    }
 }

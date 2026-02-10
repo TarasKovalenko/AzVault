@@ -7,8 +7,6 @@
   ],
   "permissions": [
     "core:default",
-    "shell:allow-open",
-    "shell:allow-execute",
     "store:default",
     "log:default"
   ]

@@ -1,5 +1,4 @@
 import type {
-  DeviceCodeResponse,
   AuthState,
   Tenant,
   Subscription,
@@ -12,29 +11,7 @@ import type {
   AuditEntry,
 } from '../types';
 
-let mockSignedIn = false;
-
-const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-export async function mockAuthStart(): Promise<DeviceCodeResponse> {
-  return {
-    device_code: 'MOCK_DEVICE_CODE',
-    user_code: 'ABCD-1234',
-    verification_uri: 'https://microsoft.com/devicelogin',
-    expires_in: 900,
-    interval: 2,
-    message: 'Mock mode: Click "Complete Sign In" to simulate authentication',
-  };
-}
-
-export async function mockAuthPoll(): Promise<boolean> {
-  await delay(500);
-  if (!mockSignedIn) {
-    mockSignedIn = true;
-    return false;
-  }
-  return true;
-}
+const mockSignedIn = false;
 
 export function mockAuthStatus(): AuthState {
   return {

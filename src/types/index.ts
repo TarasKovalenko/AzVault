@@ -1,14 +1,5 @@
 // ── Auth ──
 
-export interface DeviceCodeResponse {
-  device_code: string;
-  user_code: string;
-  verification_uri: string;
-  expires_in: number;
-  interval: number;
-  message: string;
-}
-
 export interface AuthState {
   signed_in: boolean;
   user_name: string | null;

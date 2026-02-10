@@ -1,6 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
 import type {
-  DeviceCodeResponse,
   AuthState,
   Tenant,
   Subscription,
@@ -19,22 +18,6 @@ function isMock(): boolean {
 }
 
 // ─── Auth ───
-
-export async function authStart(): Promise<DeviceCodeResponse> {
-  if (isMock()) {
-    const { mockAuthStart } = await import('../mock/data');
-    return mockAuthStart();
-  }
-  return invoke<DeviceCodeResponse>('auth_start');
-}
-
-export async function authPoll(deviceCode: string): Promise<boolean> {
-  if (isMock()) {
-    const { mockAuthPoll } = await import('../mock/data');
-    return mockAuthPoll();
-  }
-  return invoke<boolean>('auth_poll', { deviceCode });
-}
 
 export async function authStatus(): Promise<AuthState> {
   if (isMock()) {

@@ -2,6 +2,7 @@ use crate::models::*;
 use reqwest::{Client, Method};
 use serde_json::Value;
 use std::time::Duration;
+use url::Url;
 
 const ARM_BASE: &str = "https://management.azure.com";
 const API_VERSION_TENANTS: &str = "2022-12-01";
@@ -17,9 +18,12 @@ pub struct AzureClient {
 
 impl AzureClient {
     pub fn new() -> Self {
-        Self {
-            client: Client::new(),
-        }
+        let client = Client::builder()
+            .connect_timeout(Duration::from_secs(10))
+            .timeout(Duration::from_secs(30))
+            .build()
+            .unwrap_or_else(|_| Client::new());
+        Self { client }
     }
 
     pub async fn list_tenants(&self, token: &str) -> Result<Vec<Tenant>, String> {
@@ -62,10 +66,7 @@ impl AzureClient {
             .unwrap_or_default()
             .into_iter()
             .map(|s| Subscription {
-                subscription_id: s["subscriptionId"]
-                    .as_str()
-                    .unwrap_or_default()
-                    .to_string(),
+                subscription_id: s["subscriptionId"].as_str().unwrap_or_default().to_string(),
                 display_name: s["displayName"].as_str().unwrap_or_default().to_string(),
                 state: s["state"].as_str().unwrap_or_default().to_string(),
                 tenant_id: s
@@ -125,7 +126,11 @@ impl AzureClient {
         Ok(vaults)
     }
 
-    pub async fn list_secrets(&self, token: &str, vault_uri: &str) -> Result<Vec<SecretItem>, String> {
+    pub async fn list_secrets(
+        &self,
+        token: &str,
+        vault_uri: &str,
+    ) -> Result<Vec<SecretItem>, String> {
         let url = format!(
             "{}/secrets?api-version={}",
             vault_uri, API_VERSION_KEYVAULT_DATA
@@ -135,7 +140,9 @@ impl AzureClient {
         let mut items = Vec::new();
 
         while let Some(current_url) = next_url {
-            let body = self.request_json(Method::GET, &current_url, token, None).await?;
+            let body = self
+                .request_json(Method::GET, &current_url, token, None)
+                .await?;
             if let Some(values) = body["value"].as_array() {
                 for value in values {
                     items.push(Self::parse_secret_item(value));
@@ -232,7 +239,12 @@ impl AzureClient {
         Ok(Self::parse_secret_item(&body))
     }
 
-    pub async fn delete_secret(&self, token: &str, vault_uri: &str, name: &str) -> Result<(), String> {
+    pub async fn delete_secret(
+        &self,
+        token: &str,
+        vault_uri: &str,
+        name: &str,
+    ) -> Result<(), String> {
         let url = format!(
             "{}/secrets/{}?api-version={}",
             vault_uri, name, API_VERSION_KEYVAULT_DATA
@@ -241,7 +253,12 @@ impl AzureClient {
         Ok(())
     }
 
-    pub async fn recover_secret(&self, token: &str, vault_uri: &str, name: &str) -> Result<(), String> {
+    pub async fn recover_secret(
+        &self,
+        token: &str,
+        vault_uri: &str,
+        name: &str,
+    ) -> Result<(), String> {
         let url = format!(
             "{}/deletedsecrets/{}/recover?api-version={}",
             vault_uri, name, API_VERSION_KEYVAULT_DATA
@@ -250,7 +267,12 @@ impl AzureClient {
         Ok(())
     }
 
-    pub async fn purge_secret(&self, token: &str, vault_uri: &str, name: &str) -> Result<(), String> {
+    pub async fn purge_secret(
+        &self,
+        token: &str,
+        vault_uri: &str,
+        name: &str,
+    ) -> Result<(), String> {
         let url = format!(
             "{}/deletedsecrets/{}?api-version={}",
             vault_uri, name, API_VERSION_KEYVAULT_DATA
@@ -260,13 +282,18 @@ impl AzureClient {
     }
 
     pub async fn list_keys(&self, token: &str, vault_uri: &str) -> Result<Vec<KeyItem>, String> {
-        let url = format!("{}/keys?api-version={}", vault_uri, API_VERSION_KEYVAULT_DATA);
+        let url = format!(
+            "{}/keys?api-version={}",
+            vault_uri, API_VERSION_KEYVAULT_DATA
+        );
 
         let mut items = Vec::new();
         let mut next_url = Some(url);
 
         while let Some(current_url) = next_url {
-            let body = self.request_json(Method::GET, &current_url, token, None).await?;
+            let body = self
+                .request_json(Method::GET, &current_url, token, None)
+                .await?;
 
             if let Some(values) = body["value"].as_array() {
                 for v in values {
@@ -278,19 +305,22 @@ impl AzureClient {
                         id,
                         name,
                         enabled: attrs["enabled"].as_bool().unwrap_or(true),
-                        created: Self::epoch_to_rfc3339(attrs.get("created").and_then(|v| v.as_u64())),
-                        updated: Self::epoch_to_rfc3339(attrs.get("updated").and_then(|v| v.as_u64())),
+                        created: Self::epoch_to_rfc3339(
+                            attrs.get("created").and_then(|v| v.as_u64()),
+                        ),
+                        updated: Self::epoch_to_rfc3339(
+                            attrs.get("updated").and_then(|v| v.as_u64()),
+                        ),
                         expires: Self::epoch_to_rfc3339(attrs.get("exp").and_then(|v| v.as_u64())),
-                        not_before: Self::epoch_to_rfc3339(attrs.get("nbf").and_then(|v| v.as_u64())),
+                        not_before: Self::epoch_to_rfc3339(
+                            attrs.get("nbf").and_then(|v| v.as_u64()),
+                        ),
                         key_type: v.get("kty").and_then(|v| v.as_str()).map(|s| s.to_string()),
-                        key_ops: v
-                            .get("key_ops")
-                            .and_then(|v| v.as_array())
-                            .map(|arr| {
-                                arr.iter()
-                                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                                    .collect()
-                            }),
+                        key_ops: v.get("key_ops").and_then(|v| v.as_array()).map(|arr| {
+                            arr.iter()
+                                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                                .collect()
+                        }),
                         tags: v
                             .get("tags")
                             .and_then(|t| serde_json::from_value(t.clone()).ok()),
@@ -322,7 +352,9 @@ impl AzureClient {
         let mut next_url = Some(url);
 
         while let Some(current_url) = next_url {
-            let body = self.request_json(Method::GET, &current_url, token, None).await?;
+            let body = self
+                .request_json(Method::GET, &current_url, token, None)
+                .await?;
 
             if let Some(values) = body["value"].as_array() {
                 for v in values {
@@ -334,20 +366,23 @@ impl AzureClient {
                         id,
                         name,
                         enabled: attrs["enabled"].as_bool().unwrap_or(true),
-                        created: Self::epoch_to_rfc3339(attrs.get("created").and_then(|v| v.as_u64())),
-                        updated: Self::epoch_to_rfc3339(attrs.get("updated").and_then(|v| v.as_u64())),
+                        created: Self::epoch_to_rfc3339(
+                            attrs.get("created").and_then(|v| v.as_u64()),
+                        ),
+                        updated: Self::epoch_to_rfc3339(
+                            attrs.get("updated").and_then(|v| v.as_u64()),
+                        ),
                         expires: Self::epoch_to_rfc3339(attrs.get("exp").and_then(|v| v.as_u64())),
-                        not_before: Self::epoch_to_rfc3339(attrs.get("nbf").and_then(|v| v.as_u64())),
+                        not_before: Self::epoch_to_rfc3339(
+                            attrs.get("nbf").and_then(|v| v.as_u64()),
+                        ),
                         subject: v
                             .get("policy")
                             .and_then(|p| p.get("x509_props"))
                             .and_then(|x| x.get("subject"))
                             .and_then(|v| v.as_str())
                             .map(|s| s.to_string()),
-                        thumbprint: v
-                            .get("x5t")
-                            .and_then(|v| v.as_str())
-                            .map(|s| s.to_string()),
+                        thumbprint: v.get("x5t").and_then(|v| v.as_str()).map(|s| s.to_string()),
                         tags: v
                             .get("tags")
                             .and_then(|t| serde_json::from_value(t.clone()).ok()),
@@ -387,6 +422,10 @@ impl AzureClient {
         token: &str,
         payload: Option<Value>,
     ) -> Result<Value, String> {
+        if !Self::is_allowed_azure_url(url) {
+            return Err("Blocked outbound request to non-Azure endpoint.".to_string());
+        }
+
         let mut attempt = 0usize;
         loop {
             let mut req = self.client.request(method.clone(), url).bearer_auth(token);
@@ -468,9 +507,8 @@ impl AzureClient {
     }
 
     fn epoch_to_rfc3339(epoch: Option<u64>) -> Option<String> {
-        epoch.and_then(|ts| {
-            chrono::DateTime::from_timestamp(ts as i64, 0).map(|dt| dt.to_rfc3339())
-        })
+        epoch
+            .and_then(|ts| chrono::DateTime::from_timestamp(ts as i64, 0).map(|dt| dt.to_rfc3339()))
     }
 
     fn parse_error(body: &Value, status: u16) -> String {
@@ -495,5 +533,66 @@ impl AzureClient {
             result.push_str(&format!(" | Hint: {}", h));
         }
         result
+    }
+
+    fn is_allowed_azure_url(url: &str) -> bool {
+        let parsed = match Url::parse(url) {
+            Ok(v) => v,
+            Err(_) => return false,
+        };
+        if parsed.scheme() != "https" {
+            return false;
+        }
+
+        let Some(host) = parsed.host_str() else {
+            return false;
+        };
+        host == "management.azure.com"
+            || host.ends_with(".vault.azure.net")
+            || host.ends_with(".vault.usgovcloudapi.net")
+            || host.ends_with(".vault.azure.cn")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::AzureClient;
+    use serde_json::json;
+
+    #[test]
+    fn extracts_name_from_id_correctly() {
+        let name = AzureClient::extract_name_from_id(
+            "https://demo.vault.azure.net/secrets/my-secret/version-1",
+            "secrets",
+        );
+        assert_eq!(name, "my-secret");
+    }
+
+    #[test]
+    fn parses_error_with_hint() {
+        let body = json!({
+            "error": {
+                "code": "Forbidden",
+                "message": "No access"
+            }
+        });
+        let result = AzureClient::parse_error(&body, 403);
+        assert!(result.contains("Hint"));
+    }
+
+    #[test]
+    fn allows_only_azure_urls() {
+        assert!(AzureClient::is_allowed_azure_url(
+            "https://management.azure.com/subscriptions"
+        ));
+        assert!(AzureClient::is_allowed_azure_url(
+            "https://demo.vault.azure.net/secrets"
+        ));
+        assert!(!AzureClient::is_allowed_azure_url(
+            "https://example.com/data"
+        ));
+        assert!(!AzureClient::is_allowed_azure_url(
+            "http://management.azure.com/subscriptions"
+        ));
     }
 }

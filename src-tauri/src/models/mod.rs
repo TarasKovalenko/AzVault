@@ -3,24 +3,6 @@ use serde::{Deserialize, Serialize};
 // ── Auth ──
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DeviceCodeResponse {
-    pub device_code: String,
-    pub user_code: String,
-    pub verification_uri: String,
-    pub expires_in: u64,
-    pub interval: u64,
-    pub message: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TokenResponse {
-    pub access_token: String,
-    pub refresh_token: Option<String>,
-    pub expires_in: u64,
-    pub token_type: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuthState {
     pub signed_in: bool,
     pub user_name: Option<String>,
@@ -141,3 +123,40 @@ pub struct AuditEntry {
     pub details: Option<String>,
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn serializes_subscription_in_camel_case() {
+        let sub = Subscription {
+            subscription_id: "sub".to_string(),
+            display_name: "Display".to_string(),
+            state: "Enabled".to_string(),
+            tenant_id: "tenant".to_string(),
+        };
+
+        let json = serde_json::to_string(&sub).expect("should serialize");
+        assert!(json.contains("subscriptionId"));
+        assert!(json.contains("displayName"));
+    }
+
+    #[test]
+    fn serializes_secret_item_in_camel_case() {
+        let secret = SecretItem {
+            id: "id".to_string(),
+            name: "name".to_string(),
+            enabled: true,
+            created: None,
+            updated: None,
+            expires: None,
+            not_before: None,
+            content_type: Some("text/plain".to_string()),
+            tags: None,
+            managed: None,
+        };
+        let json = serde_json::to_string(&secret).expect("should serialize");
+        assert!(json.contains("contentType"));
+        assert!(json.contains("notBefore"));
+    }
+}
