@@ -42,6 +42,9 @@ function actionColor(action: string): 'informative' | 'success' | 'warning' | 'd
 export function AuditLog() {
   const queryClient = useQueryClient();
   const [copied, setCopied] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const logQuery = useQuery({
     queryKey: ['auditLog'],
@@ -51,21 +54,47 @@ export function AuditLog() {
 
   /** Export sanitised audit log JSON to clipboard. */
   const handleExport = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    setActionError(null);
     try {
       const data = await exportAuditLog();
-      await navigator.clipboard.writeText(data);
+      try {
+        await navigator.clipboard.writeText(data);
+      } catch {
+        // Clipboard may be unavailable in some WebView environments; fall back to file export.
+        const blob = new Blob([data], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `azvault-activity-log-${Date.now()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Export errors are non-critical
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Failed to export activity log.');
+    } finally {
+      setIsExporting(false);
     }
   };
 
   /** Clear all audit entries with user confirmation. */
   const handleClear = async () => {
+    if (isClearing) return;
     if (!window.confirm('Clear all audit logs? This cannot be undone.')) return;
-    await clearAuditLog();
-    queryClient.invalidateQueries({ queryKey: ['auditLog'] });
+    setIsClearing(true);
+    setActionError(null);
+    try {
+      await clearAuditLog();
+      queryClient.setQueryData(['auditLog'], []);
+      queryClient.invalidateQueries({ queryKey: ['auditLog'] });
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Failed to clear activity log.');
+    } finally {
+      setIsClearing(false);
+    }
   };
 
   const entries = logQuery.data || [];
@@ -76,20 +105,28 @@ export function AuditLog() {
       <div
         style={{
           display: 'flex',
-          alignItems: 'center',
+          alignItems: 'flex-start',
           justifyContent: 'space-between',
           padding: '8px 16px',
           borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
           background: tokens.colorNeutralBackground2,
+          gap: 8,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Text weight="semibold" size={300}>
-            Activity Log
-          </Text>
-          <Text size={200} className="azv-mono" style={{ color: tokens.colorNeutralForeground3 }}>
-            ({entries.length})
-          </Text>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Text weight="semibold" size={300}>
+              Activity Log
+            </Text>
+            <Text size={200} className="azv-mono" style={{ color: tokens.colorNeutralForeground3 }}>
+              ({entries.length})
+            </Text>
+          </div>
+          {actionError && (
+            <Text size={100} style={{ color: tokens.colorPaletteRedForeground1 }}>
+              {actionError}
+            </Text>
+          )}
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
           <Button
@@ -97,16 +134,18 @@ export function AuditLog() {
             icon={copied ? <Checkmark24Regular /> : <ArrowDownload24Regular />}
             size="small"
             onClick={handleExport}
+            disabled={isExporting}
           >
-            {copied ? 'Copied' : 'Export'}
+            {isExporting ? 'Exporting…' : copied ? 'Copied' : 'Export'}
           </Button>
           <Button
             appearance="subtle"
             icon={<Delete24Regular />}
             size="small"
             onClick={handleClear}
+            disabled={isClearing}
           >
-            Clear
+            {isClearing ? 'Clearing…' : 'Clear'}
           </Button>
         </div>
       </div>
