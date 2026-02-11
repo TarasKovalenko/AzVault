@@ -6,7 +6,7 @@
  */
 
 import { useMemo } from 'react';
-import { Card, Text, Badge, Divider, tokens } from '@fluentui/react-components';
+import { Card, Text, Badge, Divider } from '@fluentui/react-components';
 import { useAppStore } from '../../stores/appStore';
 
 /** Static permission guidance tips. */

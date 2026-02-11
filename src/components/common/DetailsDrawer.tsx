@@ -40,11 +40,13 @@ import {
   ArrowUndo24Regular,
   Warning24Regular,
   Checkmark24Regular,
+  Edit24Regular,
 } from '@fluentui/react-icons';
 import { format } from 'date-fns';
 import type { SecretItem, SecretValue } from '../../types';
 import { getSecretValue, deleteSecret, recoverSecret, purgeSecret } from '../../services/tauri';
 import { useAppStore } from '../../stores/appStore';
+import { CreateSecretDialog } from '../secrets/CreateSecretDialog';
 
 interface DetailsDrawerProps {
   item: SecretItem | null;
@@ -62,6 +64,7 @@ export function DetailsDrawer({ item, vaultUri, open, onClose, onRefresh }: Deta
   const [copied, setCopied] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showPurgeDialog, setShowPurgeDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
   const [showFetchConfirm, setShowFetchConfirm] = useState(false);
   const [reauthConfirmed, setReauthConfirmed] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
@@ -166,6 +169,14 @@ export function DetailsDrawer({ item, vaultUri, open, onClose, onRefresh }: Deta
     setReauthConfirmed(false);
     setShowFetchConfirm(false);
     onClose();
+  };
+
+  const handleEdited = () => {
+    setSecretValue(null);
+    setRevealed(false);
+    setFetchError(null);
+    setShowEditDialog(false);
+    onRefresh();
   };
 
   if (!item) return null;
@@ -356,6 +367,15 @@ export function DetailsDrawer({ item, vaultUri, open, onClose, onRefresh }: Deta
           </Text>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <Button
+              appearance="primary"
+              icon={<Edit24Regular />}
+              size="small"
+              onClick={() => setShowEditDialog(true)}
+              disabled={actionLoading}
+            >
+              Edit
+            </Button>
+            <Button
               appearance="secondary"
               icon={<ArrowUndo24Regular />}
               size="small"
@@ -385,6 +405,20 @@ export function DetailsDrawer({ item, vaultUri, open, onClose, onRefresh }: Deta
           </div>
         </DrawerBody>
       </OverlayDrawer>
+
+      <CreateSecretDialog
+        open={showEditDialog}
+        vaultUri={vaultUri}
+        mode="edit"
+        initialName={item.name}
+        initialValue={secretValue?.value ?? ''}
+        initialContentType={item.contentType}
+        initialEnabled={item.enabled}
+        initialExpires={item.expires}
+        initialTags={item.tags}
+        onClose={() => setShowEditDialog(false)}
+        onCreated={handleEdited}
+      />
 
       {/* ── Fetch confirmation dialog ── */}
       <Dialog open={showFetchConfirm} onOpenChange={(_, d) => setShowFetchConfirm(d.open)}>

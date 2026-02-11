@@ -9,7 +9,7 @@
  * Creating with an existing name creates a new version (Azure KV behaviour).
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Dialog,
   DialogSurface,
@@ -20,6 +20,8 @@ import {
   Button,
   Field,
   Input,
+  Combobox,
+  Option,
   Textarea,
   Switch,
   Spinner,
@@ -29,11 +31,42 @@ import {
 import { setSecret } from '../../services/tauri';
 import type { CreateSecretRequest } from '../../types';
 
+const CONTENT_TYPE_OPTIONS = [
+  'text/plain',
+  'application/json',
+  'application/octet-stream',
+  'application/x-pem-file',
+  'application/x-pkcs12',
+  'text/csv',
+] as const;
+
 interface CreateSecretDialogProps {
   open: boolean;
   vaultUri: string;
   onClose: () => void;
   onCreated: () => void;
+  mode?: 'create' | 'edit';
+  initialName?: string;
+  initialValue?: string;
+  initialContentType?: string | null;
+  initialEnabled?: boolean | null;
+  initialExpires?: string | null;
+  initialTags?: Record<string, string> | null;
+}
+
+function toDatetimeLocal(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function tagsToInput(tags: Record<string, string> | null | undefined): string {
+  if (!tags) return '';
+  return Object.entries(tags)
+    .map(([k, v]) => `${k}=${v}`)
+    .join(', ');
 }
 
 export function CreateSecretDialog({
@@ -41,15 +74,45 @@ export function CreateSecretDialog({
   vaultUri,
   onClose,
   onCreated,
+  mode = 'create',
+  initialName,
+  initialValue,
+  initialContentType,
+  initialEnabled,
+  initialExpires,
+  initialTags,
 }: CreateSecretDialogProps) {
   const [name, setName] = useState('');
   const [value, setValue] = useState('');
   const [contentType, setContentType] = useState('');
   const [enabled, setEnabled] = useState(true);
+  const [hasExpiration, setHasExpiration] = useState(false);
   const [expires, setExpires] = useState('');
   const [tagsInput, setTagsInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isEdit = mode === 'edit';
+
+  useEffect(() => {
+    if (!open) return;
+    const initialExpiresLocal = toDatetimeLocal(initialExpires);
+    setName(initialName ?? '');
+    setValue(initialValue ?? '');
+    setContentType(initialContentType ?? '');
+    setEnabled(initialEnabled ?? true);
+    setHasExpiration(Boolean(initialExpiresLocal));
+    setExpires(initialExpiresLocal);
+    setTagsInput(tagsToInput(initialTags));
+    setError(null);
+  }, [
+    open,
+    initialName,
+    initialValue,
+    initialContentType,
+    initialEnabled,
+    initialExpires,
+    initialTags,
+  ]);
 
   /** Reset all form fields to defaults. */
   const reset = () => {
@@ -57,6 +120,7 @@ export function CreateSecretDialog({
     setValue('');
     setContentType('');
     setEnabled(true);
+    setHasExpiration(false);
     setExpires('');
     setTagsInput('');
     setError(null);
@@ -64,8 +128,12 @@ export function CreateSecretDialog({
 
   /** Validate input and submit the create request. */
   const handleCreate = async () => {
-    if (!name.trim() || !value.trim()) {
-      setError('Name and value are required.');
+    if (!name.trim()) {
+      setError('Name is required.');
+      return;
+    }
+    if (!value.trim()) {
+      setError(isEdit ? 'Value is required when updating a secret.' : 'Value is required.');
       return;
     }
 
@@ -94,7 +162,7 @@ export function CreateSecretDialog({
         value,
         contentType: contentType.trim() || null,
         enabled,
-        expires: expires ? new Date(expires).toISOString() : null,
+        expires: hasExpiration && expires ? new Date(expires).toISOString() : null,
         notBefore: null,
         tags,
       };
@@ -122,7 +190,7 @@ export function CreateSecretDialog({
     >
       <DialogSurface>
         <DialogBody>
-          <DialogTitle>Create Secret</DialogTitle>
+          <DialogTitle>{isEdit ? 'Edit Secret' : 'Create Secret'}</DialogTitle>
           <DialogContent>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingTop: 8 }}>
               <Field label="Name" required hint="Alphanumeric and dashes only">
@@ -130,6 +198,7 @@ export function CreateSecretDialog({
                   value={name}
                   onChange={(_, d) => setName(d.value)}
                   placeholder="my-secret-name"
+                  disabled={isEdit}
                   style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12 }}
                 />
               </Field>
@@ -145,19 +214,43 @@ export function CreateSecretDialog({
               </Field>
 
               <Field label="Content Type" hint="e.g., text/plain, application/json">
-                <Input
+                <Combobox
+                  freeform
                   value={contentType}
+                  selectedOptions={contentType ? [contentType] : []}
+                  onOptionSelect={(_, data) =>
+                    setContentType(String(data.optionValue ?? data.optionText ?? ''))
+                  }
                   onChange={(_, d) => setContentType(d.value)}
-                  placeholder="text/plain"
-                />
+                  placeholder="Select or type content type"
+                >
+                  {CONTENT_TYPE_OPTIONS.map((option) => (
+                    <Option key={option} value={option}>
+                      {option}
+                    </Option>
+                  ))}
+                </Combobox>
               </Field>
 
-              <Field label="Expiration">
-                <Input
-                  type="datetime-local"
-                  value={expires}
-                  onChange={(_, d) => setExpires(d.value)}
-                />
+              <Field label="Expiration (Optional)">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Switch
+                      checked={hasExpiration}
+                      onChange={(_, d) => {
+                        setHasExpiration(d.checked);
+                        if (!d.checked) setExpires('');
+                      }}
+                    />
+                    <Text size={200}>Set expiration</Text>
+                  </div>
+                  <Input
+                    type="datetime-local"
+                    value={expires}
+                    onChange={(_, d) => setExpires(d.value)}
+                    disabled={!hasExpiration}
+                  />
+                </div>
               </Field>
 
               <Field label="Tags" hint="Comma-separated key=value pairs">
@@ -189,7 +282,9 @@ export function CreateSecretDialog({
               )}
 
               <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>
-                Creating with an existing name produces a new version.
+                {isEdit
+                  ? 'Saving creates a new version of this secret.'
+                  : 'Creating with an existing name produces a new version.'}
               </Text>
             </div>
           </DialogContent>
@@ -204,7 +299,7 @@ export function CreateSecretDialog({
               Cancel
             </Button>
             <Button appearance="primary" onClick={handleCreate} disabled={loading}>
-              {loading ? <Spinner size="tiny" /> : 'Create'}
+              {loading ? <Spinner size="tiny" /> : isEdit ? 'Save' : 'Create'}
             </Button>
           </DialogActions>
         </DialogBody>
