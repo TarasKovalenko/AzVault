@@ -69,8 +69,7 @@ impl AuditLogger {
                 #[cfg(unix)]
                 {
                     use std::os::unix::fs::PermissionsExt;
-                    let _ =
-                        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
+                    let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
                 }
             }
         }
@@ -194,7 +193,9 @@ mod tests {
     #[test]
     fn redacts_sensitive_details_connection_string() {
         assert_eq!(
-            AuditLogger::sanitize_details("Server=tcp:db.windows.net;Password=connection_string_value"),
+            AuditLogger::sanitize_details(
+                "Server=tcp:db.windows.net;Password=connection_string_value"
+            ),
             "[REDACTED]"
         );
     }
@@ -232,10 +233,7 @@ mod tests {
 
     #[test]
     fn sanitize_is_case_insensitive() {
-        assert_eq!(
-            AuditLogger::sanitize_details("TOKEN=ABC"),
-            "[REDACTED]"
-        );
+        assert_eq!(AuditLogger::sanitize_details("TOKEN=ABC"), "[REDACTED]");
         assert_eq!(
             AuditLogger::sanitize_details("My Secret Value"),
             "[REDACTED]"

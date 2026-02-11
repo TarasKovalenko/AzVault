@@ -86,10 +86,7 @@ impl AzureClient {
             .unwrap_or_default()
             .into_iter()
             .map(|s| Subscription {
-                subscription_id: s["subscriptionId"]
-                    .as_str()
-                    .unwrap_or_default()
-                    .to_string(),
+                subscription_id: s["subscriptionId"].as_str().unwrap_or_default().to_string(),
                 display_name: s["displayName"].as_str().unwrap_or_default().to_string(),
                 state: s["state"].as_str().unwrap_or_default().to_string(),
                 tenant_id: s
@@ -349,16 +346,11 @@ impl AzureClient {
                         updated: Self::epoch_to_rfc3339(
                             attrs.get("updated").and_then(|v| v.as_u64()),
                         ),
-                        expires: Self::epoch_to_rfc3339(
-                            attrs.get("exp").and_then(|v| v.as_u64()),
-                        ),
+                        expires: Self::epoch_to_rfc3339(attrs.get("exp").and_then(|v| v.as_u64())),
                         not_before: Self::epoch_to_rfc3339(
                             attrs.get("nbf").and_then(|v| v.as_u64()),
                         ),
-                        key_type: v
-                            .get("kty")
-                            .and_then(|v| v.as_str())
-                            .map(|s| s.to_string()),
+                        key_type: v.get("kty").and_then(|v| v.as_str()).map(|s| s.to_string()),
                         key_ops: v.get("key_ops").and_then(|v| v.as_array()).map(|arr| {
                             arr.iter()
                                 .filter_map(|v| v.as_str().map(|s| s.to_string()))
@@ -418,9 +410,7 @@ impl AzureClient {
                         updated: Self::epoch_to_rfc3339(
                             attrs.get("updated").and_then(|v| v.as_u64()),
                         ),
-                        expires: Self::epoch_to_rfc3339(
-                            attrs.get("exp").and_then(|v| v.as_u64()),
-                        ),
+                        expires: Self::epoch_to_rfc3339(attrs.get("exp").and_then(|v| v.as_u64())),
                         not_before: Self::epoch_to_rfc3339(
                             attrs.get("nbf").and_then(|v| v.as_u64()),
                         ),
@@ -430,10 +420,7 @@ impl AzureClient {
                             .and_then(|x| x.get("subject"))
                             .and_then(|v| v.as_str())
                             .map(|s| s.to_string()),
-                        thumbprint: v
-                            .get("x5t")
-                            .and_then(|v| v.as_str())
-                            .map(|s| s.to_string()),
+                        thumbprint: v.get("x5t").and_then(|v| v.as_str()).map(|s| s.to_string()),
                         tags: v
                             .get("tags")
                             .and_then(|t| serde_json::from_value(t.clone()).ok()),
@@ -502,8 +489,7 @@ impl AzureClient {
                         .get(reqwest::header::RETRY_AFTER)
                         .and_then(|h| h.to_str().ok())
                         .and_then(|s| s.parse::<u64>().ok());
-                    let body: Value =
-                        resp.json().await.unwrap_or_else(|_| serde_json::json!({}));
+                    let body: Value = resp.json().await.unwrap_or_else(|_| serde_json::json!({}));
 
                     if status.is_success() {
                         return Ok(body);
@@ -572,9 +558,8 @@ impl AzureClient {
 
     /// Converts a Unix epoch timestamp to RFC 3339 string.
     fn epoch_to_rfc3339(epoch: Option<u64>) -> Option<String> {
-        epoch.and_then(|ts| {
-            chrono::DateTime::from_timestamp(ts as i64, 0).map(|dt| dt.to_rfc3339())
-        })
+        epoch
+            .and_then(|ts| chrono::DateTime::from_timestamp(ts as i64, 0).map(|dt| dt.to_rfc3339()))
     }
 
     /// Formats an Azure REST API error response into a user-friendly message
@@ -588,9 +573,7 @@ impl AzureClient {
 
         let hint = match status {
             401 => Some("Your session may have expired. Try signing in again."),
-            403 => Some(
-                "You don't have permission. Check your Azure RBAC role or access policy.",
-            ),
+            403 => Some("You don't have permission. Check your Azure RBAC role or access policy."),
             404 => Some("The resource was not found. It may have been deleted."),
             429 => Some("Too many requests. The app applied retry with backoff."),
             _ => None,
@@ -664,7 +647,10 @@ mod tests {
 
     #[test]
     fn extract_name_falls_back_to_last_segment() {
-        let name = AzureClient::extract_name_from_id("https://demo.vault.azure.net/unknown-path", "secrets");
+        let name = AzureClient::extract_name_from_id(
+            "https://demo.vault.azure.net/unknown-path",
+            "secrets",
+        );
         assert_eq!(name, "unknown-path");
     }
 

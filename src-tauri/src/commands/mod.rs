@@ -543,7 +543,10 @@ pub async fn export_items(items_json: String, format: String) -> Result<String, 
 
             Ok(csv)
         }
-        _ => Err(format!("Unsupported export format: '{}'. Use 'json' or 'csv'.", format)),
+        _ => Err(format!(
+            "Unsupported export format: '{}'. Use 'json' or 'csv'.",
+            format
+        )),
     }
 }
 
@@ -563,7 +566,11 @@ fn extract_vault_name(vault_uri: &str) -> String {
 
 /// Returns `"success"` or `"error"` based on the result variant.
 fn result_status<T>(result: &Result<T, String>) -> &'static str {
-    if result.is_ok() { "success" } else { "error" }
+    if result.is_ok() {
+        "success"
+    } else {
+        "error"
+    }
 }
 
 /// Validates that a vault URI uses HTTPS and targets an Azure Key Vault endpoint.
@@ -760,8 +767,7 @@ mod tests {
 
     #[tokio::test]
     async fn exports_items_as_csv() {
-        let input =
-            r#"[{"name":"n1","enabled":true},{"name":"n2","enabled":false}]"#.to_string();
+        let input = r#"[{"name":"n1","enabled":true},{"name":"n2","enabled":false}]"#.to_string();
         let out = export_items(input, "csv".to_string())
             .await
             .expect("csv export should succeed");

@@ -204,10 +204,7 @@ mod tests {
         );
 
         // Injection attempt is stripped (only hex digits a-f and dashes survive)
-        assert_eq!(
-            AuthManager::sanitize_tenant_id("tenant; rm -rf /"),
-            "ea-f"
-        );
+        assert_eq!(AuthManager::sanitize_tenant_id("tenant; rm -rf /"), "ea-f");
 
         // Default value passes through unchanged
         assert_eq!(
@@ -216,16 +213,10 @@ mod tests {
         );
 
         // Empty string falls back to default
-        assert_eq!(
-            AuthManager::sanitize_tenant_id(""),
-            "organizations"
-        );
+        assert_eq!(AuthManager::sanitize_tenant_id(""), "organizations");
 
         // All-special-chars falls back to default
-        assert_eq!(
-            AuthManager::sanitize_tenant_id("!!@@##"),
-            "organizations"
-        );
+        assert_eq!(AuthManager::sanitize_tenant_id("!!@@##"), "organizations");
     }
 
     #[tokio::test]
@@ -233,7 +224,8 @@ mod tests {
         let auth = AuthManager::new();
         assert_eq!(auth.get_tenant().await, "organizations");
 
-        auth.set_tenant("12345678-abcd-ef01-2345-6789abcdef01").await;
+        auth.set_tenant("12345678-abcd-ef01-2345-6789abcdef01")
+            .await;
         assert_eq!(
             auth.get_tenant().await,
             "12345678-abcd-ef01-2345-6789abcdef01"
@@ -253,7 +245,7 @@ mod tests {
     #[test]
     fn rejects_non_azure_resource_scopes() {
         let unsafe_scopes = [
-            "http://management.azure.com/",  // HTTP not HTTPS
+            "http://management.azure.com/", // HTTP not HTTPS
             "https://storage.azure.com",
             "https://database.windows.net",
             "",

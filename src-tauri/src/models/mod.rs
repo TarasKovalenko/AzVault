@@ -157,7 +157,10 @@ mod tests {
         let json = serde_json::to_string(&sub).expect("should serialize");
         assert!(json.contains("subscriptionId"), "field should be camelCase");
         assert!(json.contains("displayName"));
-        assert!(!json.contains("subscription_id"), "field should not be snake_case");
+        assert!(
+            !json.contains("subscription_id"),
+            "field should not be snake_case"
+        );
     }
 
     #[test]

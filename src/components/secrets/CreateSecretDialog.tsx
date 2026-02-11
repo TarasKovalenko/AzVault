@@ -221,7 +221,7 @@ export function CreateSecretDialog({
                   onOptionSelect={(_, data) =>
                     setContentType(String(data.optionValue ?? data.optionText ?? ''))
                   }
-                  onChange={(_, d) => setContentType(d.value)}
+                  onChange={(event) => setContentType(event.target.value)}
                   placeholder="Select or type content type"
                 >
                   {CONTENT_TYPE_OPTIONS.map((option) => (
