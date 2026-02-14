@@ -20,7 +20,12 @@ AzVault uses **Azure CLI authentication only**. You authenticate with `az login`
 - Browse Secrets, Keys, Certificates
 - Secret metadata + explicit value fetch flow
 - Secret CRUD lifecycle (set/delete/recover/purge)
-- Bulk secret selection + one-click delete with confirmation
+- Bulk delete safety flow:
+  - typed confirmation (`delete`)
+  - collapsible list of selected secrets
+  - live progress + failure count during delete
+  - immediate UI removal for successfully deleted items
+- Global search hotkey (`Ctrl+K` on Windows/Linux, `Cmd+K` on macOS)
 - Local audit log with redaction/sanitized export
 - VS Code-like operator UI with light/dark themes
 
@@ -101,6 +106,7 @@ Frontend:
 ```bash
 npm run lint
 npm run build
+npm run test:react
 ```
 
 Rust:
@@ -111,6 +117,9 @@ cargo fmt --check
 cargo test
 cargo check
 ```
+
+React logic tests enforce 100% coverage for the targeted logic module:
+- `src/components/secrets/secretsBulkDeleteLogic.ts`
 
 ## Security
 

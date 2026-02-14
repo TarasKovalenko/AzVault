@@ -1,26 +1,18 @@
 /**
  * StatusBar.tsx – Bottom status bar.
  *
- * Displays the current Azure environment, tenant/subscription IDs,
- * active vault, and theme mode in a compact, terminal-inspired bar.
+ * Displays tenant/subscription IDs, active vault, and theme mode
+ * in a compact, terminal-inspired bar.
  */
 
 import { Badge, Text, tokens } from '@fluentui/react-components';
 import { useAppStore } from '../../stores/appStore';
-
-/** Maps environment key to a concise display label. */
-function envLabel(env: string): string {
-  if (env === 'azureUsGovernment') return 'US Gov';
-  if (env === 'azureChina') return 'China';
-  return 'Public';
-}
 
 export function StatusBar() {
   const {
     selectedTenantId,
     selectedSubscriptionId,
     selectedVaultName,
-    environment,
     themeMode,
   } = useAppStore();
 
@@ -43,11 +35,8 @@ export function StatusBar() {
         fontSize: 11,
       }}
     >
-      {/* Left – environment and IDs */}
+      {/* Left – IDs */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }} className="azv-mono">
-        <Badge appearance="outline" size="small" color="informative">
-          {envLabel(environment)}
-        </Badge>
         <Text size={100} font="monospace">
           tenant:{selectedTenantId ? selectedTenantId.slice(0, 8) : '—'}
         </Text>

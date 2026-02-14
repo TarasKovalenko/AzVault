@@ -12,6 +12,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Button,
+  Input,
+  Spinner,
   Text,
   tokens,
   Dialog,
@@ -20,15 +22,24 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Spinner,
 } from '@fluentui/react-components';
 import { Add24Regular, ArrowDownload24Regular, Delete24Regular } from '@fluentui/react-icons';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { listSecrets, exportItems, deleteSecret } from '../../services/tauri';
 import { useAppStore } from '../../stores/appStore';
 import { ItemTable, renderEnabled, renderDate, renderTags } from '../common/ItemTable';
 import { DetailsDrawer } from '../common/DetailsDrawer';
 import { CreateSecretDialog } from './CreateSecretDialog';
+import {
+  filterOutDeletedSecrets,
+  getSelectedSecrets,
+  isDeleteConfirmationValid,
+  nextDeleteProgress,
+  pruneSelectedIds,
+  removeSucceededSelection,
+  toggleSelection,
+  toggleSelectionAll,
+} from './secretsBulkDeleteLogic';
 import type { Column } from '../common/ItemTable';
 import type { SecretItem } from '../../types';
 
@@ -97,6 +108,7 @@ const columns: Column<SecretItem>[] = [
 
 export function SecretsList() {
   const { selectedVaultUri, searchQuery } = useAppStore();
+  const queryClient = useQueryClient();
   const [selectedSecret, setSelectedSecret] = useState<SecretItem | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
@@ -105,6 +117,12 @@ export function SecretsList() {
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
   const [bulkDeleteError, setBulkDeleteError] = useState<string | null>(null);
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState('');
+  const [bulkDeleteProgress, setBulkDeleteProgress] = useState({
+    total: 0,
+    completed: 0,
+    failed: 0,
+  });
 
   const secretsQuery = useQuery({
     queryKey: ['secrets', selectedVaultUri],
@@ -114,10 +132,15 @@ export function SecretsList() {
 
   // ── Derived / filtered data ──
 
-  const filteredSecrets = (secretsQuery.data || []).filter((s) =>
+  const allSecrets = secretsQuery.data || [];
+  const filteredSecrets = allSecrets.filter((s) =>
     s.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
   const visibleSecrets = filteredSecrets.slice(0, visibleCount);
+  const selectedSecrets = useMemo(
+    () => getSelectedSecrets(allSecrets, selectedIds),
+    [allSecrets, selectedIds],
+  );
 
   const visibleIds = useMemo(() => visibleSecrets.map((s) => s.id), [visibleSecrets]);
   const selectedVisibleCount = useMemo(
@@ -133,25 +156,31 @@ export function SecretsList() {
 
   // Clean up stale selections when data refreshes
   useEffect(() => {
-    const existingIds = new Set((secretsQuery.data || []).map((s) => s.id));
+    const existingIds = new Set(allSecrets.map((s) => s.id));
     setSelectedIds((prev) => {
-      const next = new Set<string>();
-      prev.forEach((id) => {
-        if (existingIds.has(id)) next.add(id);
-      });
+      const next = pruneSelectedIds(prev, existingIds);
       return next.size === prev.size ? prev : next;
     });
-  }, [secretsQuery.data, selectedVaultUri]);
+  }, [allSecrets, selectedVaultUri]);
 
   // Close drawer if the selected secret was deleted
   useEffect(() => {
     if (!selectedSecret) return;
-    const stillExists = (secretsQuery.data || []).some((s) => s.id === selectedSecret.id);
+    const stillExists = allSecrets.some((s) => s.id === selectedSecret.id);
     if (!stillExists) {
       setSelectedSecret(null);
       setDrawerOpen(false);
     }
-  }, [selectedSecret, secretsQuery.data]);
+  }, [selectedSecret, allSecrets]);
+
+  // Reset dialog input/error/progress when dialog closes
+  useEffect(() => {
+    if (!showBulkDeleteConfirm) {
+      setDeleteConfirmInput('');
+      setBulkDeleteError(null);
+      setBulkDeleteProgress({ total: 0, completed: 0, failed: 0 });
+    }
+  }, [showBulkDeleteConfirm]);
 
   // ── Handlers ──
 
@@ -182,40 +211,56 @@ export function SecretsList() {
   };
 
   const toggleSelect = (id: string, checked: boolean) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (checked) next.add(id);
-      else next.delete(id);
-      return next;
-    });
+    setSelectedIds((prev) => toggleSelection(prev, id, checked, bulkDeleteLoading));
   };
 
   const toggleSelectAll = (checked: boolean) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (checked) visibleIds.forEach((id) => next.add(id));
-      else visibleIds.forEach((id) => next.delete(id));
-      return next;
-    });
+    setSelectedIds((prev) => toggleSelectionAll(prev, visibleIds, checked, bulkDeleteLoading));
   };
 
-  /** Bulk-delete selected secrets with error reporting. */
+  /** Bulk-delete selected secrets with typed confirmation and progress reporting. */
   const handleBulkDelete = async () => {
-    if (!selectedVaultUri) return;
+    if (!selectedVaultUri || !isDeleteConfirmationValid(deleteConfirmInput)) return;
+
+    const items = selectedSecrets;
+    if (items.length === 0) return;
+
     setBulkDeleteLoading(true);
     setBulkDeleteError(null);
+    setBulkDeleteProgress({ total: items.length, completed: 0, failed: 0 });
+
+    const succeededIds: string[] = [];
+    let failed = 0;
+
     try {
-      const items = filteredSecrets.filter((s) => selectedIds.has(s.id));
-      const results = await Promise.allSettled(
-        items.map((s) => deleteSecret(selectedVaultUri, s.name)),
+      await Promise.all(
+        items.map(async (item) => {
+          try {
+            await deleteSecret(selectedVaultUri, item.name);
+            succeededIds.push(item.id);
+          } catch {
+            failed += 1;
+          } finally {
+            setBulkDeleteProgress((prev) => nextDeleteProgress(prev, failed));
+          }
+        }),
       );
-      const failed = results.filter((r) => r.status === 'rejected').length;
+
+      setSelectedIds((prev) => removeSucceededSelection(prev, succeededIds));
+
+      if (selectedVaultUri && succeededIds.length > 0) {
+        queryClient.setQueryData<SecretItem[]>(
+          ['secrets', selectedVaultUri],
+          (current) => filterOutDeletedSecrets(current, succeededIds),
+        );
+      }
+
       if (failed > 0) {
         setBulkDeleteError(`${failed} secret(s) failed to delete. Check permissions.`);
       } else {
         setShowBulkDeleteConfirm(false);
       }
-      setSelectedIds(new Set());
+
       await secretsQuery.refetch();
     } catch (e) {
       setBulkDeleteError(String(e));
@@ -223,6 +268,8 @@ export function SecretsList() {
       setBulkDeleteLoading(false);
     }
   };
+
+  const deleteConfirmationValid = isDeleteConfirmationValid(deleteConfirmInput);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -283,7 +330,7 @@ export function SecretsList() {
             appearance="secondary"
             icon={<Delete24Regular />}
             size="small"
-            disabled={selectedIds.size === 0}
+            disabled={selectedIds.size === 0 || bulkDeleteLoading}
             onClick={() => setShowBulkDeleteConfirm(true)}
           >
             Delete
@@ -340,16 +387,69 @@ export function SecretsList() {
       {/* Bulk Delete Confirmation */}
       <Dialog
         open={showBulkDeleteConfirm}
-        onOpenChange={(_, d) => setShowBulkDeleteConfirm(d.open)}
+        onOpenChange={(_, d) => {
+          if (bulkDeleteLoading) return;
+          setShowBulkDeleteConfirm(d.open);
+        }}
       >
         <DialogSurface>
           <DialogBody>
             <DialogTitle>Delete Selected Secrets</DialogTitle>
             <DialogContent>
               <Text size={200}>
-                Delete <strong>{selectedIds.size}</strong> secret(s)? Recoverable only if
+                Delete <strong>{selectedSecrets.length}</strong> secret(s)? Recoverable only if
                 soft-delete is enabled.
               </Text>
+
+              <details
+                style={{
+                  marginTop: 12,
+                  border: `1px solid ${tokens.colorNeutralStroke2}`,
+                  borderRadius: 6,
+                  padding: '8px 10px',
+                }}
+              >
+                <summary style={{ cursor: 'pointer', fontSize: 12 }}>Selected items to delete</summary>
+                <div style={{ marginTop: 8, maxHeight: 200, overflow: 'auto' }}>
+                  {selectedSecrets.length === 0 ? (
+                    <Text size={200} style={{ opacity: 0.7 }}>
+                      No selected items.
+                    </Text>
+                  ) : (
+                    selectedSecrets.map((item) => (
+                      <div key={item.id} style={{ padding: '2px 0' }}>
+                        <Text size={200} className="azv-mono">
+                          {item.name}
+                        </Text>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </details>
+
+              <div style={{ marginTop: 12 }}>
+                <Text size={200}>
+                  Type <strong className="azv-mono">delete</strong> to confirm.
+                </Text>
+                <Input
+                  value={deleteConfirmInput}
+                  onChange={(_, data) => setDeleteConfirmInput(data.value)}
+                  placeholder="delete"
+                  disabled={bulkDeleteLoading}
+                  style={{ marginTop: 6, width: '100%' }}
+                />
+              </div>
+
+              {bulkDeleteLoading && (
+                <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Spinner size="tiny" />
+                  <Text size={200}>
+                    Deleting {bulkDeleteProgress.completed} / {bulkDeleteProgress.total} (failed:{' '}
+                    {bulkDeleteProgress.failed})
+                  </Text>
+                </div>
+              )}
+
               {bulkDeleteError && (
                 <div
                   style={{
@@ -376,7 +476,7 @@ export function SecretsList() {
               <Button
                 appearance="primary"
                 onClick={handleBulkDelete}
-                disabled={bulkDeleteLoading}
+                disabled={bulkDeleteLoading || selectedSecrets.length === 0 || !deleteConfirmationValid}
                 style={{ background: tokens.colorPaletteRedBackground3 }}
               >
                 {bulkDeleteLoading ? <Spinner size="tiny" /> : 'Delete All Selected'}

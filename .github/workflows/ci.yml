@@ -54,6 +54,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: React logic tests (coverage)
+        run: npm run test:react
+
       - name: Build
         run: npm run build
 

@@ -1,16 +1,15 @@
 /**
  * TopBar.tsx – Application header bar.
  *
- * Contains the app logo, global search input, environment selector,
- * theme toggle, refresh button, and user menu.
+ * Contains the app logo, global search input, theme toggle,
+ * refresh button, and user menu.
  */
 
+import { useEffect, useMemo, useRef } from 'react';
 import {
   Button,
   Input,
   Avatar,
-  Dropdown,
-  Option,
   Menu,
   MenuTrigger,
   MenuPopover,
@@ -37,13 +36,12 @@ import { useMockStore } from '../../stores/mockStore';
 import { authSignOut } from '../../services/tauri';
 
 export function TopBar() {
+  const searchInputWrapRef = useRef<HTMLDivElement>(null);
   const {
     userName,
     selectedVaultName,
     searchQuery,
     setSearchQuery,
-    environment,
-    setEnvironment,
     themeMode,
     setThemeMode,
     requireReauthForReveal,
@@ -71,12 +69,27 @@ export function TopBar() {
     queryClient.invalidateQueries();
   };
 
-  const envLabel =
-    environment === 'azurePublic'
-      ? 'Azure Public'
-      : environment === 'azureUsGovernment'
-        ? 'US Government'
-        : 'Azure China';
+  const shortcutLabel = useMemo(() => {
+    if (typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/i.test(navigator.platform)) {
+      return 'Cmd+K';
+    }
+    return 'Ctrl+K';
+  }, []);
+
+  useEffect(() => {
+    const onGlobalShortcut = (event: KeyboardEvent) => {
+      const isShortcut = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k';
+      if (!isShortcut) return;
+      event.preventDefault();
+      const input = searchInputWrapRef.current?.querySelector('input');
+      if (!input) return;
+      input.focus();
+      input.select();
+    };
+
+    window.addEventListener('keydown', onGlobalShortcut);
+    return () => window.removeEventListener('keydown', onGlobalShortcut);
+  }, []);
 
   return (
     <div
@@ -120,12 +133,12 @@ export function TopBar() {
           <Text size={100} className="azv-mono" style={{ opacity: 0.7 }}>
             {selectedVaultName ? selectedVaultName : 'no vault'}
           </Text>
-          <span className="azv-kbd">Ctrl+K</span>
+          <span className="azv-kbd">{shortcutLabel}</span>
         </div>
       </div>
 
       {/* Global search */}
-      <div style={{ flex: 1, maxWidth: 480, margin: '0 8px' }}>
+      <div ref={searchInputWrapRef} style={{ flex: 1, maxWidth: 480, margin: '0 8px' }}>
         <Input
           placeholder="Search secrets, keys, certificates…"
           contentBefore={<Search24Regular style={{ fontSize: 15 }} />}
@@ -144,27 +157,6 @@ export function TopBar() {
 
       {/* Right-side controls */}
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
-        {/* Environment selector */}
-        <Dropdown
-          size="small"
-          value={envLabel}
-          onOptionSelect={(_, data) => {
-            const value = data.optionValue;
-            if (
-              value === 'azurePublic' ||
-              value === 'azureUsGovernment' ||
-              value === 'azureChina'
-            ) {
-              setEnvironment(value);
-            }
-          }}
-          style={{ minWidth: 140, borderRadius: 4, fontSize: 12 }}
-        >
-          <Option value="azurePublic">Azure Public</Option>
-          <Option value="azureUsGovernment">US Government</Option>
-          <Option value="azureChina">Azure China</Option>
-        </Dropdown>
-
         {/* Mock data indicator */}
         {mockMode && (
           <Badge appearance="filled" color="danger" size="small">

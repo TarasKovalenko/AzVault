@@ -777,6 +777,19 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn exports_csv_escapes_quotes_and_nulls() {
+        let input = r#"[{"name":"db\"prod","enabled":null,"count":3}]"#.to_string();
+        let out = export_items(input, "csv".to_string())
+            .await
+            .expect("csv export should succeed");
+        assert!(out.contains("\"db\"\"prod\""), "quoted values should be escaped");
+        assert!(
+            out.contains(",,"),
+            "null values should be exported as empty CSV cells"
+        );
+    }
+
+    #[tokio::test]
     async fn exports_empty_csv() {
         let input = "[]".to_string();
         let out = export_items(input, "csv".to_string())
