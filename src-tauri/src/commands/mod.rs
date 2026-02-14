@@ -782,7 +782,10 @@ mod tests {
         let out = export_items(input, "csv".to_string())
             .await
             .expect("csv export should succeed");
-        assert!(out.contains("\"db\"\"prod\""), "quoted values should be escaped");
+        assert!(
+            out.contains("\"db\"\"prod\""),
+            "quoted values should be escaped"
+        );
         assert!(
             out.contains(",,"),
             "null values should be exported as empty CSV cells"
