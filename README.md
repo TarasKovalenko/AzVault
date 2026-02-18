@@ -7,12 +7,27 @@ AzVault is a cross-platform desktop Azure Key Vault explorer built with:
 
 AzVault uses **Azure CLI authentication only**. You authenticate with `az login`, and the app requests short-lived tokens via `az account get-access-token`.
 
-## Status
+![main view](./img/azvault-main-view.png)
 
-- `cargo test` passing
-- `cargo check` passing
-- `npm run lint` passing
-- `npm run build` passing
+![secret view](./img/azvault-secret-view.png)
+
+## Terms of use
+
+By using this project or its source code, for any purpose and in any shape or form, you grant your **implicit agreement** to all of the following statements:
+
+- You unequivocally condemn Russia and its military aggression against Ukraine
+- You recognize that Russia is an occupant that unlawfully invaded a sovereign state
+- You agree that [Russia is a terrorist state](https://www.europarl.europa.eu/doceo/document/RC-9-2022-0482_EN.html)
+- You fully support Ukraine's territorial integrity, including its claims over [temporarily occupied territories](https://en.wikipedia.org/wiki/Russian-occupied_territories_of_Ukraine)
+- You reject false narratives perpetuated by Russian state propaganda
+
+To learn more about the war and how you can help, [click here](https://war.ukraine.ua/). Glory to Ukraine! 🇺🇦
+
+## Supported Platforms
+
+- **Linux**
+- **macOS**
+- **Windows**
 
 ## Features
 
@@ -40,12 +55,14 @@ AzVault does not persist AAD refresh tokens or secret values.
 ## Threat Model (Short)
 
 ### In scope
+
 - Prevent accidental secret exposure in logs/UI
 - Restrict backend calls to Azure endpoints
 - Validate user-provided vault URIs and secret names
 - Keep audit data sanitized and size-bounded
 
 ### Out of scope
+
 - Compromised local machine or compromised Azure CLI installation
 - Clipboard exfiltration outside app controls
 - Azure-side RBAC/access policy misconfiguration
@@ -118,13 +135,10 @@ cargo test
 cargo check
 ```
 
-React logic tests enforce 100% coverage for the targeted logic module:
-- `src/components/secrets/secretsBulkDeleteLogic.ts`
-
 ## Security
 
-Please read `SECURITY.md` before reporting vulnerabilities.
+Please read [SECURITY.md](SECURITY.md) before reporting vulnerabilities.
 
 ## License
 
-MIT (`LICENSE`).
+MIT License - see [LICENSE](LICENSE) for details.

@@ -23,4 +23,4 @@ Repeated or severe violations may result in temporary or permanent bans.
 
 ## Reporting
 
-Report conduct issues via the security contact route in `SECURITY.md`.
+Report conduct issues via the security contact route in [SECURITY.md](SECURITY.md).

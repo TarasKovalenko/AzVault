@@ -3,6 +3,10 @@
   "private": false,
   "version": "0.1.0",
   "description": "Azure Key Vault Explorer - Desktop App",
+  "author": {
+    "name": "Taras Kovalenko",
+    "email": "bad.kto@gmail.com"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",

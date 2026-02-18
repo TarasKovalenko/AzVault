@@ -4,7 +4,7 @@ Thanks for contributing to AzVault.
 
 ## Development Setup
 
-1. Install prerequisites from `README.md`
+1. Install prerequisites from [README.md](README.md)
 2. Install deps: `npm install`
 3. Run app: `npm run tauri dev`
 
