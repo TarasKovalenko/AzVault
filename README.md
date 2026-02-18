@@ -1,5 +1,7 @@
 # AzVault
 
+[![Made in Ukraine](https://img.shields.io/badge/made_in-ukraine-ffd700.svg?labelColor=0057b7)](https://taraskovalenko.github.io/)
+
 AzVault is a cross-platform desktop Azure Key Vault explorer built with:
 - Tauri v2 (Rust)
 - React + TypeScript + Vite
@@ -7,9 +9,9 @@ AzVault is a cross-platform desktop Azure Key Vault explorer built with:
 
 AzVault uses **Azure CLI authentication only**. You authenticate with `az login`, and the app requests short-lived tokens via `az account get-access-token`.
 
-![main view](./img/azvault-main-view.png)
-
-![secret view](./img/azvault-secret-view.png)
+Main view             |  Secret view
+:-------------------------:|:-------------------------:
+![](./img/azvault-main-view.png)  |  ![](./img/azvault-secret-view.png)
 
 ## Terms of use
 
