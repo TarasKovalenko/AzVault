@@ -9,43 +9,43 @@
  * - Optional re-authentication gate before fetching values
  */
 
-import { useState, useCallback } from 'react';
 import {
+  Badge,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogBody,
+  DialogContent,
+  DialogSurface,
+  DialogTitle,
+  Divider,
   DrawerBody,
   DrawerHeader,
   DrawerHeaderTitle,
-  OverlayDrawer,
-  Button,
-  Text,
-  Badge,
   Field,
   Input,
-  Divider,
-  Dialog,
-  DialogSurface,
-  DialogTitle,
-  DialogBody,
-  DialogActions,
-  DialogContent,
-  tokens,
+  OverlayDrawer,
   Spinner,
+  Text,
   Tooltip,
+  tokens,
 } from '@fluentui/react-components';
 import {
-  Dismiss24Regular,
-  Eye24Regular,
-  EyeOff24Regular,
+  ArrowUndo24Regular,
+  Checkmark24Regular,
   Copy24Regular,
   Delete24Regular,
-  ArrowUndo24Regular,
-  Warning24Regular,
-  Checkmark24Regular,
+  Dismiss24Regular,
   Edit24Regular,
+  Eye24Regular,
+  EyeOff24Regular,
+  Warning24Regular,
 } from '@fluentui/react-icons';
 import { format } from 'date-fns';
-import type { SecretItem, SecretValue } from '../../types';
-import { getSecretValue, deleteSecret, recoverSecret, purgeSecret } from '../../services/tauri';
+import { useCallback, useState } from 'react';
+import { deleteSecret, getSecretValue, purgeSecret, recoverSecret } from '../../services/tauri';
 import { useAppStore } from '../../stores/appStore';
+import type { SecretItem, SecretValue } from '../../types';
 import { CreateSecretDialog } from '../secrets/CreateSecretDialog';
 
 interface DetailsDrawerProps {
@@ -277,7 +277,11 @@ export function DetailsDrawer({ item, vaultUri, open, onClose, onRefresh }: Deta
 
           {!secretValue ? (
             <div>
-              <Text block size={200} style={{ color: tokens.colorNeutralForeground3, marginBottom: 8 }}>
+              <Text
+                block
+                size={200}
+                style={{ color: tokens.colorNeutralForeground3, marginBottom: 8 }}
+              >
                 Values are never loaded automatically. Click to fetch on-demand.
               </Text>
               <Button
@@ -427,8 +431,8 @@ export function DetailsDrawer({ item, vaultUri, open, onClose, onRefresh }: Deta
             <DialogTitle>Confirm Secret Fetch</DialogTitle>
             <DialogContent>
               <Text size={200}>
-                Fetching will request the value from Azure Key Vault and hold it in
-                memory for this session only.
+                Fetching will request the value from Azure Key Vault and hold it in memory for this
+                session only.
               </Text>
               {requireReauthForReveal && (
                 <div style={{ marginTop: 10 }}>
@@ -493,7 +497,8 @@ export function DetailsDrawer({ item, vaultUri, open, onClose, onRefresh }: Deta
                 </Text>
               </div>
               <Text size={200}>
-                Purging <strong className="azv-mono">{item.name}</strong> will permanently remove it.
+                Purging <strong className="azv-mono">{item.name}</strong> will permanently remove
+                it.
               </Text>
             </DialogContent>
             <DialogActions>

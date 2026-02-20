@@ -5,8 +5,8 @@
  * and provides RBAC / access-policy guidance for troubleshooting 403 errors.
  */
 
+import { Badge, Card, Divider, Text } from '@fluentui/react-components';
 import { useMemo } from 'react';
-import { Card, Text, Badge, Divider } from '@fluentui/react-components';
 import { useAppStore } from '../../stores/appStore';
 
 /** Static permission guidance tips. */
@@ -56,9 +56,7 @@ export function AccessView() {
               <span
                 className="azv-status-dot"
                 style={{
-                  background: currentVault?.softDeleteEnabled
-                    ? 'var(--azv-success)'
-                    : '#e8a317',
+                  background: currentVault?.softDeleteEnabled ? 'var(--azv-success)' : '#e8a317',
                 }}
               />
               <Text size={200}>
@@ -87,15 +85,7 @@ export function AccessView() {
 }
 
 /** Small helper cell for the metadata grid. */
-function MetadataCell({
-  label,
-  value,
-  mono,
-}: {
-  label: string;
-  value: string;
-  mono?: boolean;
-}) {
+function MetadataCell({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
     <div>
       <Text size={200} className="azv-title" block>

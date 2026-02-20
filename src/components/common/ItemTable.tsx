@@ -13,16 +13,16 @@
 
 /* eslint-disable react-refresh/only-export-components */
 import {
+  Badge,
+  Checkbox,
+  Spinner,
   Table,
   TableBody,
   TableCell,
   TableHeader,
   TableHeaderCell,
   TableRow,
-  Badge,
-  Checkbox,
   Text,
-  Spinner,
   tokens,
 } from '@fluentui/react-components';
 import { format } from 'date-fns';
@@ -116,8 +116,7 @@ export function ItemTable<T>({
                 onClick={() => onSelect?.(item)}
                 style={{
                   cursor: 'pointer',
-                  background:
-                    selectedId === id ? tokens.colorBrandBackground2 : undefined,
+                  background: selectedId === id ? tokens.colorBrandBackground2 : undefined,
                 }}
               >
                 {selectable && (
@@ -165,7 +164,12 @@ export function renderEnabled(enabled: boolean) {
 
 /** Formats an ISO date string to a compact readable format. */
 export function renderDate(dateStr: string | null) {
-  if (!dateStr) return <Text size={200} style={{ opacity: 0.5 }}>—</Text>;
+  if (!dateStr)
+    return (
+      <Text size={200} style={{ opacity: 0.5 }}>
+        —
+      </Text>
+    );
   try {
     return (
       <Text size={200} className="azv-mono" style={{ fontSize: 11 }}>
@@ -180,7 +184,11 @@ export function renderDate(dateStr: string | null) {
 /** Renders tag key=value pairs as compact badge pills. */
 export function renderTags(tags: Record<string, string> | null) {
   if (!tags || Object.keys(tags).length === 0) {
-    return <Text size={200} style={{ opacity: 0.4 }}>—</Text>;
+    return (
+      <Text size={200} style={{ opacity: 0.4 }}>
+        —
+      </Text>
+    );
   }
   return (
     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>

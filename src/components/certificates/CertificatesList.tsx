@@ -5,15 +5,15 @@
  * paginated table. Individual certs open in the metadata drawer.
  */
 
-import { useState } from 'react';
-import { Text, Button, tokens } from '@fluentui/react-components';
+import { Button, Text, tokens } from '@fluentui/react-components';
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { listCertificates } from '../../services/tauri';
 import { useAppStore } from '../../stores/appStore';
-import { ItemTable, renderEnabled, renderDate } from '../common/ItemTable';
+import type { CertificateItem } from '../../types';
 import { ItemMetadataDrawer } from '../common/ItemMetadataDrawer';
 import type { Column } from '../common/ItemTable';
-import type { CertificateItem } from '../../types';
+import { ItemTable, renderDate, renderEnabled } from '../common/ItemTable';
 
 /** Column definitions for the certificates table. */
 const columns: Column<CertificateItem>[] = [
@@ -49,7 +49,7 @@ const columns: Column<CertificateItem>[] = [
     width: '15%',
     render: (item) => (
       <Text size={200} className="azv-mono" style={{ fontSize: 10, opacity: 0.8 }}>
-        {item.thumbprint ? item.thumbprint.slice(0, 16) + '…' : '—'}
+        {item.thumbprint ? `${item.thumbprint.slice(0, 16)}…` : '—'}
       </Text>
     ),
   },
@@ -64,7 +64,12 @@ const columns: Column<CertificateItem>[] = [
     label: 'Expires',
     width: '15%',
     render: (item) => {
-      if (!item.expires) return <Text size={200} style={{ opacity: 0.4 }}>Never</Text>;
+      if (!item.expires)
+        return (
+          <Text size={200} style={{ opacity: 0.4 }}>
+            Never
+          </Text>
+        );
       const expired = new Date(item.expires) < new Date();
       return (
         <Text size={200} style={{ color: expired ? 'var(--azv-danger)' : undefined }}>
@@ -95,7 +100,7 @@ export function CertificatesList() {
   /** Extract version segment from a certificate ID URL. */
   const extractVersion = (id: string): string => {
     const parts = id.split('/');
-    const idx = parts.findIndex((p) => p === 'certificates');
+    const idx = parts.indexOf('certificates');
     return idx >= 0 ? parts[idx + 2] || '—' : '—';
   };
 
@@ -118,7 +123,11 @@ export function CertificatesList() {
           x509
         </Text>
         {certsQuery.data && (
-          <Text size={200} className="azv-mono" style={{ color: tokens.colorNeutralForeground3, marginLeft: 8 }}>
+          <Text
+            size={200}
+            className="azv-mono"
+            style={{ color: tokens.colorNeutralForeground3, marginLeft: 8 }}
+          >
             ({filteredCerts.length}
             {searchQuery ? ` / ${certsQuery.data.length}` : ''})
           </Text>
@@ -144,7 +153,11 @@ export function CertificatesList() {
         />
         {filteredCerts.length > visibleCount && (
           <div style={{ display: 'flex', justifyContent: 'center', padding: 12 }}>
-            <Button onClick={() => setVisibleCount((c) => c + 50)} appearance="secondary" size="small">
+            <Button
+              onClick={() => setVisibleCount((c) => c + 50)}
+              appearance="secondary"
+              size="small"
+            >
               Load 50 more
             </Button>
           </div>

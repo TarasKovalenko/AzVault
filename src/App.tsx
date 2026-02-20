@@ -8,21 +8,21 @@
  * - Gate main layout behind authentication
  */
 
-import { useEffect } from 'react';
-import { FluentProvider, webDarkTheme, webLightTheme, tokens } from '@fluentui/react-components';
+import { FluentProvider, tokens, webDarkTheme, webLightTheme } from '@fluentui/react-components';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useAppStore } from './stores/appStore';
-import { SignIn } from './components/auth/SignIn';
-import { Sidebar } from './components/layout/Sidebar';
-import { TopBar } from './components/layout/TopBar';
-import { ContentTabs } from './components/layout/ContentTabs';
-import { SecretsList } from './components/secrets/SecretsList';
-import { KeysList } from './components/keys/KeysList';
-import { CertificatesList } from './components/certificates/CertificatesList';
-import { AuditLog } from './components/logs/AuditLog';
+import { useEffect } from 'react';
 import { AccessView } from './components/access/AccessView';
+import { SignIn } from './components/auth/SignIn';
+import { CertificatesList } from './components/certificates/CertificatesList';
+import { KeysList } from './components/keys/KeysList';
+import { ContentTabs } from './components/layout/ContentTabs';
+import { Sidebar } from './components/layout/Sidebar';
 import { StatusBar } from './components/layout/StatusBar';
+import { TopBar } from './components/layout/TopBar';
+import { AuditLog } from './components/logs/AuditLog';
+import { SecretsList } from './components/secrets/SecretsList';
 import { authStatus } from './services/tauri';
+import { useAppStore } from './stores/appStore';
 
 /** Shared React-Query client – 30s stale time, no retry on 401/403. */
 const queryClient = new QueryClient({
@@ -68,7 +68,10 @@ function MainContent() {
 /** Shell layout – top bar, sidebar, content pane, status bar. */
 function AppLayout() {
   return (
-    <div className="azv-shell" style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+    <div
+      className="azv-shell"
+      style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}
+    >
       <TopBar />
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <Sidebar />

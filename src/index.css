@@ -11,7 +11,9 @@
   box-sizing: border-box;
 }
 
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
   width: 100%;
   overflow: hidden;
@@ -19,7 +21,7 @@ html, body, #root {
 
 /* ── Light theme tokens ── */
 body,
-body[data-theme='light'] {
+body[data-theme="light"] {
   --azv-scroll-thumb: #b0b8c8;
   --azv-scroll-thumb-hover: #8892a6;
   --azv-row-hover: rgba(0, 120, 212, 0.07);
@@ -36,10 +38,10 @@ body[data-theme='light'] {
 }
 
 /* ── Dark theme tokens ── */
-body[data-theme='dark'] {
+body[data-theme="dark"] {
   --azv-scroll-thumb: #4a5568;
   --azv-scroll-thumb-hover: #606d80;
-  --azv-row-hover: rgba(100, 160, 255, 0.10);
+  --azv-row-hover: rgba(100, 160, 255, 0.1);
   --azv-accent: #4fc3f7;
   --azv-accent-dim: rgba(79, 195, 247, 0.14);
   --azv-terminal-bg: rgba(18, 18, 22, 0.98);

@@ -1,11 +1,11 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type {
-  Tenant,
-  Subscription,
-  KeyVaultInfo,
-  ItemTab,
   AzureEnvironment,
+  ItemTab,
+  KeyVaultInfo,
+  Subscription,
+  Tenant,
   ThemeMode,
 } from '../types';
 
@@ -69,8 +69,7 @@ export const useAppStore = create<AppStoreState>()(
       themeMode: 'light',
       requireReauthForReveal: false,
 
-      setSignedIn: (signed, userName) =>
-        set({ isSignedIn: signed, userName: userName ?? null }),
+      setSignedIn: (signed, userName) => set({ isSignedIn: signed, userName: userName ?? null }),
 
       setTenants: (tenants) => set({ tenants }),
 
@@ -96,10 +95,10 @@ export const useAppStore = create<AppStoreState>()(
 
       selectVault: (name, uri) =>
         set((state) => {
-          const recent = [
-            { name, uri },
-            ...state.recentVaults.filter((v) => v.uri !== uri),
-          ].slice(0, 10);
+          const recent = [{ name, uri }, ...state.recentVaults.filter((v) => v.uri !== uri)].slice(
+            0,
+            10,
+          );
           return {
             selectedVaultUri: uri,
             selectedVaultName: name,
@@ -144,6 +143,6 @@ export const useAppStore = create<AppStoreState>()(
         themeMode: state.themeMode,
         requireReauthForReveal: state.requireReauthForReveal,
       }),
-    }
-  )
+    },
+  ),
 );

@@ -6,32 +6,30 @@
  * Auto-refreshes every 10 seconds.
  */
 
-import { useState } from 'react';
 import {
-  Button,
-  Text,
   Badge,
-  Tooltip,
-  tokens,
+  Button,
+  Spinner,
   Table,
   TableBody,
   TableCell,
   TableHeader,
   TableHeaderCell,
   TableRow,
-  Spinner,
+  Text,
+  Tooltip,
+  tokens,
 } from '@fluentui/react-components';
-import {
-  Delete24Regular,
-  ArrowDownload24Regular,
-  Checkmark24Regular,
-} from '@fluentui/react-icons';
+import { ArrowDownload24Regular, Checkmark24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { getAuditLog, exportAuditLog, clearAuditLog } from '../../services/tauri';
 import { format } from 'date-fns';
+import { useState } from 'react';
+import { clearAuditLog, exportAuditLog, getAuditLog } from '../../services/tauri';
 
 /** Map action names to semantic badge colours. */
-function actionColor(action: string): 'informative' | 'success' | 'warning' | 'danger' | 'important' {
+function actionColor(
+  action: string,
+): 'informative' | 'success' | 'warning' | 'danger' | 'important' {
   if (action.includes('delete') || action.includes('purge')) return 'danger';
   if (action.includes('set') || action.includes('create')) return 'success';
   if (action.includes('get_value')) return 'warning';

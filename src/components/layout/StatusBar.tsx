@@ -9,12 +9,7 @@ import { Badge, Text, tokens } from '@fluentui/react-components';
 import { useAppStore } from '../../stores/appStore';
 
 export function StatusBar() {
-  const {
-    selectedTenantId,
-    selectedSubscriptionId,
-    selectedVaultName,
-    themeMode,
-  } = useAppStore();
+  const { selectedTenantId, selectedSubscriptionId, selectedVaultName, themeMode } = useAppStore();
 
   return (
     <div

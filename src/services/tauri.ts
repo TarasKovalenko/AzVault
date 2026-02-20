@@ -1,17 +1,17 @@
 import { invoke } from '@tauri-apps/api/core';
+import { useMockStore } from '../stores/mockStore';
 import type {
+  AuditEntry,
   AuthState,
-  Tenant,
-  Subscription,
+  CertificateItem,
+  CreateSecretRequest,
+  KeyItem,
   KeyVaultInfo,
   SecretItem,
   SecretValue,
-  KeyItem,
-  CertificateItem,
-  CreateSecretRequest,
-  AuditEntry,
+  Subscription,
+  Tenant,
 } from '../types';
-import { useMockStore } from '../stores/mockStore';
 
 function isMock(): boolean {
   return useMockStore.getState().mockMode;
@@ -107,7 +107,10 @@ export async function getSecretMetadata(vaultUri: string, name: string): Promise
   return invoke<SecretItem>('get_secret_metadata', { vaultUri, name });
 }
 
-export async function setSecret(vaultUri: string, request: CreateSecretRequest): Promise<SecretItem> {
+export async function setSecret(
+  vaultUri: string,
+  request: CreateSecretRequest,
+): Promise<SecretItem> {
   if (isMock()) {
     const { mockSetSecret } = await import('../mock/data');
     return mockSetSecret(request);

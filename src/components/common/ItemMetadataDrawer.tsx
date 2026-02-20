@@ -6,14 +6,14 @@
  */
 
 import {
+  Badge,
+  Button,
   DrawerBody,
   DrawerHeader,
   DrawerHeaderTitle,
-  OverlayDrawer,
-  Button,
-  Text,
-  Badge,
   Field,
+  OverlayDrawer,
+  Text,
   tokens,
 } from '@fluentui/react-components';
 import { Dismiss24Regular } from '@fluentui/react-icons';
@@ -46,9 +46,7 @@ export function ItemMetadataDrawer({
     >
       <DrawerHeader>
         <DrawerHeaderTitle
-          action={
-            <Button appearance="subtle" icon={<Dismiss24Regular />} onClick={onClose} />
-          }
+          action={<Button appearance="subtle" icon={<Dismiss24Regular />} onClick={onClose} />}
         >
           <span className="azv-mono">{title}</span>
         </DrawerHeaderTitle>
@@ -81,9 +79,7 @@ export function ItemMetadataDrawer({
                 }}
                 font={label.toLowerCase().includes('id') ? 'monospace' : undefined}
               >
-                {value === null || value === undefined || value === ''
-                  ? '—'
-                  : String(value)}
+                {value === null || value === undefined || value === '' ? '—' : String(value)}
               </Text>
             </Field>
           ))}
@@ -93,12 +89,7 @@ export function ItemMetadataDrawer({
             <Field label="Tags">
               <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 4 }}>
                 {Object.entries(tags).map(([k, v]) => (
-                  <Badge
-                    key={k}
-                    appearance="outline"
-                    className="azv-tag-pill"
-                    title={`${k}: ${v}`}
-                  >
+                  <Badge key={k} appearance="outline" className="azv-tag-pill" title={`${k}: ${v}`}>
                     <span className="azv-tag-text">
                       {k}: {v}
                     </span>

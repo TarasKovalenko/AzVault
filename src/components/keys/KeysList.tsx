@@ -5,15 +5,15 @@
  * Individual keys can be inspected in the metadata drawer.
  */
 
-import { useState } from 'react';
-import { Text, Badge, Button, tokens } from '@fluentui/react-components';
+import { Badge, Button, Text, tokens } from '@fluentui/react-components';
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { listKeys } from '../../services/tauri';
 import { useAppStore } from '../../stores/appStore';
-import { ItemTable, renderEnabled, renderDate } from '../common/ItemTable';
+import type { KeyItem } from '../../types';
 import { ItemMetadataDrawer } from '../common/ItemMetadataDrawer';
 import type { Column } from '../common/ItemTable';
-import type { KeyItem } from '../../types';
+import { ItemTable, renderDate, renderEnabled } from '../common/ItemTable';
 
 /** Column definitions for the keys table. */
 const columns: Column<KeyItem>[] = [
@@ -68,7 +68,12 @@ const columns: Column<KeyItem>[] = [
     label: 'Expires',
     width: '15%',
     render: (item) => {
-      if (!item.expires) return <Text size={200} style={{ opacity: 0.4 }}>Never</Text>;
+      if (!item.expires)
+        return (
+          <Text size={200} style={{ opacity: 0.4 }}>
+            Never
+          </Text>
+        );
       const expired = new Date(item.expires) < new Date();
       return (
         <Text size={200} style={{ color: expired ? 'var(--azv-danger)' : undefined }}>
@@ -99,7 +104,7 @@ export function KeysList() {
   /** Extract version segment from a key ID URL. */
   const extractVersion = (id: string): string => {
     const parts = id.split('/');
-    const idx = parts.findIndex((p) => p === 'keys');
+    const idx = parts.indexOf('keys');
     return idx >= 0 ? parts[idx + 2] || '—' : '—';
   };
 
@@ -122,7 +127,11 @@ export function KeysList() {
           crypto
         </Text>
         {keysQuery.data && (
-          <Text size={200} className="azv-mono" style={{ color: tokens.colorNeutralForeground3, marginLeft: 8 }}>
+          <Text
+            size={200}
+            className="azv-mono"
+            style={{ color: tokens.colorNeutralForeground3, marginLeft: 8 }}
+          >
             ({filteredKeys.length}
             {searchQuery ? ` / ${keysQuery.data.length}` : ''})
           </Text>
@@ -141,14 +150,16 @@ export function KeysList() {
           }}
           getItemId={(k) => k.id}
           emptyMessage={
-            keysQuery.isError
-              ? `Error: ${keysQuery.error}`
-              : 'No keys found in this vault'
+            keysQuery.isError ? `Error: ${keysQuery.error}` : 'No keys found in this vault'
           }
         />
         {filteredKeys.length > visibleCount && (
           <div style={{ display: 'flex', justifyContent: 'center', padding: 12 }}>
-            <Button onClick={() => setVisibleCount((c) => c + 50)} appearance="secondary" size="small">
+            <Button
+              onClick={() => setVisibleCount((c) => c + 50)}
+              appearance="secondary"
+              size="small"
+            >
               Load 50 more
             </Button>
           </div>

@@ -17,10 +17,7 @@ export function getSelectedSecrets(
   return allSecrets.filter((s) => selectedIds.has(s.id));
 }
 
-export function pruneSelectedIds(
-  selectedIds: Set<string>,
-  existingIds: Set<string>,
-): Set<string> {
+export function pruneSelectedIds(selectedIds: Set<string>, existingIds: Set<string>): Set<string> {
   const next = new Set<string>();
   selectedIds.forEach((id) => {
     if (existingIds.has(id)) next.add(id);
@@ -49,8 +46,15 @@ export function toggleSelectionAll(
 ): Set<string> {
   if (locked) return selectedIds;
   const next = new Set(selectedIds);
-  if (checked) visibleIds.forEach((id) => next.add(id));
-  else visibleIds.forEach((id) => next.delete(id));
+  if (checked) {
+    visibleIds.forEach((id) => {
+      next.add(id);
+    });
+  } else {
+    visibleIds.forEach((id) => {
+      next.delete(id);
+    });
+  }
   return next;
 }
 
@@ -59,7 +63,9 @@ export function removeSucceededSelection(
   succeededIds: string[],
 ): Set<string> {
   const next = new Set(selectedIds);
-  succeededIds.forEach((id) => next.delete(id));
+  succeededIds.forEach((id) => {
+    next.delete(id);
+  });
   return next;
 }
 
