@@ -5,35 +5,35 @@
  * refresh button, and user menu.
  */
 
-import { useEffect, useMemo, useRef } from 'react';
 import {
+  Avatar,
+  Badge,
   Button,
   Input,
-  Avatar,
   Menu,
-  MenuTrigger,
-  MenuPopover,
-  MenuList,
   MenuItem,
+  MenuList,
+  MenuPopover,
+  MenuTrigger,
   Text,
-  Badge,
   tokens,
 } from '@fluentui/react-components';
 import {
-  Search24Regular,
   ArrowSync24Regular,
+  Info24Regular,
+  PersonCircle24Regular,
+  Search24Regular,
+  Settings24Regular,
+  ShieldLock24Regular,
+  SignOut24Regular,
   WeatherMoon24Regular,
   WeatherSunny24Regular,
-  PersonCircle24Regular,
-  SignOut24Regular,
-  Settings24Regular,
-  Info24Regular,
-  ShieldLock24Regular,
 } from '@fluentui/react-icons';
 import { useQueryClient } from '@tanstack/react-query';
+import { useEffect, useMemo, useRef } from 'react';
+import { authSignOut } from '../../services/tauri';
 import { useAppStore } from '../../stores/appStore';
 import { useMockStore } from '../../stores/mockStore';
-import { authSignOut } from '../../services/tauri';
 
 export function TopBar() {
   const searchInputWrapRef = useRef<HTMLDivElement>(null);
@@ -123,9 +123,7 @@ export function TopBar() {
           <span
             className="azv-status-dot"
             style={{
-              background: selectedVaultName
-                ? 'var(--azv-success)'
-                : 'var(--azv-scroll-thumb)',
+              background: selectedVaultName ? 'var(--azv-success)' : 'var(--azv-scroll-thumb)',
               width: 6,
               height: 6,
             }}
@@ -197,10 +195,7 @@ export function TopBar() {
                 {userName || 'Azure User'}
               </MenuItem>
               {mockAvailable && (
-                <MenuItem
-                  icon={<Settings24Regular />}
-                  onClick={() => setMockMode(!mockMode)}
-                >
+                <MenuItem icon={<Settings24Regular />} onClick={() => setMockMode(!mockMode)}>
                   {mockMode ? 'Disable Mock Mode' : 'Enable Mock Mode'}
                 </MenuItem>
               )}

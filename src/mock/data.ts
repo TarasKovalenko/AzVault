@@ -1,14 +1,14 @@
 import type {
+  AuditEntry,
   AuthState,
-  Tenant,
-  Subscription,
+  CertificateItem,
+  CreateSecretRequest,
+  KeyItem,
   KeyVaultInfo,
   SecretItem,
   SecretValue,
-  KeyItem,
-  CertificateItem,
-  CreateSecretRequest,
-  AuditEntry,
+  Subscription,
+  Tenant,
 } from '../types';
 
 const mockSignedIn = false;

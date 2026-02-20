@@ -5,12 +5,12 @@
  * when a vault is selected. Shows an empty-state prompt otherwise.
  */
 
-import { TabList, Tab, Text, tokens } from '@fluentui/react-components';
+import { Tab, TabList, Text, tokens } from '@fluentui/react-components';
 import {
-  Key24Regular,
-  LockClosed24Regular,
   Certificate24Regular,
   DocumentText24Regular,
+  Key24Regular,
+  LockClosed24Regular,
   ShieldLock24Regular,
 } from '@fluentui/react-icons';
 import { useAppStore } from '../../stores/appStore';

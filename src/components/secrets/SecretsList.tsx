@@ -9,26 +9,28 @@
  * - Create dialog for new secrets
  */
 
-import { useEffect, useMemo, useState } from 'react';
 import {
   Button,
+  Dialog,
+  DialogActions,
+  DialogBody,
+  DialogContent,
+  DialogSurface,
+  DialogTitle,
   Input,
   Spinner,
   Text,
   tokens,
-  Dialog,
-  DialogSurface,
-  DialogBody,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
 } from '@fluentui/react-components';
 import { Add24Regular, ArrowDownload24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { listSecrets, exportItems, deleteSecret } from '../../services/tauri';
+import { useEffect, useMemo, useState } from 'react';
+import { deleteSecret, exportItems, listSecrets } from '../../services/tauri';
 import { useAppStore } from '../../stores/appStore';
-import { ItemTable, renderEnabled, renderDate, renderTags } from '../common/ItemTable';
+import type { SecretItem } from '../../types';
 import { DetailsDrawer } from '../common/DetailsDrawer';
+import type { Column } from '../common/ItemTable';
+import { ItemTable, renderDate, renderEnabled, renderTags } from '../common/ItemTable';
 import { CreateSecretDialog } from './CreateSecretDialog';
 import {
   filterOutDeletedSecrets,
@@ -40,9 +42,7 @@ import {
   toggleSelection,
   toggleSelectionAll,
 } from './secretsBulkDeleteLogic';
-import { exportSecretMetadata, type ExportFormat } from './secretsExport';
-import type { Column } from '../common/ItemTable';
-import type { SecretItem } from '../../types';
+import { type ExportFormat, exportSecretMetadata } from './secretsExport';
 
 /** Column definitions for the secrets table. */
 const columns: Column<SecretItem>[] = [
@@ -83,7 +83,12 @@ const columns: Column<SecretItem>[] = [
     label: 'Expires',
     width: '15%',
     render: (item) => {
-      if (!item.expires) return <Text size={200} style={{ opacity: 0.4 }}>Never</Text>;
+      if (!item.expires)
+        return (
+          <Text size={200} style={{ opacity: 0.4 }}>
+            Never
+          </Text>
+        );
       const expired = new Date(item.expires) < new Date();
       return (
         <Text
@@ -164,7 +169,7 @@ export function SecretsList() {
       const next = pruneSelectedIds(prev, existingIds);
       return next.size === prev.size ? prev : next;
     });
-  }, [allSecrets, selectedVaultUri]);
+  }, [allSecrets]);
 
   // Close drawer if the selected secret was deleted
   useEffect(() => {
@@ -275,9 +280,8 @@ export function SecretsList() {
       setSelectedIds((prev) => removeSucceededSelection(prev, succeededIds));
 
       if (selectedVaultUri && succeededIds.length > 0) {
-        queryClient.setQueryData<SecretItem[]>(
-          ['secrets', selectedVaultUri],
-          (current) => filterOutDeletedSecrets(current, succeededIds),
+        queryClient.setQueryData<SecretItem[]>(['secrets', selectedVaultUri], (current) =>
+          filterOutDeletedSecrets(current, succeededIds),
         );
       }
 
@@ -404,14 +408,16 @@ export function SecretsList() {
           onToggleSelect={toggleSelect}
           onToggleSelectAll={toggleSelectAll}
           emptyMessage={
-            secretsQuery.isError
-              ? `Error: ${secretsQuery.error}`
-              : 'No secrets found in this vault'
+            secretsQuery.isError ? `Error: ${secretsQuery.error}` : 'No secrets found in this vault'
           }
         />
         {filteredSecrets.length > visibleCount && (
           <div style={{ display: 'flex', justifyContent: 'center', padding: 12 }}>
-            <Button onClick={() => setVisibleCount((c) => c + 50)} appearance="secondary" size="small">
+            <Button
+              onClick={() => setVisibleCount((c) => c + 50)}
+              appearance="secondary"
+              size="small"
+            >
               Load 50 more
             </Button>
           </div>
@@ -460,7 +466,9 @@ export function SecretsList() {
                   padding: '8px 10px',
                 }}
               >
-                <summary style={{ cursor: 'pointer', fontSize: 12 }}>Selected items to delete</summary>
+                <summary style={{ cursor: 'pointer', fontSize: 12 }}>
+                  Selected items to delete
+                </summary>
                 <div style={{ marginTop: 8, maxHeight: 200, overflow: 'auto' }}>
                   {selectedSecrets.length === 0 ? (
                     <Text size={200} style={{ opacity: 0.7 }}>
@@ -527,7 +535,9 @@ export function SecretsList() {
               <Button
                 appearance="primary"
                 onClick={handleBulkDelete}
-                disabled={bulkDeleteLoading || selectedSecrets.length === 0 || !deleteConfirmationValid}
+                disabled={
+                  bulkDeleteLoading || selectedSecrets.length === 0 || !deleteConfirmationValid
+                }
                 style={{ background: tokens.colorPaletteRedBackground3 }}
               >
                 {bulkDeleteLoading ? <Spinner size="tiny" /> : 'Delete All Selected'}

@@ -6,38 +6,33 @@
  * provides quick access to previously opened vaults.
  */
 
-import { useState, useEffect, type ReactNode } from 'react';
 import {
-  Tree,
-  TreeItem,
-  TreeItemLayout,
-  Spinner,
-  Text,
   Badge,
   Button,
   Input,
+  Spinner,
+  Text,
   Tooltip,
+  Tree,
+  TreeItem,
+  TreeItemLayout,
   tokens,
 } from '@fluentui/react-components';
 import {
-  Building24Regular,
-  CreditCardPerson24Regular,
-  ShieldLock24Regular,
   ArrowSync24Regular,
-  Search24Regular,
-  Star24Filled,
+  Building24Regular,
   ChevronDown20Regular,
   ChevronRight20Regular,
+  CreditCardPerson24Regular,
   Delete24Regular,
+  Search24Regular,
+  ShieldLock24Regular,
+  Star24Filled,
 } from '@fluentui/react-icons';
 import { useQuery } from '@tanstack/react-query';
+import { type ReactNode, useEffect, useState } from 'react';
+import { listKeyvaults, listSubscriptions, listTenants, setTenant } from '../../services/tauri';
 import { useAppStore } from '../../stores/appStore';
-import {
-  listTenants,
-  listSubscriptions,
-  listKeyvaults,
-  setTenant,
-} from '../../services/tauri';
 
 /** Section identifiers used for collapse/resize state. */
 type SectionKey = 'tenant' | 'subscription' | 'vaults' | 'recent';
@@ -168,7 +163,8 @@ export function Sidebar() {
     return (
       <div
         style={{
-          maxHeight: key === 'vaults' ? 260 : key === 'subscription' ? 200 : key === 'tenant' ? 180 : 140,
+          maxHeight:
+            key === 'vaults' ? 260 : key === 'subscription' ? 200 : key === 'tenant' ? 180 : 140,
           overflow: 'auto',
           padding: '0 12px 8px',
         }}
@@ -206,8 +202,19 @@ export function Sidebar() {
             background: tokens.colorNeutralBackground1,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-            <Text size={100} className="azv-title" style={{ color: tokens.colorNeutralForeground3 }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 6,
+            }}
+          >
+            <Text
+              size={100}
+              className="azv-title"
+              style={{ color: tokens.colorNeutralForeground3 }}
+            >
               Context
             </Text>
             <Button
@@ -517,31 +524,29 @@ export function Sidebar() {
                 No recent vaults.
               </Text>
             ) : (
-              <>
-                {recentVaults.slice(0, 10).map((v) => (
-                  <div
-                    key={v.uri}
-                    onClick={() => selectVault(v.name, v.uri)}
-                    className="azv-list-item"
-                    style={{
-                      padding: '4px 8px',
-                      borderRadius: 4,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      marginBottom: 3,
-                    }}
-                  >
-                    <Star24Filled
-                      style={{ fontSize: 11, color: tokens.colorPaletteYellowForeground1 }}
-                    />
-                    <Text size={200} truncate wrap={false} className="azv-mono">
-                      {v.name}
-                    </Text>
-                  </div>
-                ))}
-              </>
+              recentVaults.slice(0, 10).map((v) => (
+                <div
+                  key={v.uri}
+                  onClick={() => selectVault(v.name, v.uri)}
+                  className="azv-list-item"
+                  style={{
+                    padding: '4px 8px',
+                    borderRadius: 4,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    marginBottom: 3,
+                  }}
+                >
+                  <Star24Filled
+                    style={{ fontSize: 11, color: tokens.colorPaletteYellowForeground1 }}
+                  />
+                  <Text size={200} truncate wrap={false} className="azv-mono">
+                    {v.name}
+                  </Text>
+                </div>
+              ))
             ),
           )}
         </>

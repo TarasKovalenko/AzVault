@@ -6,22 +6,22 @@
  * Mock-mode toggle is available when VITE_ENABLE_MOCK_MODE=true.
  */
 
-import { useState } from 'react';
 import {
-  Card,
-  CardHeader,
-  CardFooter,
-  Button,
-  Text,
   Badge,
+  Button,
+  Card,
+  CardFooter,
+  CardHeader,
   Spinner,
+  Text,
   tokens,
 } from '@fluentui/react-components';
 import {
-  PlugConnected24Regular,
   ArrowSync24Regular,
+  PlugConnected24Regular,
   ShieldLock24Regular,
 } from '@fluentui/react-icons';
+import { useState } from 'react';
 import { authStatus } from '../../services/tauri';
 import { useAppStore } from '../../stores/appStore';
 import { useMockStore } from '../../stores/mockStore';
@@ -66,9 +66,7 @@ export function SignIn() {
       <Card className="azv-pane" style={{ width: 560, padding: '28px 32px' }}>
         <CardHeader
           image={
-            <ShieldLock24Regular
-              style={{ fontSize: 28, color: tokens.colorBrandForeground1 }}
-            />
+            <ShieldLock24Regular style={{ fontSize: 28, color: tokens.colorBrandForeground1 }} />
           }
           header={
             <div>
@@ -83,19 +81,21 @@ export function SignIn() {
         />
 
         <div style={{ padding: '20px 0' }}>
-          <Text block size={200} style={{ marginBottom: 12, color: tokens.colorNeutralForeground2 }}>
+          <Text
+            block
+            size={200}
+            style={{ marginBottom: 12, color: tokens.colorNeutralForeground2 }}
+          >
             Authenticate using your existing Azure CLI identity.
           </Text>
 
           {/* Terminal-style instruction panel */}
           <div className="azv-terminal">
             <p>
-              <span className="azv-prompt">$</span>{' '}
-              <span className="azv-cmd">az login</span>
+              <span className="azv-prompt">$</span> <span className="azv-cmd">az login</span>
             </p>
             <p>
-              <span className="azv-prompt">$</span>{' '}
-              <span className="azv-cmd">az account set</span>{' '}
+              <span className="azv-prompt">$</span> <span className="azv-cmd">az account set</span>{' '}
               <span className="azv-comment">--subscription &lt;id&gt;</span>{' '}
               <span style={{ opacity: 0.5 }}># optional</span>
             </p>

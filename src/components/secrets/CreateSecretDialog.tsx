@@ -9,25 +9,25 @@
  * Creating with an existing name creates a new version (Azure KV behaviour).
  */
 
-import { useEffect, useState } from 'react';
 import {
-  Dialog,
-  DialogSurface,
-  DialogBody,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Button,
+  Combobox,
+  Dialog,
+  DialogActions,
+  DialogBody,
+  DialogContent,
+  DialogSurface,
+  DialogTitle,
   Field,
   Input,
-  Combobox,
   Option,
-  Textarea,
-  Switch,
   Spinner,
+  Switch,
   Text,
+  Textarea,
   tokens,
 } from '@fluentui/react-components';
+import { useEffect, useState } from 'react';
 import { setSecret } from '../../services/tauri';
 import type { CreateSecretRequest } from '../../types';
 
