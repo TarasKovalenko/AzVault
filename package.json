@@ -11,9 +11,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "npx @biomejs/biome lint . --max-diagnostics=200",
-    "lint:fix": "npx @biomejs/biome check . --write --unsafe --max-diagnostics=200",
-    "format": "npx @biomejs/biome format --write .",
+    "lint": "biome lint . --max-diagnostics=200",
+    "lint:fix": "biome check . --write --unsafe --max-diagnostics=200",
+    "format": "biome format --write .",
     "test:react": "vitest run --coverage",
     "preview": "vite preview",
     "tauri": "cargo tauri"
@@ -30,6 +30,7 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.4.3",
     "@types/node": "^25.3.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
