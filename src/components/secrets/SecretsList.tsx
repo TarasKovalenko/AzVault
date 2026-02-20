@@ -184,6 +184,20 @@ export function SecretsList() {
 
   // ── Handlers ──
 
+  const downloadExport = (content: string, format: 'json' | 'csv') => {
+    const mimeType = format === 'json' ? 'application/json' : 'text/csv;charset=utf-8';
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `azvault-secrets-${Date.now()}.${format}`;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
   const handleSelect = (item: SecretItem) => {
     setSelectedSecret(item);
     setDrawerOpen(true);
@@ -204,9 +218,18 @@ export function SecretsList() {
     );
     try {
       const result = await exportItems(JSON.stringify(metadata), format);
-      await navigator.clipboard.writeText(result);
-    } catch {
-      // Export errors are non-critical – silently ignored
+      try {
+        downloadExport(result, format);
+      } catch {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(result);
+        } else {
+          throw new Error('Unable to download or copy export.');
+        }
+      }
+    } catch (error) {
+      // Export errors are non-critical
+      console.error('Export failed:', error);
     }
   };
 
