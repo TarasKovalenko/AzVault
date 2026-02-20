@@ -40,6 +40,7 @@ import {
   toggleSelection,
   toggleSelectionAll,
 } from './secretsBulkDeleteLogic';
+import { exportSecretMetadata, type ExportFormat } from './secretsExport';
 import type { Column } from '../common/ItemTable';
 import type { SecretItem } from '../../types';
 
@@ -118,6 +119,8 @@ export function SecretsList() {
   const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
   const [bulkDeleteError, setBulkDeleteError] = useState<string | null>(null);
   const [deleteConfirmInput, setDeleteConfirmInput] = useState('');
+  const [exportMessage, setExportMessage] = useState<string | null>(null);
+  const [exportMessageTone, setExportMessageTone] = useState<'success' | 'error'>('success');
   const [bulkDeleteProgress, setBulkDeleteProgress] = useState({
     total: 0,
     completed: 0,
@@ -132,7 +135,7 @@ export function SecretsList() {
 
   // ── Derived / filtered data ──
 
-  const allSecrets = secretsQuery.data || [];
+  const allSecrets = useMemo(() => secretsQuery.data ?? [], [secretsQuery.data]);
   const filteredSecrets = allSecrets.filter((s) =>
     s.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
@@ -182,7 +185,27 @@ export function SecretsList() {
     }
   }, [showBulkDeleteConfirm]);
 
+  useEffect(() => {
+    if (!exportMessage) return;
+    const timer = window.setTimeout(() => setExportMessage(null), 3000);
+    return () => window.clearTimeout(timer);
+  }, [exportMessage]);
+
   // ── Handlers ──
+
+  const downloadExport = (content: string, format: ExportFormat) => {
+    const mimeType = format === 'json' ? 'application/json' : 'text/csv;charset=utf-8';
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `azvault-secrets-${Date.now()}.${format}`;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
 
   const handleSelect = (item: SecretItem) => {
     setSelectedSecret(item);
@@ -190,24 +213,27 @@ export function SecretsList() {
   };
 
   /** Export metadata (never secret values) as JSON or CSV. */
-  const handleExport = async (format: 'json' | 'csv') => {
-    const metadata = filteredSecrets.map(
-      ({ name, enabled, created, updated, expires, contentType, tags }) => ({
-        name,
-        enabled,
-        created,
-        updated,
-        expires,
-        contentType,
-        tags: tags ? JSON.stringify(tags) : '',
-      }),
-    );
-    try {
-      const result = await exportItems(JSON.stringify(metadata), format);
-      await navigator.clipboard.writeText(result);
-    } catch {
-      // Export errors are non-critical – silently ignored
-    }
+  const handleExport = async (format: ExportFormat) => {
+    await exportSecretMetadata(filteredSecrets, format, {
+      exportItems,
+      download: downloadExport,
+      writeClipboard: navigator.clipboard?.writeText
+        ? (content) => navigator.clipboard.writeText(content)
+        : undefined,
+      onError: (error) => {
+        setExportMessageTone('error');
+        setExportMessage('Export failed.');
+        console.error('Export failed:', error);
+      },
+      onSuccess: (mode) => {
+        setExportMessageTone('success');
+        setExportMessage(
+          mode === 'download'
+            ? `${format.toUpperCase()} downloaded.`
+            : `${format.toUpperCase()} copied to clipboard.`,
+        );
+      },
+    });
   };
 
   const toggleSelect = (id: string, checked: boolean) => {
@@ -337,6 +363,31 @@ export function SecretsList() {
           </Button>
         </div>
       </div>
+      {exportMessage && (
+        <div
+          style={{
+            padding: '6px 16px',
+            borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+            background:
+              exportMessageTone === 'success'
+                ? tokens.colorPaletteGreenBackground1
+                : tokens.colorPaletteRedBackground1,
+          }}
+        >
+          <Text
+            size={200}
+            className="azv-mono"
+            style={{
+              color:
+                exportMessageTone === 'success'
+                  ? tokens.colorPaletteGreenForeground1
+                  : tokens.colorPaletteRedForeground1,
+            }}
+          >
+            {exportMessage}
+          </Text>
+        </div>
+      )}
 
       {/* Table */}
       <div style={{ flex: 1, overflow: 'auto', padding: '0 16px' }}>

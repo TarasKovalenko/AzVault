@@ -25,3 +25,4 @@ src-tauri/gen/
 # Local security scan artifacts
 .secrets.baseline
 .secretscan-venv/
+coverage/
