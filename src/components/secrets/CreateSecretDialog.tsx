@@ -20,6 +20,7 @@ import {
   DialogTitle,
   Field,
   Input,
+  makeStyles,
   Option,
   Spinner,
   Switch,
@@ -30,6 +31,40 @@ import {
 import { useEffect, useState } from 'react';
 import { setSecret } from '../../services/tauri';
 import type { CreateSecretRequest } from '../../types';
+
+const useStyles = makeStyles({
+  formContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '14px',
+    paddingTop: '8px',
+  },
+  monoInput: {
+    fontFamily: "'IBM Plex Mono', monospace",
+    fontSize: '12px',
+  },
+  expirationColumn: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  },
+  switchRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  errorBox: {
+    padding: '8px',
+    background: tokens.colorPaletteRedBackground1,
+    borderRadius: '4px',
+  },
+  errorText: {
+    color: tokens.colorPaletteRedForeground1,
+  },
+  hintText: {
+    color: tokens.colorNeutralForeground3,
+  },
+});
 
 const CONTENT_TYPE_OPTIONS = [
   'text/plain',
@@ -92,6 +127,7 @@ export function CreateSecretDialog({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isEdit = mode === 'edit';
+  const classes = useStyles();
 
   useEffect(() => {
     if (!open) return;
@@ -192,14 +228,14 @@ export function CreateSecretDialog({
         <DialogBody>
           <DialogTitle>{isEdit ? 'Edit Secret' : 'Create Secret'}</DialogTitle>
           <DialogContent>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingTop: 8 }}>
+            <div className={classes.formContainer}>
               <Field label="Name" required hint="Alphanumeric and dashes only">
                 <Input
                   value={name}
                   onChange={(_, d) => setName(d.value)}
                   placeholder="my-secret-name"
                   disabled={isEdit}
-                  style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12 }}
+                  className={classes.monoInput}
                 />
               </Field>
 
@@ -209,7 +245,7 @@ export function CreateSecretDialog({
                   onChange={(_, d) => setValue(d.value)}
                   placeholder="Secret value…"
                   rows={3}
-                  style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12 }}
+                  className={classes.monoInput}
                 />
               </Field>
 
@@ -233,8 +269,8 @@ export function CreateSecretDialog({
               </Field>
 
               <Field label="Expiration (Optional)">
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div className={classes.expirationColumn}>
+                  <div className={classes.switchRow}>
                     <Switch
                       checked={hasExpiration}
                       onChange={(_, d) => {
@@ -258,30 +294,24 @@ export function CreateSecretDialog({
                   value={tagsInput}
                   onChange={(_, d) => setTagsInput(d.value)}
                   placeholder="env=prod, team=backend"
-                  style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12 }}
+                  className={classes.monoInput}
                 />
               </Field>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div className={classes.switchRow}>
                 <Switch checked={enabled} onChange={(_, d) => setEnabled(d.checked)} />
                 <Text size={200}>Enabled</Text>
               </div>
 
               {error && (
-                <div
-                  style={{
-                    padding: 8,
-                    background: tokens.colorPaletteRedBackground1,
-                    borderRadius: 4,
-                  }}
-                >
-                  <Text size={200} style={{ color: tokens.colorPaletteRedForeground1 }}>
+                <div className={classes.errorBox}>
+                  <Text size={200} className={classes.errorText}>
                     {error}
                   </Text>
                 </div>
               )}
 
-              <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>
+              <Text size={100} className={classes.hintText}>
                 {isEdit
                   ? 'Saving creates a new version of this secret.'
                   : 'Creating with an existing name produces a new version.'}

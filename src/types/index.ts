@@ -105,7 +105,7 @@ export interface AuditEntry {
 
 // ── UI State ──
 
-export type ItemTab = 'secrets' | 'keys' | 'certificates' | 'access' | 'logs';
+export type ItemTab = 'secrets' | 'keys' | 'certificates' | 'dashboard' | 'logs';
 
 export interface SessionSettings {
   tenantId: string | null;
@@ -118,3 +118,33 @@ export interface SessionSettings {
 
 export type AzureEnvironment = 'azurePublic' | 'azureUsGovernment' | 'azureChina';
 export type ThemeMode = 'light' | 'dark';
+
+// ── Pinned Vault ──
+
+export interface PinnedVault {
+  name: string;
+  uri: string;
+  tenantId: string;
+  subscriptionId: string;
+}
+
+// ── Error handling ──
+
+export interface UserFacingError {
+  title: string;
+  description: string;
+  action: string;
+  retryable: boolean;
+}
+
+// ── Command Palette ──
+
+export interface PaletteCommand {
+  id: string;
+  label: string;
+  category: 'navigation' | 'action' | 'vault' | 'settings';
+  shortcut?: string;
+  icon?: React.ReactNode;
+  execute: () => void;
+  when?: () => boolean;
+}
