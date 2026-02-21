@@ -45,8 +45,21 @@ const columns: Column<CertificateItem>[] = [
     label: 'Thumbprint',
     width: '15%',
     render: (item) => (
-      <Text size={200} className="azv-mono" style={{ fontSize: 10, opacity: 0.8 }}>
-        {item.thumbprint ? `${item.thumbprint.slice(0, 16)}...` : '—'}
+      <Text
+        size={200}
+        className="azv-mono"
+        title={item.thumbprint || undefined}
+        style={{
+          fontSize: 10,
+          opacity: 0.8,
+          display: 'block',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          maxWidth: '100%',
+        }}
+      >
+        {item.thumbprint || '—'}
       </Text>
     ),
   },

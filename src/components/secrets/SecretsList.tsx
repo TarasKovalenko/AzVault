@@ -1,4 +1,14 @@
-import { Button, Input, Text, tokens } from '@fluentui/react-components';
+import {
+  Button,
+  Input,
+  Menu,
+  MenuItem,
+  MenuList,
+  MenuPopover,
+  MenuTrigger,
+  Text,
+  tokens,
+} from '@fluentui/react-components';
 import {
   Add24Regular,
   ArrowDownload24Regular,
@@ -309,20 +319,23 @@ export function SecretsList() {
           />
         </div>
         <div style={{ display: 'flex', gap: 4 }}>
-          <Button
-            appearance="subtle"
-            icon={<ArrowDownload24Regular />}
-            size="small"
-            onClick={() => handleExport('json')}
-            title="Export JSON"
-          />
-          <Button
-            appearance="subtle"
-            icon={<ArrowDownload24Regular />}
-            size="small"
-            onClick={() => handleExport('csv')}
-            title="Export CSV"
-          />
+          <Menu>
+            <MenuTrigger disableButtonEnhancement>
+              <Button
+                appearance="subtle"
+                icon={<ArrowDownload24Regular />}
+                size="small"
+              >
+                Export
+              </Button>
+            </MenuTrigger>
+            <MenuPopover>
+              <MenuList>
+                <MenuItem onClick={() => handleExport('json')}>Export as JSON</MenuItem>
+                <MenuItem onClick={() => handleExport('csv')}>Export as CSV</MenuItem>
+              </MenuList>
+            </MenuPopover>
+          </Menu>
           <Button
             appearance="primary"
             icon={<Add24Regular />}

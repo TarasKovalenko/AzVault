@@ -20,7 +20,6 @@ import {
   TableBody,
   TableCell,
   TableHeader,
-  TableHeaderCell,
   TableRow,
   Text,
   tokens,
@@ -92,18 +91,18 @@ export function ItemTable<T>({
         <TableHeader>
           <TableRow>
             {selectable && (
-              <TableHeaderCell style={{ width: 38 }}>
+              <th className="azv-th" style={{ width: 38 }}>
                 <Checkbox
                   checked={selectAllState}
                   onChange={(_, d) => onToggleSelectAll?.(!!d.checked)}
                 />
-              </TableHeaderCell>
+              </th>
             )}
-            <TableHeaderCell style={{ width: 46 }}>#</TableHeaderCell>
+            <th className="azv-th" style={{ width: 46 }}>#</th>
             {columns.map((col) => (
-              <TableHeaderCell key={col.key} style={{ width: col.width }}>
+              <th className="azv-th" key={col.key} style={{ width: col.width }}>
                 {col.label}
-              </TableHeaderCell>
+              </th>
             ))}
           </TableRow>
         </TableHeader>

@@ -116,15 +116,20 @@ pre,
   background: rgba(127, 145, 169, 0.06);
 }
 
-.azv-table-wrap .fui-TableHeaderCell {
+.azv-table-wrap .azv-th {
   position: sticky;
   top: 0;
   z-index: 1;
   background: inherit;
+  padding: 7px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+  border: none;
 }
 
-.azv-table-wrap .fui-TableCell,
-.azv-table-wrap .fui-TableHeaderCell {
+.azv-table-wrap .fui-TableCell {
   padding-top: 7px;
   padding-bottom: 7px;
   font-size: 12px;

@@ -8,7 +8,6 @@ import {
   TableBody,
   TableCell,
   TableHeader,
-  TableHeaderCell,
   TableRow,
   Text,
   Tooltip,
@@ -235,13 +234,13 @@ export function AuditLog() {
               <Table size="small">
                 <TableHeader>
                   <TableRow>
-                    <TableHeaderCell style={{ width: '17%' }}>Time</TableHeaderCell>
-                    <TableHeaderCell style={{ width: '12%' }}>Vault</TableHeaderCell>
-                    <TableHeaderCell style={{ width: '14%' }}>Action</TableHeaderCell>
-                    <TableHeaderCell style={{ width: '9%' }}>Type</TableHeaderCell>
-                    <TableHeaderCell style={{ width: '15%' }}>Item</TableHeaderCell>
-                    <TableHeaderCell style={{ width: '10%' }}>Result</TableHeaderCell>
-                    <TableHeaderCell style={{ width: '23%' }}>Details</TableHeaderCell>
+                    <th className="azv-th" style={{ width: '17%' }}>Time</th>
+                    <th className="azv-th" style={{ width: '12%' }}>Vault</th>
+                    <th className="azv-th" style={{ width: '14%' }}>Action</th>
+                    <th className="azv-th" style={{ width: '9%' }}>Type</th>
+                    <th className="azv-th" style={{ width: '15%' }}>Item</th>
+                    <th className="azv-th" style={{ width: '10%' }}>Result</th>
+                    <th className="azv-th" style={{ width: '23%' }}>Details</th>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

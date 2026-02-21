@@ -176,6 +176,7 @@ body[data-theme="dark"] {
   width: 100%;
   text-align: left;
   font-size: 13px;
+  color: var(--azv-accent);
   transition: background 0.1s ease;
 }
 
