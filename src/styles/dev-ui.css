@@ -106,11 +106,21 @@ pre,
 .azv-table-wrap {
   border-radius: var(--azv-radius-sm);
   border: 1px solid var(--azv-border-subtle);
-  overflow: hidden;
+  overflow: auto;
 }
 
 .azv-table-wrap .fui-TableHeader {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   background: rgba(127, 145, 169, 0.06);
+}
+
+.azv-table-wrap .fui-TableHeaderCell {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: inherit;
 }
 
 .azv-table-wrap .fui-TableCell,

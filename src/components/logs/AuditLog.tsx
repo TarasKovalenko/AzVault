@@ -1,14 +1,8 @@
-/**
- * AuditLog.tsx – Local activity log viewer.
- *
- * Displays audit entries recorded by the Rust backend (list, get, set,
- * delete, purge operations). Supports export to clipboard and clear.
- * Auto-refreshes every 10 seconds.
- */
-
 import {
   Badge,
   Button,
+  Combobox,
+  Option,
   Spinner,
   Table,
   TableBody,
@@ -23,10 +17,12 @@ import {
 import { ArrowDownload24Regular, Checkmark24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { clearAuditLog, exportAuditLog, getAuditLog } from '../../services/tauri';
+import { useAppStore } from '../../stores/appStore';
+import { DangerConfirmDialog } from '../common/DangerConfirmDialog';
+import { EmptyState } from '../common/EmptyState';
 
-/** Map action names to semantic badge colours. */
 function actionColor(
   action: string,
 ): 'informative' | 'success' | 'warning' | 'danger' | 'important' {
@@ -37,20 +33,50 @@ function actionColor(
   return 'informative';
 }
 
+const ACTION_OPTIONS = [
+  'All',
+  'list',
+  'get',
+  'get_value',
+  'set',
+  'delete',
+  'recover',
+  'purge',
+] as const;
+const RESULT_OPTIONS = ['All', 'success', 'error'] as const;
+const TYPE_OPTIONS = ['All', 'secret', 'key', 'certificate'] as const;
+
 export function AuditLog() {
   const queryClient = useQueryClient();
+  const { auditRefreshInterval } = useAppStore();
   const [copied, setCopied] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [filterAction, setFilterAction] = useState('All');
+  const [filterResult, setFilterResult] = useState('All');
+  const [filterType, setFilterType] = useState('All');
+  const [visibleCount, setVisibleCount] = useState(200);
 
   const logQuery = useQuery({
     queryKey: ['auditLog'],
-    queryFn: () => getAuditLog(200),
-    refetchInterval: 10_000,
+    queryFn: () => getAuditLog(10000),
+    refetchInterval: auditRefreshInterval,
   });
 
-  /** Export sanitised audit log JSON to clipboard. */
+  const entries = useMemo(() => {
+    const all = [...(logQuery.data || [])].reverse();
+    return all.filter((e) => {
+      if (filterAction !== 'All' && !e.action.includes(filterAction)) return false;
+      if (filterResult !== 'All' && e.result !== filterResult) return false;
+      if (filterType !== 'All' && e.itemType !== filterType) return false;
+      return true;
+    });
+  }, [logQuery.data, filterAction, filterResult, filterType]);
+
+  const visibleEntries = entries.slice(0, visibleCount);
+
   const handleExport = async () => {
     if (isExporting) return;
     setIsExporting(true);
@@ -60,7 +86,6 @@ export function AuditLog() {
       try {
         await navigator.clipboard.writeText(data);
       } catch {
-        // Clipboard may be unavailable in some WebView environments; fall back to file export.
         const blob = new Blob([data], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -78,16 +103,14 @@ export function AuditLog() {
     }
   };
 
-  /** Clear all audit entries with user confirmation. */
   const handleClear = async () => {
-    if (isClearing) return;
-    if (!window.confirm('Clear all audit logs? This cannot be undone.')) return;
     setIsClearing(true);
     setActionError(null);
     try {
       await clearAuditLog();
       queryClient.setQueryData(['auditLog'], []);
       queryClient.invalidateQueries({ queryKey: ['auditLog'] });
+      setShowClearConfirm(false);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Failed to clear activity log.');
     } finally {
@@ -95,38 +118,77 @@ export function AuditLog() {
     }
   };
 
-  const entries = logQuery.data || [];
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Toolbar */}
       <div
         style={{
           display: 'flex',
-          alignItems: 'flex-start',
+          alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '8px 16px',
+          padding: '6px 12px',
           borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
           background: tokens.colorNeutralBackground2,
           gap: 8,
+          flexWrap: 'wrap',
         }}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Text weight="semibold" size={300}>
-              Activity Log
-            </Text>
-            <Text size={200} className="azv-mono" style={{ color: tokens.colorNeutralForeground3 }}>
-              ({entries.length})
-            </Text>
-          </div>
-          {actionError && (
-            <Text size={100} style={{ color: tokens.colorPaletteRedForeground1 }}>
-              {actionError}
-            </Text>
-          )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Text weight="semibold" size={300}>
+            Activity Log
+          </Text>
+          <Text size={200} className="azv-mono" style={{ color: tokens.colorNeutralForeground3 }}>
+            ({entries.length})
+          </Text>
         </div>
-        <div style={{ display: 'flex', gap: 6 }}>
+
+        {/* Filters */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Combobox
+            value={filterAction}
+            selectedOptions={[filterAction]}
+            onOptionSelect={(_, d) => setFilterAction(d.optionValue || 'All')}
+            placeholder="Action"
+            style={{ minWidth: 100 }}
+            size="small"
+          >
+            {ACTION_OPTIONS.map((o) => (
+              <Option key={o} value={o}>
+                {o}
+              </Option>
+            ))}
+          </Combobox>
+          <Combobox
+            value={filterResult}
+            selectedOptions={[filterResult]}
+            onOptionSelect={(_, d) => setFilterResult(d.optionValue || 'All')}
+            placeholder="Result"
+            style={{ minWidth: 90 }}
+            size="small"
+          >
+            {RESULT_OPTIONS.map((o) => (
+              <Option key={o} value={o}>
+                {o}
+              </Option>
+            ))}
+          </Combobox>
+          <Combobox
+            value={filterType}
+            selectedOptions={[filterType]}
+            onOptionSelect={(_, d) => setFilterType(d.optionValue || 'All')}
+            placeholder="Type"
+            style={{ minWidth: 100 }}
+            size="small"
+          >
+            {TYPE_OPTIONS.map((o) => (
+              <Option key={o} value={o}>
+                {o}
+              </Option>
+            ))}
+          </Combobox>
+        </div>
+
+        <div style={{ display: 'flex', gap: 4 }}>
           <Button
             appearance="subtle"
             icon={copied ? <Checkmark24Regular /> : <ArrowDownload24Regular />}
@@ -134,116 +196,166 @@ export function AuditLog() {
             onClick={handleExport}
             disabled={isExporting}
           >
-            {isExporting ? 'Exporting…' : copied ? 'Copied' : 'Export'}
+            {isExporting ? 'Exporting...' : copied ? 'Copied' : 'Export'}
           </Button>
           <Button
             appearance="subtle"
             icon={<Delete24Regular />}
             size="small"
-            onClick={handleClear}
+            onClick={() => setShowClearConfirm(true)}
             disabled={isClearing}
           >
-            {isClearing ? 'Clearing…' : 'Clear'}
+            Clear
           </Button>
         </div>
       </div>
 
+      {actionError && (
+        <div style={{ padding: '4px 12px', background: tokens.colorPaletteRedBackground1 }}>
+          <Text size={100} style={{ color: tokens.colorPaletteRedForeground1 }}>
+            {actionError}
+          </Text>
+        </div>
+      )}
+
       {/* Table */}
-      <div style={{ flex: 1, overflow: 'auto', padding: '0 16px' }}>
+      <div style={{ flex: 1, overflow: 'auto', padding: '0 12px', minHeight: 0 }}>
         {logQuery.isLoading ? (
           <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}>
-            <Spinner label="Loading…" />
+            <Spinner label="Loading..." />
           </div>
         ) : entries.length === 0 ? (
-          <div className="azv-empty">
-            <Text>No audit entries yet. Actions will be logged here.</Text>
-          </div>
+          <EmptyState
+            title="No audit entries"
+            description="Actions will be logged here. Secret values are NEVER recorded."
+          />
         ) : (
-          <div className="azv-table-wrap" style={{ marginTop: 8 }}>
-            <Table size="small">
-              <TableHeader>
-                <TableRow>
-                  <TableHeaderCell style={{ width: '17%' }}>Time</TableHeaderCell>
-                  <TableHeaderCell style={{ width: '12%' }}>Vault</TableHeaderCell>
-                  <TableHeaderCell style={{ width: '14%' }}>Action</TableHeaderCell>
-                  <TableHeaderCell style={{ width: '9%' }}>Type</TableHeaderCell>
-                  <TableHeaderCell style={{ width: '15%' }}>Item</TableHeaderCell>
-                  <TableHeaderCell style={{ width: '10%' }}>Result</TableHeaderCell>
-                  <TableHeaderCell style={{ width: '23%' }}>Details</TableHeaderCell>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {[...entries].reverse().map((entry, i) => (
-                  <TableRow key={i}>
-                    <TableCell>
-                      <Text size={200} className="azv-mono" style={{ fontSize: 10 }}>
-                        {(() => {
-                          try {
-                            return format(new Date(entry.timestamp), 'MMM d HH:mm:ss');
-                          } catch {
-                            return entry.timestamp;
-                          }
-                        })()}
-                      </Text>
-                    </TableCell>
-                    <TableCell>
-                      <Text size={200} className="azv-mono">
-                        {entry.vaultName}
-                      </Text>
-                    </TableCell>
-                    <TableCell>
-                      <Badge size="small" appearance="filled" color={actionColor(entry.action)}>
-                        {entry.action}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Text size={200}>{entry.itemType}</Text>
-                    </TableCell>
-                    <TableCell>
-                      <Text size={200} className="azv-mono" style={{ fontSize: 11 }}>
-                        {entry.itemName}
-                      </Text>
-                    </TableCell>
-                    <TableCell>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                        <span
-                          className="azv-status-dot"
-                          style={{
-                            background:
-                              entry.result === 'success'
-                                ? 'var(--azv-success)'
-                                : 'var(--azv-danger)',
-                          }}
-                        />
-                        <Text size={200}>{entry.result}</Text>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Tooltip content={entry.details || '—'} relationship="label">
-                        <Text
-                          size={200}
-                          className="azv-mono"
-                          style={{
-                            color: tokens.colorNeutralForeground3,
-                            display: 'inline-block',
-                            maxWidth: 240,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                            fontSize: 10,
-                          }}
-                        >
-                          {entry.details || '—'}
-                        </Text>
-                      </Tooltip>
-                    </TableCell>
+          <>
+            <div className="azv-table-wrap" style={{ marginTop: 8 }}>
+              <Table size="small">
+                <TableHeader>
+                  <TableRow>
+                    <TableHeaderCell style={{ width: '17%' }}>Time</TableHeaderCell>
+                    <TableHeaderCell style={{ width: '12%' }}>Vault</TableHeaderCell>
+                    <TableHeaderCell style={{ width: '14%' }}>Action</TableHeaderCell>
+                    <TableHeaderCell style={{ width: '9%' }}>Type</TableHeaderCell>
+                    <TableHeaderCell style={{ width: '15%' }}>Item</TableHeaderCell>
+                    <TableHeaderCell style={{ width: '10%' }}>Result</TableHeaderCell>
+                    <TableHeaderCell style={{ width: '23%' }}>Details</TableHeaderCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {visibleEntries.map((entry, i) => (
+                    <TableRow key={i}>
+                      <TableCell>
+                        <Text size={200} className="azv-mono" style={{ fontSize: 10 }}>
+                          {(() => {
+                            try {
+                              return format(new Date(entry.timestamp), 'MMM d HH:mm:ss');
+                            } catch {
+                              return entry.timestamp;
+                            }
+                          })()}
+                        </Text>
+                      </TableCell>
+                      <TableCell>
+                        <Text size={200} className="azv-mono">
+                          {entry.vaultName}
+                        </Text>
+                      </TableCell>
+                      <TableCell>
+                        <Badge size="small" appearance="filled" color={actionColor(entry.action)}>
+                          {entry.action}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Text size={200}>{entry.itemType}</Text>
+                      </TableCell>
+                      <TableCell>
+                        <Text size={200} className="azv-mono" style={{ fontSize: 11 }}>
+                          {entry.itemName}
+                        </Text>
+                      </TableCell>
+                      <TableCell>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                          <span
+                            className="azv-status-dot"
+                            style={{
+                              background:
+                                entry.result === 'success'
+                                  ? 'var(--azv-success)'
+                                  : 'var(--azv-danger)',
+                            }}
+                          />
+                          <Text size={200}>{entry.result}</Text>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Tooltip content={entry.details || '—'} relationship="label">
+                          <Text
+                            size={200}
+                            className="azv-mono"
+                            style={{
+                              color: tokens.colorNeutralForeground3,
+                              display: 'inline-block',
+                              maxWidth: 240,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              fontSize: 10,
+                            }}
+                          >
+                            {entry.details || '—'}
+                          </Text>
+                        </Tooltip>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            {entries.length > visibleCount && (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: 10 }}>
+                <Button
+                  onClick={() => setVisibleCount((c) => c + 200)}
+                  appearance="secondary"
+                  size="small"
+                >
+                  Load more ({entries.length - visibleCount} remaining)
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </div>
+
+      {/* Redaction guarantee banner */}
+      <div
+        style={{
+          padding: '4px 12px',
+          borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
+          background: tokens.colorNeutralBackground3,
+          fontSize: 10,
+        }}
+      >
+        <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>
+          Secret values are NEVER recorded in the audit log. Only operation metadata is logged.
+        </Text>
+      </div>
+
+      {/* Clear confirmation */}
+      <DangerConfirmDialog
+        open={showClearConfirm}
+        title="Clear Audit Log"
+        description="Clear all audit log entries? This cannot be undone."
+        confirmText="clear"
+        confirmLabel="Clear All"
+        dangerLevel="warning"
+        loading={isClearing}
+        onConfirm={handleClear}
+        onCancel={() => setShowClearConfirm(false)}
+      />
     </div>
   );
 }

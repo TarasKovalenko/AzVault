@@ -1,21 +1,18 @@
-/**
- * KeysList.tsx – Cryptographic keys browser.
- *
- * Displays key metadata (type, operations, dates) in a paginated table.
- * Individual keys can be inspected in the metadata drawer.
- */
-
-import { Badge, Button, Text, tokens } from '@fluentui/react-components';
+import { Badge, Button, Input, Text, tokens } from '@fluentui/react-components';
+import { Search24Regular } from '@fluentui/react-icons';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { listKeys } from '../../services/tauri';
 import { useAppStore } from '../../stores/appStore';
 import type { KeyItem } from '../../types';
-import { ItemMetadataDrawer } from '../common/ItemMetadataDrawer';
+import { EmptyState } from '../common/EmptyState';
+import { ErrorMessage } from '../common/ErrorMessage';
 import type { Column } from '../common/ItemTable';
 import { ItemTable, renderDate, renderEnabled } from '../common/ItemTable';
+import { LoadingSkeleton } from '../common/LoadingSkeleton';
+import { SplitPane } from '../common/SplitPane';
+import { KeyDetails } from './KeyDetails';
 
-/** Column definitions for the keys table. */
 const columns: Column<KeyItem>[] = [
   {
     key: 'name',
@@ -85,10 +82,11 @@ const columns: Column<KeyItem>[] = [
 ];
 
 export function KeysList() {
-  const { selectedVaultUri, searchQuery } = useAppStore();
+  const { selectedVaultUri, searchQuery, detailPanelOpen, splitRatio, setSplitRatio } =
+    useAppStore();
   const [visibleCount, setVisibleCount] = useState(50);
   const [selectedKey, setSelectedKey] = useState<KeyItem | null>(null);
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [localFilter, setLocalFilter] = useState('');
 
   const keysQuery = useQuery({
     queryKey: ['keys', selectedVaultUri],
@@ -96,95 +94,97 @@ export function KeysList() {
     enabled: !!selectedVaultUri,
   });
 
-  const filteredKeys = (keysQuery.data || []).filter((k) =>
-    k.name.toLowerCase().includes(searchQuery.toLowerCase()),
+  const filterText = localFilter || searchQuery;
+  const allKeys = keysQuery.data || [];
+  const filteredKeys = allKeys.filter((k) =>
+    k.name.toLowerCase().includes(filterText.toLowerCase()),
   );
   const visibleKeys = filteredKeys.slice(0, visibleCount);
 
-  /** Extract version segment from a key ID URL. */
-  const extractVersion = (id: string): string => {
-    const parts = id.split('/');
-    const idx = parts.indexOf('keys');
-    return idx >= 0 ? parts[idx + 2] || '—' : '—';
-  };
-
-  return (
+  const listPane = (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Toolbar */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
-          padding: '8px 16px',
+          padding: '6px 12px',
           borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
           background: tokens.colorNeutralBackground2,
+          gap: 8,
         }}
       >
         <Text weight="semibold" size={300}>
           Keys
         </Text>
-        <Text className="azv-title" style={{ marginLeft: 8 }}>
-          crypto
-        </Text>
         {keysQuery.data && (
-          <Text
-            size={200}
-            className="azv-mono"
-            style={{ color: tokens.colorNeutralForeground3, marginLeft: 8 }}
-          >
+          <Text size={200} className="azv-mono" style={{ color: tokens.colorNeutralForeground3 }}>
             ({filteredKeys.length}
-            {searchQuery ? ` / ${keysQuery.data.length}` : ''})
+            {filterText ? ` / ${allKeys.length}` : ''})
           </Text>
         )}
+        <Input
+          placeholder="Filter..."
+          contentBefore={<Search24Regular style={{ fontSize: 14 }} />}
+          size="small"
+          value={localFilter}
+          onChange={(_, d) => setLocalFilter(d.value)}
+          style={{ marginLeft: 'auto', maxWidth: 180, fontSize: 12 }}
+        />
       </div>
 
-      {/* Table */}
-      <div style={{ flex: 1, overflow: 'auto', padding: '0 16px' }}>
-        <ItemTable
-          items={visibleKeys}
-          columns={columns}
-          loading={keysQuery.isLoading}
-          onSelect={(item) => {
-            setSelectedKey(item);
-            setDrawerOpen(true);
-          }}
-          getItemId={(k) => k.id}
-          emptyMessage={
-            keysQuery.isError ? `Error: ${keysQuery.error}` : 'No keys found in this vault'
-          }
-        />
-        {filteredKeys.length > visibleCount && (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: 12 }}>
-            <Button
-              onClick={() => setVisibleCount((c) => c + 50)}
-              appearance="secondary"
-              size="small"
-            >
-              Load 50 more
-            </Button>
+      <div style={{ flex: 1, overflow: 'auto', padding: '0 12px', minHeight: 0 }}>
+        {keysQuery.isLoading ? (
+          <LoadingSkeleton rows={8} columns={[25, 10, 10, 25, 15, 15]} />
+        ) : keysQuery.isError ? (
+          <div style={{ padding: 16 }}>
+            <ErrorMessage error={String(keysQuery.error)} onRetry={() => keysQuery.refetch()} />
           </div>
+        ) : allKeys.length === 0 ? (
+          <EmptyState title="No keys found" description="This vault doesn't contain any keys." />
+        ) : filteredKeys.length === 0 ? (
+          <EmptyState
+            title="No matches"
+            description={`No keys match '${filterText}'.`}
+            action={{ label: 'Clear Filter', onClick: () => setLocalFilter('') }}
+          />
+        ) : (
+          <>
+            <ItemTable
+              items={visibleKeys}
+              columns={columns}
+              loading={false}
+              selectedId={selectedKey?.id}
+              onSelect={(item) => setSelectedKey(item)}
+              getItemId={(k) => k.id}
+            />
+            {filteredKeys.length > visibleCount && (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: 10 }}>
+                <Button
+                  onClick={() => setVisibleCount((c) => c + 50)}
+                  appearance="secondary"
+                  size="small"
+                >
+                  Load 50 more ({filteredKeys.length - visibleCount} remaining)
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </div>
-
-      {/* Metadata Drawer */}
-      <ItemMetadataDrawer
-        title={selectedKey?.name || 'Key'}
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        enabled={selectedKey?.enabled}
-        tags={selectedKey?.tags}
-        metadata={{
-          Name: selectedKey?.name,
-          Version: selectedKey ? extractVersion(selectedKey.id) : '—',
-          'Key Type': selectedKey?.keyType,
-          'Key Ops': selectedKey?.keyOps?.join(', ') || '—',
-          Created: selectedKey?.created,
-          Updated: selectedKey?.updated,
-          Expires: selectedKey?.expires || 'Never',
-          'Not Before': selectedKey?.notBefore,
-          ID: selectedKey?.id,
-        }}
-      />
     </div>
+  );
+
+  const detailPane = <KeyDetails item={selectedKey} onClose={() => setSelectedKey(null)} />;
+
+  return (
+    <SplitPane
+      left={listPane}
+      right={detailPane}
+      rightVisible={detailPanelOpen}
+      defaultRatio={splitRatio}
+      minLeft={320}
+      minRight={260}
+      onRatioChange={setSplitRatio}
+    />
   );
 }

@@ -1,15 +1,19 @@
-/**
- * StatusBar.tsx – Bottom status bar.
- *
- * Displays tenant/subscription IDs, active vault, and theme mode
- * in a compact, terminal-inspired bar.
- */
-
 import { Badge, Text, tokens } from '@fluentui/react-components';
 import { useAppStore } from '../../stores/appStore';
 
 export function StatusBar() {
-  const { selectedTenantId, selectedSubscriptionId, selectedVaultName, themeMode } = useAppStore();
+  const {
+    userName,
+    selectedTenantId,
+    selectedSubscriptionId,
+    selectedVaultName,
+    themeMode,
+    tenants,
+    subscriptions,
+  } = useAppStore();
+
+  const currentTenant = tenants.find((t) => t.tenant_id === selectedTenantId);
+  const currentSub = subscriptions.find((s) => s.subscriptionId === selectedSubscriptionId);
 
   return (
     <div
@@ -30,13 +34,32 @@ export function StatusBar() {
         fontSize: 11,
       }}
     >
-      {/* Left – IDs */}
+      {/* Left – Auth + context */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }} className="azv-mono">
-        <Text size={100} font="monospace">
-          tenant:{selectedTenantId ? selectedTenantId.slice(0, 8) : '—'}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span
+            className="azv-status-dot"
+            style={{
+              background: userName ? 'var(--azv-success)' : 'var(--azv-danger)',
+              width: 6,
+              height: 6,
+            }}
+          />
+          <Text size={100} font="monospace">
+            {userName || 'not signed in'}
+          </Text>
+        </div>
+        <Text size={100} font="monospace" style={{ opacity: 0.5 }}>
+          |
         </Text>
         <Text size={100} font="monospace">
-          sub:{selectedSubscriptionId ? selectedSubscriptionId.slice(0, 8) : '—'}
+          tenant:
+          {currentTenant?.display_name || (selectedTenantId ? selectedTenantId.slice(0, 8) : '—')}
+        </Text>
+        <Text size={100} font="monospace">
+          sub:
+          {currentSub?.displayName ||
+            (selectedSubscriptionId ? selectedSubscriptionId.slice(0, 8) : '—')}
         </Text>
       </div>
 
