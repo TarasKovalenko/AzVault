@@ -7,6 +7,7 @@ import {
   Spinner,
   Text,
   Tooltip,
+  makeStyles,
   tokens,
 } from '@fluentui/react-components';
 import {
@@ -21,6 +22,116 @@ import { authStatus } from '../../services/tauri';
 import { useAppStore } from '../../stores/appStore';
 import { useMockStore } from '../../stores/mockStore';
 
+const useStyles = makeStyles({
+  shellCenter: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '100vh',
+  },
+  shellCenterWithPadding: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '100vh',
+    padding: '20px',
+  },
+  card: {
+    width: '580px',
+    padding: '28px 32px',
+  },
+  headerIcon: {
+    fontSize: '28px',
+    color: tokens.colorBrandForeground1,
+  },
+  titleLetterSpacing: {
+    letterSpacing: '-0.01em',
+  },
+  titleMargin: {
+    marginTop: '2px',
+  },
+  contentPadding: {
+    padding: '20px 0',
+  },
+  cliStatusBox: {
+    padding: '12px 14px',
+    borderRadius: '6px',
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    background: tokens.colorNeutralBackground3,
+    marginBottom: '14px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+  },
+  cliStatusTitle: {
+    marginBottom: '2px',
+  },
+  statusRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  tenantText: {
+    fontSize: '11px',
+  },
+  terminalRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  terminalComment: {
+    opacity: 0.5,
+  },
+  terminalHint: {
+    marginTop: '6px',
+    opacity: 0.6,
+  },
+  copyBtn: {
+    color: 'var(--azv-terminal-fg)',
+  },
+  errorBox: {
+    marginTop: '14px',
+    padding: '10px 12px',
+    background: tokens.colorPaletteRedBackground1,
+    borderRadius: '4px',
+    fontSize: '12px',
+  },
+  errorTitle: {
+    color: tokens.colorPaletteRedForeground1,
+  },
+  errorBody: {
+    color: tokens.colorPaletteRedForeground1,
+    marginTop: '4px',
+  },
+  errorBodyOpacity: {
+    color: tokens.colorPaletteRedForeground1,
+    marginTop: '4px',
+    opacity: 0.85,
+  },
+  footer: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  },
+  connectBtn: {
+    width: '100%',
+    borderRadius: '4px',
+  },
+  mockBadgeRow: {
+    display: 'flex',
+    justifyContent: 'center',
+    gap: '8px',
+    marginTop: '8px',
+  },
+  mockBadge: {
+    cursor: 'pointer',
+  },
+  mockContinueBtn: {
+    width: '100%',
+    borderRadius: '4px',
+  },
+});
+
 interface CliCheck {
   cliFound: boolean | null;
   cliVersion: string | null;
@@ -30,6 +141,7 @@ interface CliCheck {
 }
 
 export function SignIn() {
+  const classes = useStyles();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cliCheck, setCliCheck] = useState<CliCheck>({
@@ -121,61 +233,38 @@ export function SignIn() {
 
   if (autoConnecting) {
     return (
-      <div
-        className="azv-shell"
-        style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
-      >
+      <div className={`azv-shell ${classes.shellCenter}`}>
         <Spinner label="Checking Azure CLI session..." />
       </div>
     );
   }
 
   return (
-    <div
-      className="azv-shell"
-      style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        padding: 20,
-      }}
-    >
-      <Card className="azv-pane" style={{ width: 580, padding: '28px 32px' }}>
+    <div className={`azv-shell ${classes.shellCenterWithPadding}`}>
+      <Card className={`azv-pane ${classes.card}`}>
         <CardHeader
           image={
-            <ShieldLock24Regular style={{ fontSize: 28, color: tokens.colorBrandForeground1 }} />
+            <ShieldLock24Regular className={classes.headerIcon} />
           }
           header={
             <div>
-              <Text weight="bold" size={500} style={{ letterSpacing: '-0.01em' }}>
+              <Text weight="bold" size={500} className={classes.titleLetterSpacing}>
                 AzVault
               </Text>
-              <Text block size={200} className="azv-title" style={{ marginTop: 2 }}>
+              <Text block size={200} className={`azv-title ${classes.titleMargin}`}>
                 Azure Key Vault Explorer
               </Text>
             </div>
           }
         />
 
-        <div style={{ padding: '20px 0' }}>
+        <div className={classes.contentPadding}>
           {/* CLI Status checks */}
-          <div
-            style={{
-              padding: '12px 14px',
-              borderRadius: 6,
-              border: `1px solid ${tokens.colorNeutralStroke2}`,
-              background: tokens.colorNeutralBackground3,
-              marginBottom: 14,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 6,
-            }}
-          >
-            <Text size={200} weight="semibold" block style={{ marginBottom: 2 }}>
+          <div className={classes.cliStatusBox}>
+            <Text size={200} weight="semibold" block className={classes.cliStatusTitle}>
               CLI Status
             </Text>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div className={classes.statusRow}>
               <StatusDot ok={cliCheck.cliFound} />
               <Text size={200}>
                 Azure CLI:{' '}
@@ -186,7 +275,7 @@ export function SignIn() {
                     : 'Not found'}
               </Text>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div className={classes.statusRow}>
               <StatusDot ok={cliCheck.sessionActive} />
               <Text size={200}>
                 Session:{' '}
@@ -198,9 +287,9 @@ export function SignIn() {
               </Text>
             </div>
             {cliCheck.tenantId && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div className={classes.statusRow}>
                 <StatusDot ok={true} />
-                <Text size={200} className="azv-mono" style={{ fontSize: 11 }}>
+                <Text size={200} className={`azv-mono ${classes.tenantText}`}>
                   Tenant: {cliCheck.tenantId}
                 </Text>
               </div>
@@ -209,7 +298,7 @@ export function SignIn() {
 
           {/* Terminal instructions */}
           <div className="azv-terminal">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div className={classes.terminalRow}>
               <p>
                 <span className="azv-prompt">$</span> <span className="azv-cmd">az login</span>
               </p>
@@ -219,16 +308,16 @@ export function SignIn() {
                   size="small"
                   icon={copiedCmd === 'az login' ? <Checkmark24Regular /> : <Copy24Regular />}
                   onClick={() => copyCommand('az login')}
-                  style={{ color: 'var(--azv-terminal-fg)' }}
+                  className={classes.copyBtn}
                 />
               </Tooltip>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div className={classes.terminalRow}>
               <p>
                 <span className="azv-prompt">$</span>{' '}
                 <span className="azv-cmd">az account set</span>{' '}
                 <span className="azv-comment">--subscription &lt;id&gt;</span>{' '}
-                <span style={{ opacity: 0.5 }}># optional</span>
+                <span className={classes.terminalComment}># optional</span>
               </p>
               <Tooltip
                 content={copiedCmd === 'az account set --subscription ' ? 'Copied!' : 'Copy'}
@@ -245,49 +334,29 @@ export function SignIn() {
                     )
                   }
                   onClick={() => copyCommand('az account set --subscription ')}
-                  style={{ color: 'var(--azv-terminal-fg)' }}
+                  className={classes.copyBtn}
                 />
               </Tooltip>
             </div>
-            <p style={{ marginTop: 6, opacity: 0.6 }}>
+            <p className={classes.terminalHint}>
               Then click Connect below to verify the session.
             </p>
           </div>
 
           {/* Error */}
           {error && (
-            <div
-              style={{
-                marginTop: 14,
-                padding: '10px 12px',
-                background: tokens.colorPaletteRedBackground1,
-                borderRadius: 4,
-                fontSize: 12,
-              }}
-            >
-              <Text
-                size={200}
-                weight="semibold"
-                style={{ color: tokens.colorPaletteRedForeground1 }}
-              >
+            <div className={classes.errorBox}>
+              <Text size={200} weight="semibold" className={classes.errorTitle}>
                 {error.includes('not found') || error.includes('not recognized')
                   ? 'Azure CLI not detected'
                   : error.includes('401') || error.includes('expired')
                     ? 'Session expired'
                     : 'Connection failed'}
               </Text>
-              <Text
-                size={200}
-                block
-                style={{ color: tokens.colorPaletteRedForeground1, marginTop: 4 }}
-              >
+              <Text size={200} block className={classes.errorBody}>
                 {error}
               </Text>
-              <Text
-                size={200}
-                block
-                style={{ color: tokens.colorPaletteRedForeground1, marginTop: 4, opacity: 0.85 }}
-              >
+              <Text size={200} block className={classes.errorBodyOpacity}>
                 {error.includes('not found')
                   ? 'Install Azure CLI: https://aka.ms/install-azure-cli'
                   : "Run 'az login' in your terminal, then click Connect."}
@@ -296,24 +365,24 @@ export function SignIn() {
           )}
         </div>
 
-        <CardFooter style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <CardFooter className={classes.footer}>
           <Button
             appearance="primary"
             size="large"
             onClick={checkCliSession}
             icon={loading ? <Spinner size="tiny" /> : <PlugConnected24Regular />}
-            style={{ width: '100%', borderRadius: 4 }}
+            className={classes.connectBtn}
             disabled={loading}
           >
             {loading ? 'Checking Azure CLI session...' : 'Connect with Azure CLI'}
           </Button>
 
           {mockAvailable && (
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 8 }}>
+            <div className={classes.mockBadgeRow}>
               <Badge
                 appearance={mockMode ? 'filled' : 'outline'}
                 color={mockMode ? 'success' : 'informative'}
-                style={{ cursor: 'pointer' }}
+                className={classes.mockBadge}
                 onClick={() => setMockMode(!mockMode)}
               >
                 {mockMode ? 'Mock Mode ON' : 'Mock Mode OFF'}
@@ -326,7 +395,7 @@ export function SignIn() {
               appearance="secondary"
               icon={<ArrowSync24Regular />}
               onClick={() => setSignedIn(true, 'demo@contoso.com')}
-              style={{ width: '100%', borderRadius: 4 }}
+              className={classes.mockContinueBtn}
             >
               Continue with Mock Data
             </Button>

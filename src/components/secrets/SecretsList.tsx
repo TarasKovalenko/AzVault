@@ -7,6 +7,8 @@ import {
   MenuPopover,
   MenuTrigger,
   Text,
+  makeStyles,
+  mergeClasses,
   tokens,
 } from '@fluentui/react-components';
 import {
@@ -40,71 +42,114 @@ import {
 } from './secretsBulkDeleteLogic';
 import { type ExportFormat, exportSecretMetadata } from './secretsExport';
 
-const columns: Column<SecretItem>[] = [
-  {
-    key: 'name',
-    label: 'Name',
-    width: '30%',
-    render: (item) => (
-      <Text weight="semibold" size={200} className="azv-mono">
-        {item.name}
-      </Text>
-    ),
+const useStyles = makeStyles({
+  listRoot: {
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
   },
-  {
-    key: 'enabled',
-    label: 'Status',
-    width: '10%',
-    render: (item) => renderEnabled(item.enabled),
+  toolbar: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '6px 12px',
+    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+    background: tokens.colorNeutralBackground2,
+    gap: '8px',
   },
-  {
-    key: 'contentType',
-    label: 'Type',
-    width: '15%',
-    render: (item) => (
-      <Text size={200} className="azv-mono" style={{ opacity: item.contentType ? 1 : 0.4 }}>
-        {item.contentType || '—'}
-      </Text>
-    ),
+  toolbarLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    flex: 1,
   },
-  {
-    key: 'updated',
-    label: 'Updated',
-    width: '20%',
-    render: (item) => renderDate(item.updated),
+  countText: {
+    color: tokens.colorNeutralForeground3,
   },
-  {
-    key: 'expires',
-    label: 'Expires',
-    width: '15%',
-    render: (item) => {
-      if (!item.expires)
-        return (
-          <Text size={200} style={{ opacity: 0.4 }}>
-            Never
-          </Text>
-        );
-      const expired = new Date(item.expires) < new Date();
-      return (
-        <Text
-          size={200}
-          className="azv-mono"
-          style={{ color: expired ? 'var(--azv-danger)' : undefined, fontSize: 11 }}
-        >
-          {renderDate(item.expires)}
-        </Text>
-      );
-    },
+  selectedText: {
+    color: tokens.colorBrandForeground1,
   },
-  {
-    key: 'tags',
-    label: 'Tags',
-    width: '10%',
-    render: (item) => renderTags(item.tags),
+  searchInput: {
+    marginLeft: 'auto',
+    maxWidth: '180px',
+    fontSize: '12px',
   },
-];
+  toolbarButtons: {
+    display: 'flex',
+    gap: '4px',
+  },
+  exportMessage: {
+    padding: '4px 12px',
+    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+  },
+  exportMessageSuccess: {
+    background: tokens.colorPaletteGreenBackground1,
+  },
+  exportMessageError: {
+    background: tokens.colorPaletteRedBackground1,
+  },
+  exportMessageTextSuccess: {
+    color: tokens.colorPaletteGreenForeground1,
+  },
+  exportMessageTextError: {
+    color: tokens.colorPaletteRedForeground1,
+  },
+  tableWrap: {
+    flex: 1,
+    overflow: 'auto',
+    padding: '0 12px',
+    minHeight: 0,
+  },
+  errorWrap: {
+    padding: '16px',
+  },
+  loadMoreWrap: {
+    display: 'flex',
+    justifyContent: 'center',
+    padding: '10px',
+  },
+  bulkDeleteDetails: {
+    marginTop: '12px',
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    borderRadius: '6px',
+    padding: '8px 10px',
+  },
+  bulkDeleteSummary: {
+    cursor: 'pointer',
+    fontSize: '12px',
+  },
+  bulkDeleteList: {
+    marginTop: '8px',
+    maxHeight: '200px',
+    overflow: 'auto',
+  },
+  bulkDeleteItem: {
+    padding: '2px 0',
+  },
+  bulkDeleteProgress: {
+    marginTop: '10px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  bulkDeleteError: {
+    marginTop: '10px',
+    padding: '8px',
+    borderRadius: '4px',
+    background: tokens.colorPaletteRedBackground1,
+    color: tokens.colorPaletteRedForeground1,
+    fontSize: '12px',
+  },
+  textDim: {
+    opacity: 0.4,
+  },
+  textExpires: {
+    fontSize: '11px',
+  },
+});
 
 export function SecretsList() {
+  const classes = useStyles();
   const { selectedVaultUri, searchQuery, detailPanelOpen, splitRatio, setSplitRatio } =
     useAppStore();
   const queryClient = useQueryClient();
@@ -123,6 +168,77 @@ export function SecretsList() {
   const [localFilter, setLocalFilter] = useState('');
   const [exportMessage, setExportMessage] = useState<string | null>(null);
   const [exportMessageTone, setExportMessageTone] = useState<'success' | 'error'>('success');
+
+  const columns: Column<SecretItem>[] = useMemo(
+    () => [
+      {
+        key: 'name',
+        label: 'Name',
+        width: '30%',
+        render: (item) => (
+          <Text weight="semibold" size={200} className="azv-mono">
+            {item.name}
+          </Text>
+        ),
+      },
+      {
+        key: 'enabled',
+        label: 'Status',
+        width: '10%',
+        render: (item) => renderEnabled(item.enabled),
+      },
+      {
+        key: 'contentType',
+        label: 'Type',
+        width: '15%',
+        render: (item) => (
+          <Text
+            size={200}
+            className="azv-mono"
+            style={{ opacity: item.contentType ? 1 : 0.4 }}
+          >
+            {item.contentType || '—'}
+          </Text>
+        ),
+      },
+      {
+        key: 'updated',
+        label: 'Updated',
+        width: '20%',
+        render: (item) => renderDate(item.updated),
+      },
+      {
+        key: 'expires',
+        label: 'Expires',
+        width: '15%',
+        render: (item) => {
+          if (!item.expires)
+            return (
+              <Text size={200} className={mergeClasses('azv-mono', classes.textDim)}>
+                Never
+              </Text>
+            );
+          const expired = new Date(item.expires) < new Date();
+          return (
+            <Text
+              size={200}
+              className={mergeClasses('azv-mono', classes.textExpires)}
+              style={expired ? { color: 'var(--azv-danger)' } : undefined}
+            >
+              {renderDate(item.expires)}
+            </Text>
+          );
+        },
+      },
+      {
+        key: 'tags',
+        label: 'Tags',
+        width: '10%',
+        render: (item) => renderTags(item.tags),
+      },
+    ],
+    [classes.textDim, classes.textExpires],
+  );
 
   const secretsQuery = useQuery({
     queryKey: ['secrets', selectedVaultUri],
@@ -280,31 +396,21 @@ export function SecretsList() {
   };
 
   const listPane = (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div className={classes.listRoot}>
       {/* Toolbar */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '6px 12px',
-          borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
-          background: tokens.colorNeutralBackground2,
-          gap: 8,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+      <div className={classes.toolbar}>
+        <div className={classes.toolbarLeft}>
           <Text weight="semibold" size={300}>
             Secrets
           </Text>
           {secretsQuery.data && (
-            <Text size={200} className="azv-mono" style={{ color: tokens.colorNeutralForeground3 }}>
+            <Text size={200} className={mergeClasses('azv-mono', classes.countText)}>
               ({filteredSecrets.length}
               {filterText ? ` / ${allSecrets.length}` : ''})
             </Text>
           )}
           {selectedIds.size > 0 && (
-            <Text size={200} className="azv-mono" style={{ color: tokens.colorBrandForeground1 }}>
+            <Text size={200} className={mergeClasses('azv-mono', classes.selectedText)}>
               {selectedIds.size} selected
             </Text>
           )}
@@ -315,10 +421,10 @@ export function SecretsList() {
             size="small"
             value={localFilter}
             onChange={(_, d) => setLocalFilter(d.value)}
-            style={{ marginLeft: 'auto', maxWidth: 180, fontSize: 12 }}
+            className={classes.searchInput}
           />
         </div>
-        <div style={{ display: 'flex', gap: 4 }}>
+        <div className={classes.toolbarButtons}>
           <Menu>
             <MenuTrigger disableButtonEnhancement>
               <Button
@@ -358,24 +464,21 @@ export function SecretsList() {
 
       {exportMessage && (
         <div
-          style={{
-            padding: '4px 12px',
-            borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
-            background:
-              exportMessageTone === 'success'
-                ? tokens.colorPaletteGreenBackground1
-                : tokens.colorPaletteRedBackground1,
-          }}
+          className={mergeClasses(
+            classes.exportMessage,
+            exportMessageTone === 'success'
+              ? classes.exportMessageSuccess
+              : classes.exportMessageError,
+          )}
         >
           <Text
             size={200}
-            className="azv-mono"
-            style={{
-              color:
-                exportMessageTone === 'success'
-                  ? tokens.colorPaletteGreenForeground1
-                  : tokens.colorPaletteRedForeground1,
-            }}
+            className={mergeClasses(
+              'azv-mono',
+              exportMessageTone === 'success'
+                ? classes.exportMessageTextSuccess
+                : classes.exportMessageTextError,
+            )}
           >
             {exportMessage}
           </Text>
@@ -383,11 +486,11 @@ export function SecretsList() {
       )}
 
       {/* Table */}
-      <div style={{ flex: 1, overflow: 'auto', padding: '0 12px', minHeight: 0 }}>
+      <div className={classes.tableWrap}>
         {secretsQuery.isLoading ? (
           <LoadingSkeleton rows={8} columns={[30, 10, 15, 20, 15, 10]} />
         ) : secretsQuery.isError ? (
-          <div style={{ padding: 16 }}>
+          <div className={classes.errorWrap}>
             <ErrorMessage
               error={String(secretsQuery.error)}
               onRetry={() => secretsQuery.refetch()}
@@ -427,7 +530,7 @@ export function SecretsList() {
               }
             />
             {filteredSecrets.length > visibleCount && (
-              <div style={{ display: 'flex', justifyContent: 'center', padding: 10 }}>
+              <div className={classes.loadMoreWrap}>
                 <Button
                   onClick={() => setVisibleCount((c) => c + 50)}
                   appearance="secondary"
@@ -468,20 +571,13 @@ export function SecretsList() {
           if (!bulkDeleteLoading) setShowBulkDeleteConfirm(false);
         }}
       >
-        <details
-          style={{
-            marginTop: 12,
-            border: `1px solid ${tokens.colorNeutralStroke2}`,
-            borderRadius: 6,
-            padding: '8px 10px',
-          }}
-        >
-          <summary style={{ cursor: 'pointer', fontSize: 12 }}>
+        <details className={classes.bulkDeleteDetails}>
+          <summary className={classes.bulkDeleteSummary}>
             Selected items ({selectedSecrets.length})
           </summary>
-          <div style={{ marginTop: 8, maxHeight: 200, overflow: 'auto' }}>
+          <div className={classes.bulkDeleteList}>
             {selectedSecrets.map((item) => (
-              <div key={item.id} style={{ padding: '2px 0' }}>
+              <div key={item.id} className={classes.bulkDeleteItem}>
                 <Text size={200} className="azv-mono">
                   {item.name}
                 </Text>
@@ -490,7 +586,7 @@ export function SecretsList() {
           </div>
         </details>
         {bulkDeleteLoading && (
-          <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div className={classes.bulkDeleteProgress}>
             <Text size={200}>
               Deleting {bulkDeleteProgress.completed} / {bulkDeleteProgress.total} (failed:{' '}
               {bulkDeleteProgress.failed})
@@ -498,18 +594,7 @@ export function SecretsList() {
           </div>
         )}
         {bulkDeleteError && (
-          <div
-            style={{
-              marginTop: 10,
-              padding: 8,
-              borderRadius: 4,
-              background: tokens.colorPaletteRedBackground1,
-              color: tokens.colorPaletteRedForeground1,
-              fontSize: 12,
-            }}
-          >
-            {bulkDeleteError}
-          </div>
+          <div className={classes.bulkDeleteError}>{bulkDeleteError}</div>
         )}
       </DangerConfirmDialog>
     </div>

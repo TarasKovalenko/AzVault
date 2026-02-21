@@ -1,4 +1,4 @@
-import { tokens } from '@fluentui/react-components';
+import { makeStyles, tokens } from '@fluentui/react-components';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface SplitPaneProps {
@@ -10,6 +10,37 @@ interface SplitPaneProps {
   minRight?: number;
   onRatioChange?: (ratio: number) => void;
 }
+
+const useStyles = makeStyles({
+  container: {
+    display: 'flex',
+    flex: 1,
+    overflow: 'hidden',
+    minHeight: 0,
+  },
+  leftPane: {
+    overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
+    minHeight: 0,
+  },
+  rightPane: {
+    flex: 1,
+    overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
+    minHeight: 0,
+    backgroundColor: tokens.colorNeutralBackground1,
+    borderLeft: `1px solid ${tokens.colorNeutralStroke2}`,
+  },
+  singlePane: {
+    flex: 1,
+    overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
+    minHeight: 0,
+  },
+});
 
 export function SplitPane({
   left,
@@ -23,6 +54,7 @@ export function SplitPane({
   const [ratio, setRatio] = useState(defaultRatio);
   const containerRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
+  const classes = useStyles();
 
   useEffect(() => {
     setRatio(defaultRatio);
@@ -62,36 +94,15 @@ export function SplitPane({
 
   if (!rightVisible) {
     return (
-      <div
-        ref={containerRef}
-        style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}
-      >
-        <div
-          style={{
-            flex: 1,
-            overflow: 'hidden',
-            display: 'flex',
-            flexDirection: 'column',
-            minHeight: 0,
-          }}
-        >
-          {left}
-        </div>
+      <div ref={containerRef} className={classes.container}>
+        <div className={classes.singlePane}>{left}</div>
       </div>
     );
   }
 
   return (
-    <div ref={containerRef} style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
-      <div
-        style={{
-          width: `${ratio * 100}%`,
-          overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column',
-          minHeight: 0,
-        }}
-      >
+    <div ref={containerRef} className={classes.container}>
+      <div className={classes.leftPane} style={{ width: `${ratio * 100}%` }}>
         {left}
       </div>
       {/* biome-ignore lint/a11y/useSemanticElements: hr doesn't support mouse drag semantics */}
@@ -107,19 +118,7 @@ export function SplitPane({
         aria-valuemax={100}
         tabIndex={0}
       />
-      <div
-        style={{
-          flex: 1,
-          overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column',
-          minHeight: 0,
-          background: tokens.colorNeutralBackground1,
-          borderLeft: `1px solid ${tokens.colorNeutralStroke2}`,
-        }}
-      >
-        {right}
-      </div>
+      <div className={classes.rightPane}>{right}</div>
     </div>
   );
 }

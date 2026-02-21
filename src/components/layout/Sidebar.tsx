@@ -1,4 +1,4 @@
-import { Badge, Button, Text, Tooltip, tokens } from '@fluentui/react-components';
+import { Badge, Button, Text, Tooltip, makeStyles, mergeClasses, tokens } from '@fluentui/react-components';
 import {
   Certificate24Regular,
   ClipboardTextLtr24Regular,
@@ -22,21 +22,141 @@ interface NavItem {
   countKey?: string;
 }
 
+const navIconStyle = { fontSize: 16 } as const;
+
 const VAULT_NAV: NavItem[] = [
-  {
-    id: 'dashboard',
-    label: 'Dashboard',
-    icon: <TextBulletListSquare24Regular style={{ fontSize: 16 }} />,
-  },
-  { id: 'secrets', label: 'Secrets', icon: <Key24Regular style={{ fontSize: 16 }} /> },
-  { id: 'keys', label: 'Keys', icon: <LockClosed24Regular style={{ fontSize: 16 }} /> },
-  {
-    id: 'certificates',
-    label: 'Certificates',
-    icon: <Certificate24Regular style={{ fontSize: 16 }} />,
-  },
-  { id: 'logs', label: 'Audit Log', icon: <ClipboardTextLtr24Regular style={{ fontSize: 16 }} /> },
+  { id: 'dashboard', label: 'Dashboard', icon: <TextBulletListSquare24Regular style={navIconStyle} /> },
+  { id: 'secrets', label: 'Secrets', icon: <Key24Regular style={navIconStyle} /> },
+  { id: 'keys', label: 'Keys', icon: <LockClosed24Regular style={navIconStyle} /> },
+  { id: 'certificates', label: 'Certificates', icon: <Certificate24Regular style={navIconStyle} /> },
+  { id: 'logs', label: 'Audit Log', icon: <ClipboardTextLtr24Regular style={navIconStyle} /> },
 ];
+
+const useStyles = makeStyles({
+  root: {
+    width: '220px',
+    minWidth: '220px',
+    height: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    backgroundColor: tokens.colorNeutralBackground2,
+    borderRight: `1px solid ${tokens.colorNeutralStroke2}`,
+    overflow: 'hidden',
+  },
+  collapsed: {
+    width: '48px',
+    minWidth: '48px',
+    alignItems: 'center',
+    padding: '8px 0',
+    gap: '4px',
+  },
+  collapsedBtn: {
+    width: '36px',
+    height: '36px',
+  },
+  section: {
+    padding: '8px 10px 4px',
+  },
+  sectionRecent: {
+    padding: '4px 10px',
+  },
+  sectionLabel: {
+    marginBottom: '4px',
+    padding: '0 4px',
+  },
+  sectionHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '0 4px',
+  },
+  clearBtn: {
+    width: '20px',
+    height: '20px',
+    minWidth: '20px',
+  },
+  vaultItem: {
+    padding: '4px 8px',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    marginBottom: '2px',
+  },
+  vaultItemSelected: {
+    backgroundColor: tokens.colorBrandBackground2,
+  },
+  starIcon: {
+    fontSize: '12px',
+    color: tokens.colorPaletteYellowForeground1,
+    flexShrink: 0,
+  },
+  recentIcon: {
+    fontSize: '12px',
+    opacity: 0.5,
+    flexShrink: 0,
+  },
+  vaultName: {
+    flex: 1,
+  },
+  divider: {
+    borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
+    margin: '4px 10px',
+  },
+  navSection: {
+    padding: '4px 10px',
+  },
+  navHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '0 4px',
+    marginBottom: '4px',
+  },
+  navTitle: {
+    flex: 1,
+  },
+  pinBtn: {
+    width: '24px',
+    height: '24px',
+    minWidth: '24px',
+  },
+  navItem: {
+    padding: '6px 8px',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    marginBottom: '2px',
+  },
+  navItemActive: {
+    backgroundColor: tokens.colorBrandBackground2,
+    fontWeight: 600,
+  },
+  navIcon: {
+    opacity: 0.6,
+  },
+  navIconActive: {
+    opacity: 1,
+  },
+  navLabel: {
+    flex: 1,
+  },
+  emptyState: {
+    padding: '20px',
+    textAlign: 'center' as const,
+  },
+  emptyIcon: {
+    fontSize: '32px',
+    opacity: 0.3,
+  },
+  emptyText: {
+    color: tokens.colorNeutralForeground3,
+    marginTop: '8px',
+  },
+});
 
 export function Sidebar() {
   const {
@@ -54,6 +174,7 @@ export function Sidebar() {
     selectedTenantId,
     selectedSubscriptionId,
   } = useAppStore();
+  const classes = useStyles();
 
   const secretsQuery = useQuery({
     queryKey: ['secrets', selectedVaultUri],
@@ -81,20 +202,7 @@ export function Sidebar() {
 
   if (sidebarCollapsed) {
     return (
-      <div
-        style={{
-          width: 48,
-          minWidth: 48,
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          padding: '8px 0',
-          gap: 4,
-          background: tokens.colorNeutralBackground2,
-          borderRight: `1px solid ${tokens.colorNeutralStroke2}`,
-        }}
-      >
+      <div className={mergeClasses(classes.root, classes.collapsed)}>
         {selectedVaultName &&
           VAULT_NAV.map((item) => (
             <Tooltip key={item.id} content={item.label} relationship="label" positioning="after">
@@ -103,7 +211,7 @@ export function Sidebar() {
                 size="small"
                 icon={item.icon}
                 onClick={() => setActiveTab(item.id)}
-                style={{ width: 36, height: 36 }}
+                className={classes.collapsedBtn}
               />
             </Tooltip>
           ))}
@@ -112,50 +220,24 @@ export function Sidebar() {
   }
 
   return (
-    <div
-      style={{
-        width: 220,
-        minWidth: 220,
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        background: tokens.colorNeutralBackground2,
-        borderRight: `1px solid ${tokens.colorNeutralStroke2}`,
-        overflow: 'hidden',
-      }}
-    >
-      {/* Pinned vaults */}
+    <div className={classes.root}>
       {pinnedVaults.length > 0 && (
-        <div style={{ padding: '8px 10px 4px' }}>
-          <Text
-            size={100}
-            className="azv-title"
-            block
-            style={{ marginBottom: 4, padding: '0 4px' }}
-          >
+        <div className={classes.section}>
+          <Text size={100} className={`azv-title ${classes.sectionLabel}`} block>
             Pinned
           </Text>
           {pinnedVaults.map((v) => (
             <div
               key={v.uri}
               onClick={() => selectVault(v.name, v.uri)}
-              className="azv-list-item"
-              style={{
-                padding: '4px 8px',
-                borderRadius: 4,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                marginBottom: 2,
-                background:
-                  v.uri === selectedVaultUri ? tokens.colorBrandBackground2 : 'transparent',
-              }}
+              className={mergeClasses(
+                'azv-list-item',
+                classes.vaultItem,
+                v.uri === selectedVaultUri && classes.vaultItemSelected,
+              )}
             >
-              <Star24Filled
-                style={{ fontSize: 12, color: tokens.colorPaletteYellowForeground1, flexShrink: 0 }}
-              />
-              <Text size={200} truncate wrap={false} className="azv-mono" style={{ flex: 1 }}>
+              <Star24Filled className={classes.starIcon} />
+              <Text size={200} truncate wrap={false} className={`azv-mono ${classes.vaultName}`}>
                 {v.name}
               </Text>
             </div>
@@ -163,17 +245,9 @@ export function Sidebar() {
         </div>
       )}
 
-      {/* Recent vaults */}
       {recentVaults.length > 0 && (
-        <div style={{ padding: '4px 10px' }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '0 4px',
-            }}
-          >
+        <div className={classes.sectionRecent}>
+          <div className={classes.sectionHeader}>
             <Text size={100} className="azv-title">
               Recent
             </Text>
@@ -183,28 +257,21 @@ export function Sidebar() {
               size="small"
               onClick={clearRecentVaults}
               title="Clear recent vaults"
-              style={{ width: 20, height: 20, minWidth: 20 }}
+              className={classes.clearBtn}
             />
           </div>
           {recentVaults.slice(0, 5).map((v) => (
             <div
               key={v.uri}
               onClick={() => selectVault(v.name, v.uri)}
-              className="azv-list-item"
-              style={{
-                padding: '4px 8px',
-                borderRadius: 4,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                marginBottom: 2,
-                background:
-                  v.uri === selectedVaultUri ? tokens.colorBrandBackground2 : 'transparent',
-              }}
+              className={mergeClasses(
+                'azv-list-item',
+                classes.vaultItem,
+                v.uri === selectedVaultUri && classes.vaultItemSelected,
+              )}
             >
-              <ShieldLock24Regular style={{ fontSize: 12, opacity: 0.5, flexShrink: 0 }} />
-              <Text size={200} truncate wrap={false} className="azv-mono" style={{ flex: 1 }}>
+              <ShieldLock24Regular className={classes.recentIcon} />
+              <Text size={200} truncate wrap={false} className={`azv-mono ${classes.vaultName}`}>
                 {v.name}
               </Text>
             </div>
@@ -212,23 +279,12 @@ export function Sidebar() {
         </div>
       )}
 
-      {/* Vault nav (when vault selected) */}
       {selectedVaultName && (
         <>
-          <div
-            style={{ borderTop: `1px solid ${tokens.colorNeutralStroke2}`, margin: '4px 10px' }}
-          />
-          <div style={{ padding: '4px 10px' }}>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '0 4px',
-                marginBottom: 4,
-              }}
-            >
-              <Text size={100} className="azv-title" style={{ flex: 1 }}>
+          <div className={classes.divider} />
+          <div className={classes.navSection}>
+            <div className={classes.navHeader}>
+              <Text size={100} className={`azv-title ${classes.navTitle}`}>
                 {selectedVaultName}
               </Text>
               <Tooltip content={isPinned ? 'Unpin vault' : 'Pin vault'} relationship="label">
@@ -254,48 +310,45 @@ export function Sidebar() {
                       });
                     }
                   }}
-                  style={{ width: 24, height: 24, minWidth: 24 }}
+                  className={classes.pinBtn}
                 />
               </Tooltip>
             </div>
 
-            {VAULT_NAV.map((item) => (
-              <div
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className="azv-list-item"
-                style={{
-                  padding: '6px 8px',
-                  borderRadius: 4,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  marginBottom: 2,
-                  background: activeTab === item.id ? tokens.colorBrandBackground2 : 'transparent',
-                  fontWeight: activeTab === item.id ? 600 : 400,
-                }}
-              >
-                <span style={{ opacity: activeTab === item.id ? 1 : 0.6 }}>{item.icon}</span>
-                <Text size={200} style={{ flex: 1 }}>
-                  {item.label}
-                </Text>
-                {counts[item.id] !== undefined && (
-                  <Badge size="small" appearance="outline">
-                    {counts[item.id]}
-                  </Badge>
-                )}
-              </div>
-            ))}
+            {VAULT_NAV.map((item) => {
+              const isActive = activeTab === item.id;
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id)}
+                  className={mergeClasses(
+                    'azv-list-item',
+                    classes.navItem,
+                    isActive && classes.navItemActive,
+                  )}
+                >
+                  <span className={isActive ? classes.navIconActive : classes.navIcon}>
+                    {item.icon}
+                  </span>
+                  <Text size={200} className={classes.navLabel}>
+                    {item.label}
+                  </Text>
+                  {counts[item.id] !== undefined && (
+                    <Badge size="small" appearance="outline">
+                      {counts[item.id]}
+                    </Badge>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </>
       )}
 
-      {/* Empty state when no vault */}
       {!selectedVaultName && pinnedVaults.length === 0 && recentVaults.length === 0 && (
-        <div style={{ padding: 20, textAlign: 'center' }}>
-          <ShieldLock24Regular style={{ fontSize: 32, opacity: 0.3 }} />
-          <Text block size={200} style={{ color: tokens.colorNeutralForeground3, marginTop: 8 }}>
+        <div className={classes.emptyState}>
+          <ShieldLock24Regular className={classes.emptyIcon} />
+          <Text block size={200} className={classes.emptyText}>
             Select a vault from the workspace switcher
           </Text>
         </div>

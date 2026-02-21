@@ -8,6 +8,7 @@ import {
   MenuPopover,
   MenuTrigger,
   Text,
+  makeStyles,
   tokens,
 } from '@fluentui/react-components';
 import {
@@ -27,6 +28,54 @@ import { useAppStore } from '../../stores/appStore';
 import { useMockStore } from '../../stores/mockStore';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 
+const useStyles = makeStyles({
+  root: {
+    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+    backgroundColor: tokens.colorNeutralBackground2,
+    padding: '4px 12px',
+    display: 'flex',
+    alignItems: 'center',
+    minHeight: '44px',
+    gap: '8px',
+  },
+  logo: {
+    color: tokens.colorBrandForeground1,
+    letterSpacing: '0.08em',
+    flexShrink: 0,
+    marginRight: '4px',
+  },
+  paletteBtn: {
+    flex: 1,
+    maxWidth: '420px',
+    margin: '0 8px',
+    padding: '5px 12px',
+    borderRadius: '4px',
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
+    backgroundColor: tokens.colorNeutralBackground1,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    fontFamily: "'IBM Plex Mono', monospace",
+    fontSize: '12px',
+    color: tokens.colorNeutralForeground3,
+  },
+  paletteBtnText: {
+    flex: 1,
+    textAlign: 'left' as const,
+  },
+  searchIcon: {
+    fontSize: '14px',
+    flexShrink: 0,
+  },
+  controls: {
+    marginLeft: 'auto',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+  },
+});
+
 export function TopBar() {
   const {
     userName,
@@ -40,6 +89,7 @@ export function TopBar() {
   const mockMode = useMockStore((s) => s.mockMode);
   const mockAvailable = useMockStore((s) => s.mockAvailable);
   const setMockMode = useMockStore((s) => s.setMockMode);
+  const classes = useStyles();
 
   const handleSignOut = async () => {
     try {
@@ -63,69 +113,20 @@ export function TopBar() {
   }, []);
 
   return (
-    <div
-      className="azv-pane"
-      style={{
-        borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
-        background: tokens.colorNeutralBackground2,
-        margin: 0,
-        borderRadius: 0,
-        borderLeft: 'none',
-        borderRight: 'none',
-        borderTop: 'none',
-        padding: '4px 12px',
-        display: 'flex',
-        alignItems: 'center',
-        minHeight: 44,
-        gap: 8,
-      }}
-    >
-      {/* Logo */}
-      <Text
-        weight="bold"
-        size={300}
-        className="azv-mono"
-        style={{
-          color: tokens.colorBrandForeground1,
-          letterSpacing: '0.08em',
-          flexShrink: 0,
-          marginRight: 4,
-        }}
-      >
+    <div className={`azv-pane ${classes.root}`}>
+      <Text weight="bold" size={300} className={`azv-mono ${classes.logo}`}>
         AZVAULT
       </Text>
 
-      {/* Workspace Switcher */}
       <WorkspaceSwitcher />
 
-      {/* Command palette trigger */}
-      <button
-        type="button"
-        onClick={() => setCommandPaletteOpen(true)}
-        style={{
-          flex: 1,
-          maxWidth: 420,
-          margin: '0 8px',
-          padding: '5px 12px',
-          borderRadius: 4,
-          border: `1px solid ${tokens.colorNeutralStroke1}`,
-          background: tokens.colorNeutralBackground1,
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          fontFamily: "'IBM Plex Mono', monospace",
-          fontSize: 12,
-          color: tokens.colorNeutralForeground3,
-        }}
-      >
-        <Search24Regular style={{ fontSize: 14, flexShrink: 0 }} />
-        <span style={{ flex: 1, textAlign: 'left' }}>Search or run a command...</span>
+      <button type="button" onClick={() => setCommandPaletteOpen(true)} className={classes.paletteBtn}>
+        <Search24Regular className={classes.searchIcon} />
+        <span className={classes.paletteBtnText}>Search or run a command...</span>
         <span className="azv-kbd">{shortcutLabel}</span>
       </button>
 
-      {/* Right-side controls */}
-      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4 }}>
+      <div className={classes.controls}>
         {mockMode && (
           <Badge appearance="filled" color="danger" size="small">
             MOCK

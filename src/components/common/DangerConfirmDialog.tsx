@@ -9,6 +9,7 @@ import {
   Input,
   Spinner,
   Text,
+  makeStyles,
   tokens,
 } from '@fluentui/react-components';
 import { Warning24Regular } from '@fluentui/react-icons';
@@ -27,6 +28,36 @@ interface DangerConfirmDialogProps {
   children?: React.ReactNode;
 }
 
+const useStyles = makeStyles({
+  titleRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  criticalBanner: {
+    padding: '8px 12px',
+    borderRadius: '4px',
+    backgroundColor: tokens.colorPaletteRedBackground1,
+    color: tokens.colorPaletteRedForeground1,
+    marginBottom: '12px',
+    fontSize: '12px',
+    fontWeight: 600,
+  },
+  descriptionText: {
+    lineHeight: 1.5,
+  },
+  confirmSection: {
+    marginTop: '14px',
+  },
+  confirmInput: {
+    marginTop: '6px',
+    width: '100%',
+  },
+  dangerBtn: {
+    backgroundColor: tokens.colorPaletteRedBackground3,
+  },
+});
+
 export function DangerConfirmDialog({
   open,
   title,
@@ -41,6 +72,7 @@ export function DangerConfirmDialog({
 }: DangerConfirmDialogProps) {
   const [input, setInput] = useState('');
   const isValid = input.toLowerCase() === confirmText.toLowerCase();
+  const classes = useStyles();
 
   useEffect(() => {
     if (!open) setInput('');
@@ -58,7 +90,7 @@ export function DangerConfirmDialog({
       <DialogSurface>
         <DialogBody>
           <DialogTitle>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div className={classes.titleRow}>
               <Warning24Regular
                 style={{ color: isCritical ? 'var(--azv-danger)' : 'var(--azv-warning)' }}
               />
@@ -67,28 +99,18 @@ export function DangerConfirmDialog({
           </DialogTitle>
           <DialogContent>
             {isCritical && (
-              <div
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: 4,
-                  background: tokens.colorPaletteRedBackground1,
-                  color: tokens.colorPaletteRedForeground1,
-                  marginBottom: 12,
-                  fontSize: 12,
-                  fontWeight: 600,
-                }}
-              >
+              <div className={classes.criticalBanner}>
                 This action is irreversible.
               </div>
             )}
 
-            <Text size={200} style={{ lineHeight: 1.5 }}>
+            <Text size={200} className={classes.descriptionText}>
               {description}
             </Text>
 
             {children}
 
-            <div style={{ marginTop: 14 }}>
+            <div className={classes.confirmSection}>
               <Text size={200}>
                 Type <strong className="azv-mono">{confirmText}</strong> to confirm:
               </Text>
@@ -97,7 +119,7 @@ export function DangerConfirmDialog({
                 onChange={(_, d) => setInput(d.value)}
                 placeholder={confirmText}
                 disabled={loading}
-                style={{ marginTop: 6, width: '100%' }}
+                className={classes.confirmInput}
                 autoFocus
               />
             </div>
@@ -110,11 +132,7 @@ export function DangerConfirmDialog({
               appearance="primary"
               onClick={onConfirm}
               disabled={loading || !isValid}
-              style={{
-                background: isCritical
-                  ? tokens.colorPaletteRedBackground3
-                  : tokens.colorPaletteRedBackground3,
-              }}
+              className={classes.dangerBtn}
             >
               {loading ? <Spinner size="tiny" /> : confirmLabel || title}
             </Button>

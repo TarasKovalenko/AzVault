@@ -1,4 +1,11 @@
-import { Badge, Button, Input, Text, tokens } from '@fluentui/react-components';
+import {
+  Badge,
+  Button,
+  Input,
+  Text,
+  makeStyles,
+  tokens,
+} from '@fluentui/react-components';
 import { Search24Regular } from '@fluentui/react-icons';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -12,6 +19,87 @@ import { ItemTable, renderDate, renderEnabled } from '../common/ItemTable';
 import { LoadingSkeleton } from '../common/LoadingSkeleton';
 import { SplitPane } from '../common/SplitPane';
 import { KeyDetails } from './KeyDetails';
+
+const useStyles = makeStyles({
+  listRoot: {
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
+  },
+  toolbar: {
+    display: 'flex',
+    alignItems: 'center',
+    padding: '6px 12px',
+    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+    background: tokens.colorNeutralBackground2,
+    gap: '8px',
+  },
+  countText: {
+    color: tokens.colorNeutralForeground3,
+  },
+  searchIcon: {
+    fontSize: '14px',
+  },
+  searchInput: {
+    marginLeft: 'auto',
+    maxWidth: '180px',
+    fontSize: '12px',
+  },
+  tableWrap: {
+    flex: 1,
+    overflow: 'auto',
+    padding: '0 12px',
+    minHeight: 0,
+  },
+  errorWrap: {
+    padding: '16px',
+  },
+  loadMoreWrap: {
+    display: 'flex',
+    justifyContent: 'center',
+    padding: '10px',
+  },
+  keyOpsWrap: {
+    display: 'flex',
+    gap: '3px',
+    flexWrap: 'wrap',
+  },
+  expiresNever: {
+    opacity: 0.4,
+  },
+});
+
+function KeyOpsCell({ item }: { item: KeyItem }) {
+  const classes = useStyles();
+  return (
+    <div className={classes.keyOpsWrap}>
+      {(item.keyOps || []).map((op) => (
+        <Badge key={op} size="small" appearance="outline" color="informative">
+          {op}
+        </Badge>
+      ))}
+    </div>
+  );
+}
+
+function ExpiresCell({ item }: { item: KeyItem }) {
+  const classes = useStyles();
+  if (!item.expires)
+    return (
+      <Text size={200} className={classes.expiresNever}>
+        Never
+      </Text>
+    );
+  const expired = new Date(item.expires) < new Date();
+  return (
+    <Text
+      size={200}
+      style={{ color: expired ? 'var(--azv-danger)' : undefined }}
+    >
+      {renderDate(item.expires)}
+    </Text>
+  );
+}
 
 const columns: Column<KeyItem>[] = [
   {
@@ -44,15 +132,7 @@ const columns: Column<KeyItem>[] = [
     key: 'keyOps',
     label: 'Operations',
     width: '25%',
-    render: (item) => (
-      <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-        {(item.keyOps || []).map((op) => (
-          <Badge key={op} size="small" appearance="outline" color="informative">
-            {op}
-          </Badge>
-        ))}
-      </div>
-    ),
+    render: (item) => <KeyOpsCell item={item} />,
   },
   {
     key: 'updated',
@@ -64,24 +144,12 @@ const columns: Column<KeyItem>[] = [
     key: 'expires',
     label: 'Expires',
     width: '15%',
-    render: (item) => {
-      if (!item.expires)
-        return (
-          <Text size={200} style={{ opacity: 0.4 }}>
-            Never
-          </Text>
-        );
-      const expired = new Date(item.expires) < new Date();
-      return (
-        <Text size={200} style={{ color: expired ? 'var(--azv-danger)' : undefined }}>
-          {renderDate(item.expires)}
-        </Text>
-      );
-    },
+    render: (item) => <ExpiresCell item={item} />,
   },
 ];
 
 export function KeysList() {
+  const classes = useStyles();
   const { selectedVaultUri, searchQuery, detailPanelOpen, splitRatio, setSplitRatio } =
     useAppStore();
   const [visibleCount, setVisibleCount] = useState(50);
@@ -102,41 +170,32 @@ export function KeysList() {
   const visibleKeys = filteredKeys.slice(0, visibleCount);
 
   const listPane = (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          padding: '6px 12px',
-          borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
-          background: tokens.colorNeutralBackground2,
-          gap: 8,
-        }}
-      >
+    <div className={classes.listRoot}>
+      <div className={classes.toolbar}>
         <Text weight="semibold" size={300}>
           Keys
         </Text>
         {keysQuery.data && (
-          <Text size={200} className="azv-mono" style={{ color: tokens.colorNeutralForeground3 }}>
+          <Text size={200} className={`azv-mono ${classes.countText}`}>
             ({filteredKeys.length}
             {filterText ? ` / ${allKeys.length}` : ''})
           </Text>
         )}
         <Input
           placeholder="Filter..."
-          contentBefore={<Search24Regular style={{ fontSize: 14 }} />}
+          contentBefore={<Search24Regular className={classes.searchIcon} />}
           size="small"
           value={localFilter}
           onChange={(_, d) => setLocalFilter(d.value)}
-          style={{ marginLeft: 'auto', maxWidth: 180, fontSize: 12 }}
+          className={classes.searchInput}
         />
       </div>
 
-      <div style={{ flex: 1, overflow: 'auto', padding: '0 12px', minHeight: 0 }}>
+      <div className={classes.tableWrap}>
         {keysQuery.isLoading ? (
           <LoadingSkeleton rows={8} columns={[25, 10, 10, 25, 15, 15]} />
         ) : keysQuery.isError ? (
-          <div style={{ padding: 16 }}>
+          <div className={classes.errorWrap}>
             <ErrorMessage error={String(keysQuery.error)} onRetry={() => keysQuery.refetch()} />
           </div>
         ) : allKeys.length === 0 ? (
@@ -158,7 +217,7 @@ export function KeysList() {
               getItemId={(k) => k.id}
             />
             {filteredKeys.length > visibleCount && (
-              <div style={{ display: 'flex', justifyContent: 'center', padding: 10 }}>
+              <div className={classes.loadMoreWrap}>
                 <Button
                   onClick={() => setVisibleCount((c) => c + 50)}
                   appearance="secondary"

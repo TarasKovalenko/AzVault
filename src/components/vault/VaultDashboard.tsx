@@ -1,4 +1,11 @@
-import { Badge, Button, Card, Text, tokens } from '@fluentui/react-components';
+import {
+  Badge,
+  Button,
+  Card,
+  makeStyles,
+  Text,
+  tokens,
+} from '@fluentui/react-components';
 import {
   Add24Regular,
   Certificate24Regular,
@@ -13,7 +20,123 @@ import { useState } from 'react';
 import { getAuditLog, listCertificates, listKeys, listSecrets } from '../../services/tauri';
 import { useAppStore } from '../../stores/appStore';
 
+const useStyles = makeStyles({
+  root: {
+    padding: '20px',
+    overflow: 'auto',
+    height: '100%',
+  },
+  title: {
+    marginBottom: '16px',
+  },
+  countGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, 1fr)',
+    gap: '12px',
+    marginBottom: '20px',
+  },
+  card: {
+    padding: '16px',
+    marginBottom: '16px',
+  },
+  cardTitle: {
+    marginBottom: '12px',
+  },
+  cardTitleSmall: {
+    marginBottom: '10px',
+  },
+  propsGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '10px',
+  },
+  propRowValue: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+  },
+  vaultUriRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+  },
+  vaultUriText: {
+    wordBreak: 'break-all',
+    fontSize: '11px',
+  },
+  copyBtn: {
+    flexShrink: 0,
+  },
+  softDeleteWarning: {
+    marginTop: '12px',
+    padding: '8px 12px',
+    borderRadius: '4px',
+    background: tokens.colorPaletteYellowBackground1,
+    fontSize: '12px',
+  },
+  softDeleteWarningText: {
+    color: tokens.colorPaletteYellowForeground1,
+  },
+  quickActions: {
+    display: 'flex',
+    gap: '8px',
+    flexWrap: 'wrap',
+  },
+  noActivityText: {
+    color: tokens.colorNeutralForeground3,
+  },
+  activityList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+  },
+  activityRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    padding: '3px 0',
+  },
+  activityTime: {
+    opacity: 0.6,
+    width: '80px',
+    flexShrink: 0,
+  },
+  activityDot: {
+    marginLeft: 'auto',
+  },
+});
+
+const useCountCardStyles = makeStyles({
+  card: {
+    padding: '16px',
+    cursor: 'pointer',
+    textAlign: 'center',
+  },
+  inner: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '6px',
+  },
+  icon: {
+    fontSize: '24px',
+    opacity: 0.6,
+  },
+  label: {
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+    opacity: 0.7,
+  },
+});
+
+const usePropRowStyles = makeStyles({
+  value: {
+    marginTop: '2px',
+  },
+});
+
 export function VaultDashboard() {
+  const classes = useStyles();
   const { selectedVaultUri, selectedVaultName, keyvaults, setActiveTab } = useAppStore();
   const [copiedUri, setCopiedUri] = useState(false);
 
@@ -50,20 +173,13 @@ export function VaultDashboard() {
   if (!selectedVaultName) return null;
 
   return (
-    <div style={{ padding: 20, overflow: 'auto', height: '100%' }}>
-      <Text weight="semibold" size={500} block style={{ marginBottom: 16 }}>
+    <div className={classes.root}>
+      <Text weight="semibold" size={500} block className={classes.title}>
         {selectedVaultName}
       </Text>
 
       {/* Count cards */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: 12,
-          marginBottom: 20,
-        }}
-      >
+      <div className={classes.countGrid}>
         <CountCard
           icon={<Key24Regular />}
           label="Secrets"
@@ -88,15 +204,15 @@ export function VaultDashboard() {
       </div>
 
       {/* Vault properties */}
-      <Card style={{ padding: 16, marginBottom: 16 }}>
-        <Text weight="semibold" size={300} block style={{ marginBottom: 12 }}>
+      <Card className={classes.card}>
+        <Text weight="semibold" size={300} block className={classes.cardTitle}>
           Vault Properties
         </Text>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <div className={classes.propsGrid}>
           <PropRow
             label="Soft-Delete"
             value={
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div className={classes.propRowValue}>
                 <span
                   className="azv-status-dot"
                   style={{
@@ -126,12 +242,8 @@ export function VaultDashboard() {
           <PropRow
             label="Vault URI"
             value={
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <Text
-                  size={200}
-                  className="azv-mono"
-                  style={{ wordBreak: 'break-all', fontSize: 11 }}
-                >
+              <div className={classes.vaultUriRow}>
+                <Text size={200} className={`azv-mono ${classes.vaultUriText}`}>
                   {selectedVaultUri}
                 </Text>
                 <Button
@@ -140,7 +252,7 @@ export function VaultDashboard() {
                   icon={<Copy24Regular />}
                   onClick={handleCopyUri}
                   title="Copy Vault URI"
-                  style={{ flexShrink: 0 }}
+                  className={classes.copyBtn}
                 />
               </div>
             }
@@ -148,16 +260,8 @@ export function VaultDashboard() {
         </div>
 
         {currentVault?.softDeleteEnabled === false && (
-          <div
-            style={{
-              marginTop: 12,
-              padding: '8px 12px',
-              borderRadius: 4,
-              background: tokens.colorPaletteYellowBackground1,
-              fontSize: 12,
-            }}
-          >
-            <Text size={200} style={{ color: tokens.colorPaletteYellowForeground1 }}>
+          <div className={classes.softDeleteWarning}>
+            <Text size={200} className={classes.softDeleteWarningText}>
               Purge protection is not confirmed. Deleted items may be permanently removed.
             </Text>
           </div>
@@ -165,11 +269,11 @@ export function VaultDashboard() {
       </Card>
 
       {/* Quick actions */}
-      <Card style={{ padding: 16, marginBottom: 16 }}>
-        <Text weight="semibold" size={300} block style={{ marginBottom: 10 }}>
+      <Card className={classes.card}>
+        <Text weight="semibold" size={300} block className={classes.cardTitleSmall}>
           Quick Actions
         </Text>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <div className={classes.quickActions}>
           <Button
             appearance="primary"
             size="small"
@@ -201,29 +305,22 @@ export function VaultDashboard() {
       </Card>
 
       {/* Recent activity */}
-      <Card style={{ padding: 16 }}>
-        <Text weight="semibold" size={300} block style={{ marginBottom: 10 }}>
+      <Card className={classes.card}>
+        <Text weight="semibold" size={300} block className={classes.cardTitleSmall}>
           Recent Activity
         </Text>
         {(auditQuery.data || []).length === 0 ? (
-          <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+          <Text size={200} className={classes.noActivityText}>
             No activity recorded yet.
           </Text>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div className={classes.activityList}>
             {[...(auditQuery.data || [])]
               .reverse()
               .slice(0, 5)
               .map((entry, i) => (
-                <div
-                  key={i}
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0' }}
-                >
-                  <Text
-                    size={100}
-                    className="azv-mono"
-                    style={{ opacity: 0.6, width: 80, flexShrink: 0 }}
-                  >
+                <div key={i} className={classes.activityRow}>
+                  <Text size={100} className={`azv-mono ${classes.activityTime}`}>
                     {(() => {
                       try {
                         return format(new Date(entry.timestamp), 'HH:mm:ss');
@@ -251,11 +348,10 @@ export function VaultDashboard() {
                     {entry.itemName || '—'}
                   </Text>
                   <span
-                    className="azv-status-dot"
+                    className={`azv-status-dot ${classes.activityDot}`}
                     style={{
                       background:
                         entry.result === 'success' ? 'var(--azv-success)' : 'var(--azv-danger)',
-                      marginLeft: 'auto',
                     }}
                   />
                 </div>
@@ -280,17 +376,16 @@ function CountCard({
   loading: boolean;
   onClick: () => void;
 }) {
+  const classes = useCountCardStyles();
+
   return (
-    <Card style={{ padding: 16, cursor: 'pointer', textAlign: 'center' }} onClick={onClick}>
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-        <span style={{ fontSize: 24, opacity: 0.6 }}>{icon}</span>
+    <Card className={classes.card} onClick={onClick}>
+      <div className={classes.inner}>
+        <span className={classes.icon}>{icon}</span>
         <Text size={500} weight="bold" className="azv-mono">
           {loading ? '...' : (count ?? '—')}
         </Text>
-        <Text
-          size={200}
-          style={{ textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.7 }}
-        >
+        <Text size={200} className={classes.label}>
           {label}
         </Text>
       </div>
@@ -299,12 +394,14 @@ function CountCard({
 }
 
 function PropRow({ label, value }: { label: string; value: React.ReactNode }) {
+  const classes = usePropRowStyles();
+
   return (
     <div>
       <Text size={100} className="azv-title" block>
         {label}
       </Text>
-      <div style={{ marginTop: 2 }}>{value}</div>
+      <div className={classes.value}>{value}</div>
     </div>
   );
 }

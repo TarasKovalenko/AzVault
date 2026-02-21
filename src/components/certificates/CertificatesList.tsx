@@ -1,7 +1,14 @@
-import { Button, Input, Text, tokens } from '@fluentui/react-components';
+import {
+  Button,
+  Input,
+  Text,
+  makeStyles,
+  mergeClasses,
+  tokens,
+} from '@fluentui/react-components';
 import { Search24Regular } from '@fluentui/react-icons';
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { listCertificates } from '../../services/tauri';
 import { useAppStore } from '../../stores/appStore';
 import type { CertificateItem } from '../../types';
@@ -13,84 +20,64 @@ import { LoadingSkeleton } from '../common/LoadingSkeleton';
 import { SplitPane } from '../common/SplitPane';
 import { CertificateDetails } from './CertificateDetails';
 
-const columns: Column<CertificateItem>[] = [
-  {
-    key: 'name',
-    label: 'Name',
-    width: '20%',
-    render: (item) => (
-      <Text weight="semibold" size={200} className="azv-mono">
-        {item.name}
-      </Text>
-    ),
+const useStyles = makeStyles({
+  listRoot: {
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
   },
-  {
-    key: 'enabled',
-    label: 'Status',
-    width: '10%',
-    render: (item) => renderEnabled(item.enabled),
+  toolbar: {
+    display: 'flex',
+    alignItems: 'center',
+    padding: '6px 12px',
+    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+    background: tokens.colorNeutralBackground2,
+    gap: '8px',
   },
-  {
-    key: 'subject',
-    label: 'Subject',
-    width: '20%',
-    render: (item) => (
-      <Text size={200} className="azv-mono" style={{ opacity: item.subject ? 1 : 0.4 }}>
-        {item.subject || '—'}
-      </Text>
-    ),
+  countText: {
+    color: tokens.colorNeutralForeground3,
   },
-  {
-    key: 'thumbprint',
-    label: 'Thumbprint',
-    width: '15%',
-    render: (item) => (
-      <Text
-        size={200}
-        className="azv-mono"
-        title={item.thumbprint || undefined}
-        style={{
-          fontSize: 10,
-          opacity: 0.8,
-          display: 'block',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-          maxWidth: '100%',
-        }}
-      >
-        {item.thumbprint || '—'}
-      </Text>
-    ),
+  searchIcon: {
+    fontSize: '14px',
   },
-  {
-    key: 'updated',
-    label: 'Updated',
-    width: '15%',
-    render: (item) => renderDate(item.updated),
+  searchInput: {
+    marginLeft: 'auto',
+    maxWidth: '180px',
+    fontSize: '12px',
   },
-  {
-    key: 'expires',
-    label: 'Expires',
-    width: '15%',
-    render: (item) => {
-      if (!item.expires)
-        return (
-          <Text size={200} style={{ opacity: 0.4 }}>
-            Never
-          </Text>
-        );
-      const expired = new Date(item.expires) < new Date();
-      return (
-        <Text size={200} style={{ color: expired ? 'var(--azv-danger)' : undefined }}>
-          {renderDate(item.expires)}
-        </Text>
-      );
-    },
+  tableWrap: {
+    flex: 1,
+    overflow: 'auto',
+    padding: '0 12px',
+    minHeight: 0,
   },
-];
+  errorWrap: {
+    padding: '16px',
+  },
+  loadMoreWrap: {
+    display: 'flex',
+    justifyContent: 'center',
+    padding: '10px',
+  },
+  subjectDim: {
+    opacity: 0.4,
+  },
+  thumbprint: {
+    fontSize: '10px',
+    opacity: 0.8,
+    display: 'block',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    maxWidth: '100%',
+  },
+  expiresNever: {
+    opacity: 0.4,
+  },
+});
 
 export function CertificatesList() {
+  const classes = useStyles();
   const { selectedVaultUri, searchQuery, detailPanelOpen, splitRatio, setSplitRatio } =
     useAppStore();
   const [visibleCount, setVisibleCount] = useState(50);
@@ -110,42 +97,110 @@ export function CertificatesList() {
   );
   const visibleCerts = filteredCerts.slice(0, visibleCount);
 
+  const columns: Column<CertificateItem>[] = useMemo(
+    () => [
+      {
+        key: 'name',
+        label: 'Name',
+        width: '20%',
+        render: (item) => (
+          <Text weight="semibold" size={200} className="azv-mono">
+            {item.name}
+          </Text>
+        ),
+      },
+      {
+        key: 'enabled',
+        label: 'Status',
+        width: '10%',
+        render: (item) => renderEnabled(item.enabled),
+      },
+      {
+        key: 'subject',
+        label: 'Subject',
+        width: '20%',
+        render: (item) => (
+          <Text
+            size={200}
+            className={mergeClasses('azv-mono', !item.subject && classes.subjectDim)}
+          >
+            {item.subject || '—'}
+          </Text>
+        ),
+      },
+      {
+        key: 'thumbprint',
+        label: 'Thumbprint',
+        width: '15%',
+        render: (item) => (
+          <Text
+            size={200}
+            className={mergeClasses('azv-mono', classes.thumbprint)}
+            title={item.thumbprint || undefined}
+          >
+            {item.thumbprint || '—'}
+          </Text>
+        ),
+      },
+      {
+        key: 'updated',
+        label: 'Updated',
+        width: '15%',
+        render: (item) => renderDate(item.updated),
+      },
+      {
+        key: 'expires',
+        label: 'Expires',
+        width: '15%',
+        render: (item) => {
+          if (!item.expires)
+            return (
+              <Text size={200} className={classes.expiresNever}>
+                Never
+              </Text>
+            );
+          const expired = new Date(item.expires) < new Date();
+          return (
+            <Text
+              size={200}
+              style={{ color: expired ? 'var(--azv-danger)' : undefined }}
+            >
+              {renderDate(item.expires)}
+            </Text>
+          );
+        },
+      },
+    ],
+    [classes.subjectDim, classes.thumbprint, classes.expiresNever],
+  );
+
   const listPane = (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          padding: '6px 12px',
-          borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
-          background: tokens.colorNeutralBackground2,
-          gap: 8,
-        }}
-      >
+    <div className={classes.listRoot}>
+      <div className={classes.toolbar}>
         <Text weight="semibold" size={300}>
           Certificates
         </Text>
         {certsQuery.data && (
-          <Text size={200} className="azv-mono" style={{ color: tokens.colorNeutralForeground3 }}>
+          <Text size={200} className={mergeClasses('azv-mono', classes.countText)}>
             ({filteredCerts.length}
             {filterText ? ` / ${allCerts.length}` : ''})
           </Text>
         )}
         <Input
           placeholder="Filter..."
-          contentBefore={<Search24Regular style={{ fontSize: 14 }} />}
+          contentBefore={<Search24Regular className={classes.searchIcon} />}
           size="small"
           value={localFilter}
           onChange={(_, d) => setLocalFilter(d.value)}
-          style={{ marginLeft: 'auto', maxWidth: 180, fontSize: 12 }}
+          className={classes.searchInput}
         />
       </div>
 
-      <div style={{ flex: 1, overflow: 'auto', padding: '0 12px', minHeight: 0 }}>
+      <div className={classes.tableWrap}>
         {certsQuery.isLoading ? (
           <LoadingSkeleton rows={8} columns={[20, 10, 20, 15, 15, 15]} />
         ) : certsQuery.isError ? (
-          <div style={{ padding: 16 }}>
+          <div className={classes.errorWrap}>
             <ErrorMessage error={String(certsQuery.error)} onRetry={() => certsQuery.refetch()} />
           </div>
         ) : allCerts.length === 0 ? (
@@ -170,7 +225,7 @@ export function CertificatesList() {
               getItemId={(c) => c.id}
             />
             {filteredCerts.length > visibleCount && (
-              <div style={{ display: 'flex', justifyContent: 'center', padding: 10 }}>
+              <div className={classes.loadMoreWrap}>
                 <Button
                   onClick={() => setVisibleCount((c) => c + 50)}
                   appearance="secondary"

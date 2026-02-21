@@ -1,4 +1,4 @@
-import { Button, Text, tokens } from '@fluentui/react-components';
+import { Button, Text, makeStyles, tokens } from '@fluentui/react-components';
 import { DismissCircle24Regular } from '@fluentui/react-icons';
 import type { UserFacingError } from '../../types';
 
@@ -8,48 +8,65 @@ interface ErrorMessageProps {
   onDismiss?: () => void;
 }
 
+const useStyles = makeStyles({
+  root: {
+    padding: '10px 14px',
+    borderRadius: '4px',
+    backgroundColor: tokens.colorPaletteRedBackground1,
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '10px',
+  },
+  icon: {
+    color: tokens.colorPaletteRedForeground1,
+    flexShrink: 0,
+    fontSize: '16px',
+    marginTop: '1px',
+  },
+  body: {
+    flex: 1,
+    minWidth: 0,
+  },
+  text: {
+    color: tokens.colorPaletteRedForeground1,
+  },
+  description: {
+    color: tokens.colorPaletteRedForeground1,
+    marginTop: '2px',
+    lineHeight: 1.4,
+  },
+  action: {
+    color: tokens.colorPaletteRedForeground1,
+    marginTop: '2px',
+    opacity: 0.85,
+  },
+  retryBtn: {
+    marginTop: '8px',
+  },
+  dismissBtn: {
+    flexShrink: 0,
+  },
+});
+
 export function ErrorMessage({ error, onRetry, onDismiss }: ErrorMessageProps) {
   const parsed = typeof error === 'string' ? parseAzureError(error) : error;
+  const classes = useStyles();
 
   return (
-    <div
-      style={{
-        padding: '10px 14px',
-        borderRadius: 4,
-        background: tokens.colorPaletteRedBackground1,
-        display: 'flex',
-        alignItems: 'flex-start',
-        gap: 10,
-      }}
-    >
-      <DismissCircle24Regular
-        style={{
-          color: tokens.colorPaletteRedForeground1,
-          flexShrink: 0,
-          fontSize: 16,
-          marginTop: 1,
-        }}
-      />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <Text size={200} weight="semibold" style={{ color: tokens.colorPaletteRedForeground1 }}>
+    <div className={classes.root}>
+      <DismissCircle24Regular className={classes.icon} />
+      <div className={classes.body}>
+        <Text size={200} weight="semibold" className={classes.text}>
           {parsed.title}
         </Text>
-        <Text
-          size={200}
-          block
-          style={{ color: tokens.colorPaletteRedForeground1, marginTop: 2, lineHeight: 1.4 }}
-        >
+        <Text size={200} block className={classes.description}>
           {parsed.description}
         </Text>
-        <Text
-          size={200}
-          block
-          style={{ color: tokens.colorPaletteRedForeground1, marginTop: 2, opacity: 0.85 }}
-        >
+        <Text size={200} block className={classes.action}>
           {parsed.action}
         </Text>
         {parsed.retryable && onRetry && (
-          <Button size="small" appearance="outline" onClick={onRetry} style={{ marginTop: 8 }}>
+          <Button size="small" appearance="outline" onClick={onRetry} className={classes.retryBtn}>
             Retry
           </Button>
         )}
@@ -60,7 +77,7 @@ export function ErrorMessage({ error, onRetry, onDismiss }: ErrorMessageProps) {
           size="small"
           icon={<DismissCircle24Regular />}
           onClick={onDismiss}
-          style={{ flexShrink: 0 }}
+          className={classes.dismissBtn}
         />
       )}
     </div>

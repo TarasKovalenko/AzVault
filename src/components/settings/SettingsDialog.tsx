@@ -11,6 +11,7 @@ import {
   Option,
   Switch,
   Text,
+  makeStyles,
   tokens,
 } from '@fluentui/react-components';
 import { Dismiss24Regular } from '@fluentui/react-icons';
@@ -36,14 +37,72 @@ const REFRESH_OPTIONS = [
   { value: 60000, label: '1 minute' },
 ];
 
+const useStyles = makeStyles({
+  shortcutRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    padding: '3px 0',
+  },
+  dialogSurface: {
+    maxWidth: '520px',
+  },
+  contentWrapper: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '20px',
+    padding: '8px 0',
+  },
+  sectionTitle: {
+    marginBottom: '8px',
+  },
+  rowBetween: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  columnGap12: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+  },
+  comboboxMinWidth120: {
+    minWidth: '120px',
+  },
+  comboboxMinWidth130: {
+    minWidth: '130px',
+  },
+  comboboxMinWidth150: {
+    minWidth: '150px',
+  },
+  descriptionText: {
+    color: tokens.colorNeutralForeground3,
+  },
+  shortcutsList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+  },
+  aboutTitle: {
+    marginBottom: '4px',
+  },
+  aboutBody: {
+    color: tokens.colorNeutralForeground3,
+  },
+  aboutBodyWithMargin: {
+    color: tokens.colorNeutralForeground3,
+    marginTop: '4px',
+  },
+});
+
 interface ShortcutRowProps {
   label: string;
   keys: string;
+  className?: string;
 }
 
-function ShortcutRow({ label, keys }: ShortcutRowProps) {
+function ShortcutRow({ label, keys, className }: ShortcutRowProps) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}>
+    <div className={className}>
       <Text size={200}>{label}</Text>
       <span className="azv-kbd">{keys}</span>
     </div>
@@ -51,6 +110,7 @@ function ShortcutRow({ label, keys }: ShortcutRowProps) {
 }
 
 export function SettingsDialog() {
+  const classes = useStyles();
   const {
     settingsOpen,
     setSettingsOpen,
@@ -75,7 +135,7 @@ export function SettingsDialog() {
 
   return (
     <Dialog open={settingsOpen} onOpenChange={(_, d) => setSettingsOpen(d.open)}>
-      <DialogSurface style={{ maxWidth: 520 }}>
+      <DialogSurface className={classes.dialogSurface}>
         <DialogBody>
           <DialogTitle
             action={
@@ -89,21 +149,19 @@ export function SettingsDialog() {
             Settings
           </DialogTitle>
           <DialogContent>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 20, padding: '8px 0' }}>
+            <div className={classes.contentWrapper}>
               {/* Appearance */}
               <section>
-                <Text weight="semibold" size={300} block style={{ marginBottom: 8 }}>
+                <Text weight="semibold" size={300} block className={classes.sectionTitle}>
                   Appearance
                 </Text>
-                <div
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-                >
+                <div className={classes.rowBetween}>
                   <Text size={200}>Theme</Text>
                   <Combobox
                     value={themeMode === 'dark' ? 'Dark' : 'Light'}
                     selectedOptions={[themeMode]}
                     onOptionSelect={(_, d) => setThemeMode(d.optionValue as 'light' | 'dark')}
-                    style={{ minWidth: 120 }}
+                    className={classes.comboboxMinWidth120}
                   >
                     <Option value="light">Light</Option>
                     <Option value="dark">Dark</Option>
@@ -115,38 +173,26 @@ export function SettingsDialog() {
 
               {/* Security */}
               <section>
-                <Text weight="semibold" size={300} block style={{ marginBottom: 8 }}>
+                <Text weight="semibold" size={300} block className={classes.sectionTitle}>
                   Security
                 </Text>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div className={classes.columnGap12}>
                   <div>
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                      }}
-                    >
+                    <div className={classes.rowBetween}>
                       <Text size={200}>Require re-auth before fetching values</Text>
                       <Switch
                         checked={requireReauthForReveal}
                         onChange={(_, d) => setRequireReauthForReveal(d.checked)}
                       />
                     </div>
-                    <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>
+                    <Text size={100} className={classes.descriptionText}>
                       Re-verify your Azure CLI session before any secret value is retrieved.
                     </Text>
                   </div>
 
                   <div>
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                      }}
-                    >
+                    <div className={classes.rowBetween}>
                       <Text size={200}>Auto-hide secret values after</Text>
                       <Combobox
                         value={
@@ -155,7 +201,7 @@ export function SettingsDialog() {
                         }
                         selectedOptions={[String(autoHideSeconds)]}
                         onOptionSelect={(_, d) => setAutoHideSeconds(Number(d.optionValue))}
-                        style={{ minWidth: 130 }}
+                        className={classes.comboboxMinWidth130}
                       >
                         {AUTO_HIDE_OPTIONS.map((o) => (
                           <Option key={o.value} value={String(o.value)}>
@@ -164,19 +210,13 @@ export function SettingsDialog() {
                         ))}
                       </Combobox>
                     </div>
-                    <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>
+                    <Text size={100} className={classes.descriptionText}>
                       Revealed values revert to masked after this duration.
                     </Text>
                   </div>
 
                   <div>
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                      }}
-                    >
+                    <div className={classes.rowBetween}>
                       <Text size={200}>Clipboard auto-clear after copy</Text>
                       <Combobox
                         value={
@@ -185,7 +225,7 @@ export function SettingsDialog() {
                         }
                         selectedOptions={[String(clipboardClearSeconds)]}
                         onOptionSelect={(_, d) => setClipboardClearSeconds(Number(d.optionValue))}
-                        style={{ minWidth: 130 }}
+                        className={classes.comboboxMinWidth130}
                       >
                         {CLIPBOARD_OPTIONS.map((o) => (
                           <Option key={o.value} value={String(o.value)}>
@@ -194,26 +234,20 @@ export function SettingsDialog() {
                         ))}
                       </Combobox>
                     </div>
-                    <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>
+                    <Text size={100} className={classes.descriptionText}>
                       Copied secret values are cleared from clipboard automatically.
                     </Text>
                   </div>
 
                   <div>
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                      }}
-                    >
+                    <div className={classes.rowBetween}>
                       <Text size={200}>Disable clipboard copy for values</Text>
                       <Switch
                         checked={disableClipboardCopy}
                         onChange={(_, d) => setDisableClipboardCopy(d.checked)}
                       />
                     </div>
-                    <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>
+                    <Text size={100} className={classes.descriptionText}>
                       Removes the Copy button. Values can only be viewed, not copied.
                     </Text>
                   </div>
@@ -224,19 +258,19 @@ export function SettingsDialog() {
 
               {/* Keyboard Shortcuts */}
               <section>
-                <Text weight="semibold" size={300} block style={{ marginBottom: 8 }}>
+                <Text weight="semibold" size={300} block className={classes.sectionTitle}>
                   Keyboard Shortcuts
                 </Text>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <ShortcutRow label="Command palette" keys={`${mod}K`} />
-                  <ShortcutRow label="Settings" keys={`${mod},`} />
-                  <ShortcutRow label="Toggle sidebar" keys={`${mod}B`} />
-                  <ShortcutRow label="Toggle detail panel" keys={`${mod}\\`} />
-                  <ShortcutRow label="Secrets tab" keys={`${mod}1`} />
-                  <ShortcutRow label="Keys tab" keys={`${mod}2`} />
-                  <ShortcutRow label="Certificates tab" keys={`${mod}3`} />
-                  <ShortcutRow label="Dashboard" keys={`${mod}4`} />
-                  <ShortcutRow label="Audit Log" keys={`${mod}5`} />
+                <div className={classes.shortcutsList}>
+                  <ShortcutRow label="Command palette" keys={`${mod}K`} className={classes.shortcutRow} />
+                  <ShortcutRow label="Settings" keys={`${mod},`} className={classes.shortcutRow} />
+                  <ShortcutRow label="Toggle sidebar" keys={`${mod}B`} className={classes.shortcutRow} />
+                  <ShortcutRow label="Toggle detail panel" keys={`${mod}\\`} className={classes.shortcutRow} />
+                  <ShortcutRow label="Secrets tab" keys={`${mod}1`} className={classes.shortcutRow} />
+                  <ShortcutRow label="Keys tab" keys={`${mod}2`} className={classes.shortcutRow} />
+                  <ShortcutRow label="Certificates tab" keys={`${mod}3`} className={classes.shortcutRow} />
+                  <ShortcutRow label="Dashboard" keys={`${mod}4`} className={classes.shortcutRow} />
+                  <ShortcutRow label="Audit Log" keys={`${mod}5`} className={classes.shortcutRow} />
                 </div>
               </section>
 
@@ -244,12 +278,10 @@ export function SettingsDialog() {
 
               {/* Audit Log */}
               <section>
-                <Text weight="semibold" size={300} block style={{ marginBottom: 8 }}>
+                <Text weight="semibold" size={300} block className={classes.sectionTitle}>
                   Audit Log
                 </Text>
-                <div
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-                >
+                <div className={classes.rowBetween}>
                   <Text size={200}>Auto-refresh interval</Text>
                   <Combobox
                     value={
@@ -258,7 +290,7 @@ export function SettingsDialog() {
                     }
                     selectedOptions={[String(auditRefreshInterval)]}
                     onOptionSelect={(_, d) => setAuditRefreshInterval(Number(d.optionValue))}
-                    style={{ minWidth: 130 }}
+                    className={classes.comboboxMinWidth130}
                   >
                     {REFRESH_OPTIONS.map((o) => (
                       <Option key={o.value} value={String(o.value)}>
@@ -273,12 +305,10 @@ export function SettingsDialog() {
 
               {/* Advanced */}
               <section>
-                <Text weight="semibold" size={300} block style={{ marginBottom: 8 }}>
+                <Text weight="semibold" size={300} block className={classes.sectionTitle}>
                   Advanced
                 </Text>
-                <div
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-                >
+                <div className={classes.rowBetween}>
                   <Text size={200}>Azure environment</Text>
                   <Combobox
                     value={
@@ -290,7 +320,7 @@ export function SettingsDialog() {
                     }
                     selectedOptions={[environment]}
                     onOptionSelect={(_, d) => setEnvironment(d.optionValue as typeof environment)}
-                    style={{ minWidth: 150 }}
+                    className={classes.comboboxMinWidth150}
                   >
                     <Option value="azurePublic">Azure Public</Option>
                     <Option value="azureUsGovernment">US Government</Option>
@@ -303,20 +333,16 @@ export function SettingsDialog() {
 
               {/* About */}
               <section>
-                <Text weight="semibold" size={300} block style={{ marginBottom: 4 }}>
+                <Text weight="semibold" size={300} block className={classes.aboutTitle}>
                   About
                 </Text>
                 <Text size={200} block className="azv-mono">
                   AzVault v0.1.0
                 </Text>
-                <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>
+                <Text size={100} className={classes.aboutBody}>
                   Tauri v2 · React · Fluent UI
                 </Text>
-                <Text
-                  size={100}
-                  block
-                  style={{ color: tokens.colorNeutralForeground3, marginTop: 4 }}
-                >
+                <Text size={100} block className={classes.aboutBodyWithMargin}>
                   No telemetry. No data leaves your machine except Azure API calls.
                 </Text>
               </section>

@@ -82,6 +82,19 @@ pre,
   border-color: var(--azv-accent-dim);
 }
 
+/* ── Inline cell helpers ── */
+.azv-status-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.azv-tag-row {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
 /* ── Keyboard shortcut badge ── */
 .azv-kbd {
   border: 1px solid rgba(130, 145, 170, 0.4);

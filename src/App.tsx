@@ -1,4 +1,10 @@
-import { FluentProvider, tokens, webDarkTheme, webLightTheme } from '@fluentui/react-components';
+import {
+  FluentProvider,
+  makeStyles,
+  tokens,
+  webDarkTheme,
+  webLightTheme,
+} from '@fluentui/react-components';
 import { LockClosed24Regular } from '@fluentui/react-icons';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect } from 'react';
@@ -32,8 +38,38 @@ const queryClient = new QueryClient({
   },
 });
 
+const useStyles = makeStyles({
+  shell: {
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100vh',
+  },
+  middle: {
+    display: 'flex',
+    flex: 1,
+    overflow: 'hidden',
+  },
+  pane: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    backgroundColor: tokens.colorNeutralBackground1,
+    overflow: 'hidden',
+    marginLeft: '0',
+    borderLeft: 'none',
+  },
+  tabContent: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    minHeight: 0,
+  },
+});
+
 function MainContent() {
   const { activeTab, selectedVaultName } = useAppStore();
+  const classes = useStyles();
 
   if (!selectedVaultName) {
     return (
@@ -48,15 +84,7 @@ function MainContent() {
   return (
     <>
       <ContentTabs />
-      <div
-        style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-          minHeight: 0,
-        }}
-      >
+      <div className={classes.tabContent}>
         {activeTab === 'dashboard' && <VaultDashboard />}
         {activeTab === 'secrets' && <SecretsList />}
         {activeTab === 'keys' && <KeysList />}
@@ -69,15 +97,14 @@ function MainContent() {
 
 function AppLayout() {
   useKeyboardShortcuts();
+  const classes = useStyles();
 
-  // Listen for global refresh event from command palette
   useEffect(() => {
     const onRefresh = () => queryClient.invalidateQueries();
     window.addEventListener('azv:refresh', onRefresh);
     return () => window.removeEventListener('azv:refresh', onRefresh);
   }, []);
 
-  // Listen for sign-out event from command palette
   useEffect(() => {
     const onSignOut = async () => {
       const { authSignOut } = await import('./services/tauri');
@@ -94,25 +121,11 @@ function AppLayout() {
   }, []);
 
   return (
-    <div
-      className="azv-shell"
-      style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}
-    >
+    <div className={`azv-shell ${classes.shell}`}>
       <TopBar />
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+      <div className={classes.middle}>
         <Sidebar />
-        <div
-          className="azv-pane"
-          style={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            background: tokens.colorNeutralBackground1,
-            overflow: 'hidden',
-            marginLeft: 0,
-            borderLeft: 'none',
-          }}
-        >
+        <div className={`azv-pane ${classes.pane}`}>
           <MainContent />
         </div>
       </div>

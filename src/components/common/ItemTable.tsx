@@ -1,16 +1,3 @@
-/**
- * ItemTable.tsx – Reusable data table for vault items.
- *
- * Supports:
- * - Typed column definitions with custom renderers
- * - Optional row selection with select-all
- * - Loading / empty states
- * - Row numbering and highlight on selection
- *
- * Also exports shared cell renderers (renderEnabled, renderDate, renderTags)
- * used across Secrets, Keys, and Certificates lists.
- */
-
 /* eslint-disable react-refresh/only-export-components */
 import {
   Badge,
@@ -22,11 +9,10 @@ import {
   TableHeader,
   TableRow,
   Text,
+  makeStyles,
   tokens,
 } from '@fluentui/react-components';
 import { format } from 'date-fns';
-
-// ── Column type ──
 
 export interface Column<T> {
   key: string;
@@ -34,8 +20,6 @@ export interface Column<T> {
   width?: string;
   render: (item: T) => React.ReactNode;
 }
-
-// ── Props ──
 
 interface ItemTableProps<T> {
   items: T[];
@@ -45,7 +29,6 @@ interface ItemTableProps<T> {
   onSelect?: (item: T) => void;
   getItemId: (item: T) => string;
   emptyMessage?: string;
-  /** Enable row checkboxes for bulk operations. */
   selectable?: boolean;
   selectedIds?: Set<string>;
   selectAllState?: boolean | 'mixed';
@@ -53,7 +36,41 @@ interface ItemTableProps<T> {
   onToggleSelectAll?: (checked: boolean) => void;
 }
 
-// ── Component ──
+const useStyles = makeStyles({
+  loading: {
+    display: 'flex',
+    justifyContent: 'center',
+    padding: '48px',
+  },
+  table: {
+    width: '100%',
+  },
+  row: {
+    cursor: 'pointer',
+  },
+  rowIndex: {
+    opacity: 0.5,
+  },
+  statusDot: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+  },
+  dateText: {
+    fontSize: '11px',
+  },
+  dimText: {
+    opacity: 0.5,
+  },
+  dimmerText: {
+    opacity: 0.4,
+  },
+  tagWrap: {
+    display: 'flex',
+    gap: '4px',
+    flexWrap: 'wrap',
+  },
+});
 
 export function ItemTable<T>({
   items,
@@ -69,9 +86,11 @@ export function ItemTable<T>({
   onToggleSelect,
   onToggleSelectAll,
 }: ItemTableProps<T>) {
+  const classes = useStyles();
+
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}>
+      <div className={classes.loading}>
         <Spinner label="Loading…" />
       </div>
     );
@@ -87,7 +106,7 @@ export function ItemTable<T>({
 
   return (
     <div className="azv-table-wrap">
-      <Table size="small" style={{ width: '100%' }}>
+      <Table size="small" className={classes.table}>
         <TableHeader>
           <TableRow>
             {selectable && (
@@ -113,14 +132,13 @@ export function ItemTable<T>({
               <TableRow
                 key={id}
                 onClick={() => onSelect?.(item)}
+                className={classes.row}
                 style={{
-                  cursor: 'pointer',
                   background: selectedId === id ? tokens.colorBrandBackground2 : undefined,
                 }}
               >
                 {selectable && (
                   <TableCell>
-                    {/* Stop propagation so row-click doesn't also fire */}
                     <div onClick={(e) => e.stopPropagation()}>
                       <Checkbox
                         checked={selectedIds?.has(id) ?? false}
@@ -130,7 +148,7 @@ export function ItemTable<T>({
                   </TableCell>
                 )}
                 <TableCell>
-                  <Text size={100} className="azv-mono" style={{ opacity: 0.5 }}>
+                  <Text size={100} className={`azv-mono ${classes.rowIndex}`}>
                     {String(index + 1).padStart(2, '0')}
                   </Text>
                 </TableCell>
@@ -146,18 +164,16 @@ export function ItemTable<T>({
   );
 }
 
-// ── Shared cell renderers ──
-
 /** Renders an enabled/disabled status badge with dot indicator. */
 export function renderEnabled(enabled: boolean) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+    <span className="azv-status-row">
       <span
         className="azv-status-dot"
         style={{ background: enabled ? 'var(--azv-success)' : 'var(--azv-danger)' }}
       />
       <Text size={200}>{enabled ? 'Active' : 'Disabled'}</Text>
-    </div>
+    </span>
   );
 }
 
@@ -190,17 +206,11 @@ export function renderTags(tags: Record<string, string> | null) {
     );
   }
   return (
-    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+    <span className="azv-tag-row">
       {Object.entries(tags)
         .slice(0, 3)
         .map(([k, v]) => (
-          <Badge
-            key={k}
-            size="small"
-            appearance="outline"
-            className="azv-tag-pill"
-            title={`${k}=${v}`}
-          >
+          <Badge key={k} size="small" appearance="outline" className="azv-tag-pill" title={`${k}=${v}`}>
             <span className="azv-tag-text">
               {k}={v}
             </span>
@@ -211,6 +221,6 @@ export function renderTags(tags: Record<string, string> | null) {
           +{Object.keys(tags).length - 3}
         </Badge>
       )}
-    </div>
+    </span>
   );
 }

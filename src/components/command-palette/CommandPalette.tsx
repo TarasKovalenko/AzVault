@@ -1,11 +1,40 @@
-import { Input, Text, tokens } from '@fluentui/react-components';
+import { Input, Text, makeStyles, tokens } from '@fluentui/react-components';
 import { Search24Regular } from '@fluentui/react-icons';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../../stores/appStore';
 import type { PaletteCommand } from '../../types';
 import { fuzzyFilter } from './fuzzyMatch';
 
+const useStyles = makeStyles({
+  searchIcon: {
+    fontSize: '16px',
+  },
+  input: {
+    width: '100%',
+    fontFamily: "'IBM Plex Mono', monospace",
+    fontSize: '13px',
+  },
+  noResults: {
+    padding: '16px',
+    textAlign: 'center',
+  },
+  noResultsText: {
+    color: tokens.colorNeutralForeground3,
+  },
+  itemIcon: {
+    opacity: 0.6,
+    fontSize: '16px',
+    display: 'flex',
+  },
+  categoryText: {
+    color: tokens.colorNeutralForeground3,
+    marginLeft: '8px',
+    textTransform: 'capitalize',
+  },
+});
+
 export function CommandPalette() {
+  const classes = useStyles();
   const { commandPaletteOpen, setCommandPaletteOpen } = useAppStore();
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
@@ -82,20 +111,16 @@ export function CommandPalette() {
             onChange={(_, d) => setQuery(d.value)}
             onKeyDown={onKeyDown}
             placeholder="Search or run a command..."
-            contentBefore={<Search24Regular style={{ fontSize: 16 }} />}
-            style={{
-              width: '100%',
-              fontFamily: "'IBM Plex Mono', monospace",
-              fontSize: 13,
-            }}
+            contentBefore={<Search24Regular className={classes.searchIcon} />}
+            className={classes.input}
             autoComplete="off"
           />
         </div>
 
         <div className="azv-palette-results" ref={resultsRef}>
           {filtered.length === 0 ? (
-            <div style={{ padding: '16px', textAlign: 'center' }}>
-              <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+            <div className={classes.noResults}>
+              <Text size={200} className={classes.noResultsText}>
                 No matching commands
               </Text>
             </div>
@@ -109,20 +134,13 @@ export function CommandPalette() {
                 onMouseEnter={() => setActiveIndex(i)}
               >
                 {result.item.icon && (
-                  <span style={{ opacity: 0.6, fontSize: 16, display: 'flex' }}>
+                  <span className={classes.itemIcon}>
                     {result.item.icon}
                   </span>
                 )}
                 <span>
                   <Text size={200}>{result.item.label}</Text>
-                  <Text
-                    size={100}
-                    style={{
-                      color: tokens.colorNeutralForeground3,
-                      marginLeft: 8,
-                      textTransform: 'capitalize',
-                    }}
-                  >
+                  <Text size={100} className={classes.categoryText}>
                     {result.item.category}
                   </Text>
                 </span>

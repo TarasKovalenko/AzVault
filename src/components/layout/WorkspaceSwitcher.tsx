@@ -6,6 +6,7 @@ import {
   MenuPopover,
   MenuTrigger,
   Text,
+  makeStyles,
   tokens,
 } from '@fluentui/react-components';
 import {
@@ -19,7 +20,53 @@ import { useEffect } from 'react';
 import { listKeyvaults, listSubscriptions, listTenants, setTenant } from '../../services/tauri';
 import { useAppStore } from '../../stores/appStore';
 
+const useStyles = makeStyles({
+  root: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+  },
+  triggerBtn: {
+    padding: '2px 6px',
+    fontSize: '11px',
+  },
+  tenantIcon: {
+    fontSize: '14px',
+  },
+  tenantText: {
+    maxWidth: '100px',
+  },
+  subText: {
+    maxWidth: '120px',
+  },
+  vaultText: {
+    maxWidth: '130px',
+  },
+  separator: {
+    opacity: 0.3,
+  },
+  subItemRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+  },
+  vaultList: {
+    maxHeight: '300px',
+    overflowY: 'auto',
+  },
+  vaultItemMeta: {
+    color: tokens.colorNeutralForeground3,
+    fontSize: '10px',
+  },
+  chevron: {
+    fontSize: '12px',
+    marginLeft: '2px',
+    opacity: 0.5,
+  },
+});
+
 export function WorkspaceSwitcher() {
+  const classes = useStyles();
   const {
     selectedTenantId,
     selectedSubscriptionId,
@@ -71,17 +118,17 @@ export function WorkspaceSwitcher() {
   const currentSub = subscriptions.find((s) => s.subscriptionId === selectedSubscriptionId);
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+    <div className={classes.root}>
       {/* Tenant picker */}
       <Menu>
         <MenuTrigger>
           <Button
             appearance="subtle"
             size="small"
-            icon={<Building24Regular style={{ fontSize: 14 }} />}
-            style={{ padding: '2px 6px', fontSize: 11 }}
+            icon={<Building24Regular className={classes.tenantIcon} />}
+            className={classes.triggerBtn}
           >
-            <Text size={100} className="azv-mono" truncate wrap={false} style={{ maxWidth: 100 }}>
+            <Text size={100} className={`azv-mono ${classes.tenantText}`} truncate wrap={false}>
               {currentTenant?.display_name ||
                 (selectedTenantId ? selectedTenantId.slice(0, 8) : '—')}
             </Text>
@@ -108,7 +155,7 @@ export function WorkspaceSwitcher() {
         </MenuPopover>
       </Menu>
 
-      <Text size={100} style={{ opacity: 0.3 }}>
+      <Text size={100} className={classes.separator}>
         /
       </Text>
 
@@ -118,10 +165,10 @@ export function WorkspaceSwitcher() {
           <Button
             appearance="subtle"
             size="small"
-            icon={<CreditCardPerson24Regular style={{ fontSize: 14 }} />}
-            style={{ padding: '2px 6px', fontSize: 11 }}
+            icon={<CreditCardPerson24Regular className={classes.tenantIcon} />}
+            className={classes.triggerBtn}
           >
-            <Text size={100} className="azv-mono" truncate wrap={false} style={{ maxWidth: 120 }}>
+            <Text size={100} className={`azv-mono ${classes.subText}`} truncate wrap={false}>
               {currentSub?.displayName || '—'}
             </Text>
           </Button>
@@ -136,7 +183,7 @@ export function WorkspaceSwitcher() {
                   fontWeight: s.subscriptionId === selectedSubscriptionId ? 600 : 400,
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div className={classes.subItemRow}>
                   <span
                     className="azv-status-dot"
                     style={{
@@ -153,7 +200,7 @@ export function WorkspaceSwitcher() {
         </MenuPopover>
       </Menu>
 
-      <Text size={100} style={{ opacity: 0.3 }}>
+      <Text size={100} className={classes.separator}>
         /
       </Text>
 
@@ -163,18 +210,18 @@ export function WorkspaceSwitcher() {
           <Button
             appearance="subtle"
             size="small"
-            icon={<ShieldLock24Regular style={{ fontSize: 14 }} />}
+            icon={<ShieldLock24Regular className={classes.tenantIcon} />}
             iconPosition="before"
-            style={{ padding: '2px 6px', fontSize: 11 }}
+            className={classes.triggerBtn}
           >
-            <Text size={100} className="azv-mono" truncate wrap={false} style={{ maxWidth: 130 }}>
+            <Text size={100} className={`azv-mono ${classes.vaultText}`} truncate wrap={false}>
               {selectedVaultName || '—'}
             </Text>
-            <ChevronDown20Regular style={{ fontSize: 12, marginLeft: 2, opacity: 0.5 }} />
+            <ChevronDown20Regular className={classes.chevron} />
           </Button>
         </MenuTrigger>
         <MenuPopover>
-          <MenuList style={{ maxHeight: 300, overflowY: 'auto' }}>
+          <MenuList className={classes.vaultList}>
             {keyvaults.map((v) => (
               <MenuItem
                 key={v.id}
@@ -187,11 +234,7 @@ export function WorkspaceSwitcher() {
                   <Text size={200} className="azv-mono">
                     {v.name}
                   </Text>
-                  <Text
-                    size={100}
-                    block
-                    style={{ color: tokens.colorNeutralForeground3, fontSize: 10 }}
-                  >
+                  <Text size={100} block className={classes.vaultItemMeta}>
                     {v.location} · {v.resourceGroup}
                   </Text>
                 </div>

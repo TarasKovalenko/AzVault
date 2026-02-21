@@ -7,10 +7,11 @@ import {
   DialogSurface,
   DialogTitle,
   Input,
+  makeStyles,
   Spinner,
   Text,
-  Tooltip,
   tokens,
+  Tooltip,
 } from '@fluentui/react-components';
 import {
   Checkmark24Regular,
@@ -26,12 +27,89 @@ import { getSecretValue } from '../../services/tauri';
 import { useAppStore } from '../../stores/appStore';
 import type { SecretValue } from '../../types';
 
+const useStyles = makeStyles({
+  sectionTitle: {
+    marginBottom: '8px',
+  },
+  box: {
+    padding: '12px 14px',
+    borderRadius: '6px',
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    background: tokens.colorNeutralBackground3,
+  },
+  hintText: {
+    color: tokens.colorNeutralForeground3,
+    marginBottom: '8px',
+    lineHeight: 1.5,
+  },
+  row: {
+    display: 'flex',
+    gap: '4px',
+    alignItems: 'center',
+  },
+  input: {
+    flex: 1,
+    fontFamily: "'IBM Plex Mono', monospace",
+    fontSize: '12px',
+  },
+  clearButton: {
+    fontSize: '11px',
+  },
+  autoHideRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    marginTop: '6px',
+    fontSize: '11px',
+  },
+  timerIcon: {
+    fontSize: '13px',
+    opacity: 0.6,
+  },
+  autoHideText: {
+    color: tokens.colorNeutralForeground3,
+  },
+  clipboardWarning: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    marginTop: '6px',
+    padding: '4px 8px',
+    background: tokens.colorPaletteYellowBackground1,
+    borderRadius: '4px',
+    fontSize: '11px',
+  },
+  warningIcon: {
+    fontSize: '13px',
+    color: tokens.colorPaletteYellowForeground1,
+  },
+  warningText: {
+    color: tokens.colorPaletteYellowForeground1,
+  },
+  fetchError: {
+    marginTop: '8px',
+    padding: '8px 12px',
+    background: tokens.colorPaletteRedBackground1,
+    borderRadius: '4px',
+  },
+  fetchErrorText: {
+    color: tokens.colorPaletteRedForeground1,
+  },
+  dialogContent: {
+    lineHeight: 1.5,
+  },
+  reauthSection: {
+    marginTop: '10px',
+  },
+});
+
 interface RevealSecretValueProps {
   secretName: string;
   vaultUri: string;
 }
 
 export function RevealSecretValue({ secretName, vaultUri }: RevealSecretValueProps) {
+  const styles = useStyles();
   const { requireReauthForReveal, autoHideSeconds, clipboardClearSeconds, disableClipboardCopy } =
     useAppStore();
 
@@ -98,24 +176,13 @@ export function RevealSecretValue({ secretName, vaultUri }: RevealSecretValuePro
 
   return (
     <div>
-      <Text weight="semibold" size={300} block style={{ marginBottom: 8 }}>
+      <Text weight="semibold" size={300} block className={styles.sectionTitle}>
         Secret Value
       </Text>
 
       {!secretValue ? (
-        <div
-          style={{
-            padding: '12px 14px',
-            borderRadius: 6,
-            border: `1px solid ${tokens.colorNeutralStroke2}`,
-            background: tokens.colorNeutralBackground3,
-          }}
-        >
-          <Text
-            block
-            size={200}
-            style={{ color: tokens.colorNeutralForeground3, marginBottom: 8, lineHeight: 1.5 }}
-          >
+        <div className={styles.box}>
+          <Text block size={200} className={styles.hintText}>
             Values are never loaded automatically. Fetching will retrieve the value from Azure Key
             Vault and hold it in memory only.
           </Text>
@@ -130,20 +197,13 @@ export function RevealSecretValue({ secretName, vaultUri }: RevealSecretValuePro
           </Button>
         </div>
       ) : (
-        <div
-          style={{
-            padding: '12px 14px',
-            borderRadius: 6,
-            border: `1px solid ${tokens.colorNeutralStroke2}`,
-            background: tokens.colorNeutralBackground3,
-          }}
-        >
-          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+        <div className={styles.box}>
+          <div className={styles.row}>
             <Input
               type={isRevealed ? 'text' : 'password'}
               value={secretValue.value}
               readOnly
-              style={{ flex: 1, fontFamily: "'IBM Plex Mono', monospace", fontSize: 12 }}
+              className={styles.input}
             />
             <Tooltip content={isRevealed ? 'Hide' : 'Reveal'} relationship="label">
               <Button
@@ -163,39 +223,24 @@ export function RevealSecretValue({ secretName, vaultUri }: RevealSecretValuePro
                 />
               </Tooltip>
             )}
-            <Button appearance="subtle" size="small" onClick={clearValue} style={{ fontSize: 11 }}>
+            <Button appearance="subtle" size="small" onClick={clearValue} className={styles.clearButton}>
               Clear
             </Button>
           </div>
 
           {isRevealed && secondsLeft > 0 && (
-            <div
-              style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, fontSize: 11 }}
-            >
-              <Timer24Regular style={{ fontSize: 13, opacity: 0.6 }} />
-              <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>
+            <div className={styles.autoHideRow}>
+              <Timer24Regular className={styles.timerIcon} />
+              <Text size={100} className={styles.autoHideText}>
                 Auto-hide in {secondsLeft}s
               </Text>
             </div>
           )}
 
           {clipboardWarning && (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                marginTop: 6,
-                padding: '4px 8px',
-                background: tokens.colorPaletteYellowBackground1,
-                borderRadius: 4,
-                fontSize: 11,
-              }}
-            >
-              <Warning24Regular
-                style={{ fontSize: 13, color: tokens.colorPaletteYellowForeground1 }}
-              />
-              <Text size={100} style={{ color: tokens.colorPaletteYellowForeground1 }}>
+            <div className={styles.clipboardWarning}>
+              <Warning24Regular className={styles.warningIcon} />
+              <Text size={100} className={styles.warningText}>
                 Clipboard will be cleared in {clipboardClearSeconds}s
               </Text>
             </div>
@@ -204,15 +249,8 @@ export function RevealSecretValue({ secretName, vaultUri }: RevealSecretValuePro
       )}
 
       {fetchError && (
-        <div
-          style={{
-            marginTop: 8,
-            padding: '8px 12px',
-            background: tokens.colorPaletteRedBackground1,
-            borderRadius: 4,
-          }}
-        >
-          <Text size={200} style={{ color: tokens.colorPaletteRedForeground1 }}>
+        <div className={styles.fetchError}>
+          <Text size={200} className={styles.fetchErrorText}>
             {fetchError}
           </Text>
         </div>
@@ -224,13 +262,13 @@ export function RevealSecretValue({ secretName, vaultUri }: RevealSecretValuePro
           <DialogBody>
             <DialogTitle>Confirm Secret Fetch</DialogTitle>
             <DialogContent>
-              <Text size={200} style={{ lineHeight: 1.5 }}>
+              <Text size={200} className={styles.dialogContent}>
                 Fetching will retrieve the current value from Azure Key Vault. The value is held in
                 memory only and is never written to disk or logs. It will be cleared when you close
                 this panel or after {autoHideSeconds} seconds.
               </Text>
               {requireReauthForReveal && (
-                <div style={{ marginTop: 10 }}>
+                <div className={styles.reauthSection}>
                   <Button
                     appearance={reauthConfirmed ? 'primary' : 'secondary'}
                     onClick={() => setReauthConfirmed((v) => !v)}

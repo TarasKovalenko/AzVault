@@ -1,8 +1,93 @@
-import { Badge, Button, Field, Text, tokens } from '@fluentui/react-components';
+import {
+  Badge,
+  Button,
+  Field,
+  Text,
+  makeStyles,
+  mergeClasses,
+  tokens,
+} from '@fluentui/react-components';
 import { Certificate24Regular, Copy24Regular, Dismiss24Regular } from '@fluentui/react-icons';
 import { differenceInDays, format } from 'date-fns';
 import { useState } from 'react';
 import type { CertificateItem } from '../../types';
+
+const useStyles = makeStyles({
+  root: {
+    height: '100%',
+    overflow: 'auto',
+    padding: '16px 20px',
+  },
+  emptyRoot: {
+    height: '100%',
+  },
+  emptyIcon: {
+    fontSize: '36px',
+    opacity: 0.3,
+  },
+  emptyTitle: {
+    color: tokens.colorNeutralForeground3,
+  },
+  emptySubtitle: {
+    color: tokens.colorNeutralForeground3,
+    maxWidth: '240px',
+    textAlign: 'center',
+    lineHeight: 1.5,
+  },
+  header: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: '12px',
+  },
+  statusBadges: {
+    display: 'flex',
+    gap: '6px',
+    marginBottom: '16px',
+    flexWrap: 'wrap',
+  },
+  statusRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+  },
+  warningBox: {
+    padding: '8px 12px',
+    borderRadius: '4px',
+    background: tokens.colorPaletteYellowBackground1,
+    marginBottom: '12px',
+  },
+  warningText: {
+    color: tokens.colorPaletteYellowForeground1,
+  },
+  metaSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  },
+  thumbprintRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+  },
+  thumbprintText: {
+    wordBreak: 'break-all',
+    fontSize: '11px',
+  },
+  copyButton: {
+    flexShrink: 0,
+  },
+  tagsRow: {
+    display: 'flex',
+    gap: '4px',
+    flexWrap: 'wrap',
+    marginTop: '4px',
+  },
+  metaValue: {
+    wordBreak: 'break-all',
+    fontSize: '12px',
+  },
+});
 
 interface CertificateDetailsProps {
   item: CertificateItem | null;
@@ -10,24 +95,17 @@ interface CertificateDetailsProps {
 }
 
 export function CertificateDetails({ item, onClose }: CertificateDetailsProps) {
+  const classes = useStyles();
   const [copiedThumb, setCopiedThumb] = useState(false);
 
   if (!item) {
     return (
-      <div className="azv-empty" style={{ height: '100%' }}>
-        <Certificate24Regular style={{ fontSize: 36, opacity: 0.3 }} />
-        <Text size={300} weight="semibold" style={{ color: tokens.colorNeutralForeground3 }}>
+      <div className={mergeClasses('azv-empty', classes.emptyRoot)}>
+        <Certificate24Regular className={classes.emptyIcon} />
+        <Text size={300} weight="semibold" className={classes.emptyTitle}>
           No certificate selected
         </Text>
-        <Text
-          size={200}
-          style={{
-            color: tokens.colorNeutralForeground3,
-            maxWidth: 240,
-            textAlign: 'center',
-            lineHeight: 1.5,
-          }}
-        >
+        <Text size={200} className={classes.emptySubtitle}>
           Click a row in the table to view certificate details, thumbprint, and expiration info.
         </Text>
       </div>
@@ -54,23 +132,16 @@ export function CertificateDetails({ item, onClose }: CertificateDetailsProps) {
   };
 
   return (
-    <div style={{ height: '100%', overflow: 'auto', padding: '16px 20px' }}>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: 12,
-        }}
-      >
+    <div className={classes.root}>
+      <div className={classes.header}>
         <Text weight="semibold" size={400} className="azv-mono">
           {item.name}
         </Text>
         <Button appearance="subtle" size="small" icon={<Dismiss24Regular />} onClick={onClose} />
       </div>
 
-      <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <div className={classes.statusBadges}>
+        <div className={classes.statusRow}>
           <span
             className="azv-status-dot"
             style={{ background: item.enabled ? 'var(--azv-success)' : 'var(--azv-danger)' }}
@@ -90,27 +161,20 @@ export function CertificateDetails({ item, onClose }: CertificateDetailsProps) {
       </div>
 
       {isExpiringSoon && (
-        <div
-          style={{
-            padding: '8px 12px',
-            borderRadius: 4,
-            background: tokens.colorPaletteYellowBackground1,
-            marginBottom: 12,
-          }}
-        >
-          <Text size={200} style={{ color: tokens.colorPaletteYellowForeground1 }}>
+        <div className={classes.warningBox}>
+          <Text size={200} className={classes.warningText}>
             This certificate expires in {daysUntilExpiry} days. Consider renewing it.
           </Text>
         </div>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div className={classes.metaSection}>
         <MetaField label="Name" value={item.name} mono />
         <MetaField label="Version" value={extractVersion(item.id)} mono />
         <MetaField label="Subject" value={item.subject || '—'} />
         <Field label="Thumbprint">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <Text size={200} font="monospace" style={{ wordBreak: 'break-all', fontSize: 11 }}>
+          <div className={classes.thumbprintRow}>
+            <Text size={200} font="monospace" className={classes.thumbprintText}>
               {item.thumbprint || '—'}
             </Text>
             {item.thumbprint && (
@@ -120,7 +184,7 @@ export function CertificateDetails({ item, onClose }: CertificateDetailsProps) {
                 icon={<Copy24Regular />}
                 onClick={handleCopyThumbprint}
                 title={copiedThumb ? 'Copied!' : 'Copy thumbprint'}
-                style={{ flexShrink: 0 }}
+                className={classes.copyButton}
               />
             )}
           </div>
@@ -145,7 +209,7 @@ export function CertificateDetails({ item, onClose }: CertificateDetailsProps) {
 
         {item.tags && Object.keys(item.tags).length > 0 && (
           <Field label="Tags">
-            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 4 }}>
+            <div className={classes.tagsRow}>
               {Object.entries(item.tags).map(([k, v]) => (
                 <Badge
                   key={k}
@@ -168,13 +232,10 @@ export function CertificateDetails({ item, onClose }: CertificateDetailsProps) {
 }
 
 function MetaField({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  const classes = useStyles();
   return (
     <Field label={label}>
-      <Text
-        size={200}
-        font={mono ? 'monospace' : undefined}
-        style={{ wordBreak: 'break-all', fontSize: 12 }}
-      >
+      <Text size={200} font={mono ? 'monospace' : undefined} className={classes.metaValue}>
         {value}
       </Text>
     </Field>

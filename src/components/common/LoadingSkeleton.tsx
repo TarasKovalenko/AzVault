@@ -1,14 +1,24 @@
+import { makeStyles } from '@fluentui/react-components';
+
 interface LoadingSkeletonProps {
   rows?: number;
   columns?: number[];
 }
 
+const useStyles = makeStyles({
+  root: {
+    padding: '8px 0',
+  },
+});
+
 export function LoadingSkeleton({
   rows = 8,
   columns = [30, 10, 15, 20, 15, 10],
 }: LoadingSkeletonProps) {
+  const classes = useStyles();
+
   return (
-    <div style={{ padding: '8px 0' }}>
+    <div className={classes.root}>
       {Array.from({ length: rows }).map((_, i) => (
         <div key={i} className="azv-skeleton-row">
           {columns.map((width, j) => (

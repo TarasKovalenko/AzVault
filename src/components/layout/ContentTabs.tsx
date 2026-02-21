@@ -1,4 +1,4 @@
-import { Tab, TabList, tokens } from '@fluentui/react-components';
+import { Tab, TabList, makeStyles, tokens } from '@fluentui/react-components';
 import {
   Certificate24Regular,
   ClipboardTextLtr24Regular,
@@ -9,24 +9,31 @@ import {
 import { useAppStore } from '../../stores/appStore';
 import type { ItemTab } from '../../types';
 
+const useStyles = makeStyles({
+  root: {
+    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
+    padding: '2px 6px',
+    backgroundColor: tokens.colorNeutralBackground2,
+  },
+  tabList: {
+    padding: '0 8px',
+    gap: '6px',
+  },
+});
+
 export function ContentTabs() {
   const { activeTab, setActiveTab, selectedVaultName } = useAppStore();
+  const classes = useStyles();
 
   if (!selectedVaultName) return null;
 
   return (
-    <div
-      style={{
-        borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
-        padding: '2px 6px',
-        background: tokens.colorNeutralBackground2,
-      }}
-    >
+    <div className={classes.root}>
       <TabList
         selectedValue={activeTab}
         onTabSelect={(_, d) => setActiveTab(d.value as ItemTab)}
         size="small"
-        style={{ padding: '0 8px', gap: 6 }}
+        className={classes.tabList}
       >
         <Tab value="dashboard" icon={<TextBulletListSquare24Regular />}>
           Dashboard

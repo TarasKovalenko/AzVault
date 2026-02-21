@@ -2,6 +2,7 @@ import {
   Badge,
   Button,
   Combobox,
+  makeStyles,
   Option,
   Spinner,
   Table,
@@ -21,6 +22,112 @@ import { clearAuditLog, exportAuditLog, getAuditLog } from '../../services/tauri
 import { useAppStore } from '../../stores/appStore';
 import { DangerConfirmDialog } from '../common/DangerConfirmDialog';
 import { EmptyState } from '../common/EmptyState';
+
+const useStyles = makeStyles({
+  root: {
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
+  },
+  toolbar: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '6px 12px',
+    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+    background: tokens.colorNeutralBackground2,
+    gap: '8px',
+    flexWrap: 'wrap',
+  },
+  toolbarLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  countText: {
+    color: tokens.colorNeutralForeground3,
+  },
+  filters: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+  },
+  comboboxAction: {
+    minWidth: '100px',
+  },
+  comboboxResult: {
+    minWidth: '90px',
+  },
+  comboboxType: {
+    minWidth: '100px',
+  },
+  toolbarButtons: {
+    display: 'flex',
+    gap: '4px',
+  },
+  actionError: {
+    padding: '4px 12px',
+    background: tokens.colorPaletteRedBackground1,
+  },
+  actionErrorText: {
+    color: tokens.colorPaletteRedForeground1,
+  },
+  tableContainer: {
+    flex: 1,
+    overflow: 'auto',
+    padding: '0 12px',
+    minHeight: 0,
+  },
+  loadingContainer: {
+    display: 'flex',
+    justifyContent: 'center',
+    padding: '48px',
+  },
+  tableWrap: {
+    marginTop: '8px',
+  },
+  thTime: { width: '17%' },
+  thVault: { width: '12%' },
+  thAction: { width: '14%' },
+  thType: { width: '9%' },
+  thItem: { width: '15%' },
+  thResult: { width: '10%' },
+  thDetails: { width: '23%' },
+  timeText: {
+    fontSize: '10px',
+  },
+  itemNameText: {
+    fontSize: '11px',
+  },
+  resultCell: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '5px',
+  },
+  detailsText: {
+    color: tokens.colorNeutralForeground3,
+    display: 'inline-block',
+    maxWidth: '240px',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    fontSize: '10px',
+  },
+  loadMoreContainer: {
+    display: 'flex',
+    justifyContent: 'center',
+    padding: '10px',
+  },
+  banner: {
+    padding: '4px 12px',
+    borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
+    background: tokens.colorNeutralBackground3,
+    fontSize: '10px',
+  },
+  bannerText: {
+    color: tokens.colorNeutralForeground3,
+  },
+});
 
 function actionColor(
   action: string,
@@ -46,6 +153,7 @@ const RESULT_OPTIONS = ['All', 'success', 'error'] as const;
 const TYPE_OPTIONS = ['All', 'secret', 'key', 'certificate'] as const;
 
 export function AuditLog() {
+  const classes = useStyles();
   const queryClient = useQueryClient();
   const { auditRefreshInterval } = useAppStore();
   const [copied, setCopied] = useState(false);
@@ -118,37 +226,26 @@ export function AuditLog() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div className={classes.root}>
       {/* Toolbar */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '6px 12px',
-          borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
-          background: tokens.colorNeutralBackground2,
-          gap: 8,
-          flexWrap: 'wrap',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div className={classes.toolbar}>
+        <div className={classes.toolbarLeft}>
           <Text weight="semibold" size={300}>
             Activity Log
           </Text>
-          <Text size={200} className="azv-mono" style={{ color: tokens.colorNeutralForeground3 }}>
+          <Text size={200} className={`azv-mono ${classes.countText}`}>
             ({entries.length})
           </Text>
         </div>
 
         {/* Filters */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div className={classes.filters}>
           <Combobox
             value={filterAction}
             selectedOptions={[filterAction]}
             onOptionSelect={(_, d) => setFilterAction(d.optionValue || 'All')}
             placeholder="Action"
-            style={{ minWidth: 100 }}
+            className={classes.comboboxAction}
             size="small"
           >
             {ACTION_OPTIONS.map((o) => (
@@ -162,7 +259,7 @@ export function AuditLog() {
             selectedOptions={[filterResult]}
             onOptionSelect={(_, d) => setFilterResult(d.optionValue || 'All')}
             placeholder="Result"
-            style={{ minWidth: 90 }}
+            className={classes.comboboxResult}
             size="small"
           >
             {RESULT_OPTIONS.map((o) => (
@@ -176,7 +273,7 @@ export function AuditLog() {
             selectedOptions={[filterType]}
             onOptionSelect={(_, d) => setFilterType(d.optionValue || 'All')}
             placeholder="Type"
-            style={{ minWidth: 100 }}
+            className={classes.comboboxType}
             size="small"
           >
             {TYPE_OPTIONS.map((o) => (
@@ -187,7 +284,7 @@ export function AuditLog() {
           </Combobox>
         </div>
 
-        <div style={{ display: 'flex', gap: 4 }}>
+        <div className={classes.toolbarButtons}>
           <Button
             appearance="subtle"
             icon={copied ? <Checkmark24Regular /> : <ArrowDownload24Regular />}
@@ -210,17 +307,17 @@ export function AuditLog() {
       </div>
 
       {actionError && (
-        <div style={{ padding: '4px 12px', background: tokens.colorPaletteRedBackground1 }}>
-          <Text size={100} style={{ color: tokens.colorPaletteRedForeground1 }}>
+        <div className={classes.actionError}>
+          <Text size={100} className={classes.actionErrorText}>
             {actionError}
           </Text>
         </div>
       )}
 
       {/* Table */}
-      <div style={{ flex: 1, overflow: 'auto', padding: '0 12px', minHeight: 0 }}>
+      <div className={classes.tableContainer}>
         {logQuery.isLoading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}>
+          <div className={classes.loadingContainer}>
             <Spinner label="Loading..." />
           </div>
         ) : entries.length === 0 ? (
@@ -230,24 +327,24 @@ export function AuditLog() {
           />
         ) : (
           <>
-            <div className="azv-table-wrap" style={{ marginTop: 8 }}>
+            <div className={`azv-table-wrap ${classes.tableWrap}`}>
               <Table size="small">
                 <TableHeader>
                   <TableRow>
-                    <th className="azv-th" style={{ width: '17%' }}>Time</th>
-                    <th className="azv-th" style={{ width: '12%' }}>Vault</th>
-                    <th className="azv-th" style={{ width: '14%' }}>Action</th>
-                    <th className="azv-th" style={{ width: '9%' }}>Type</th>
-                    <th className="azv-th" style={{ width: '15%' }}>Item</th>
-                    <th className="azv-th" style={{ width: '10%' }}>Result</th>
-                    <th className="azv-th" style={{ width: '23%' }}>Details</th>
+                    <th className={`azv-th ${classes.thTime}`}>Time</th>
+                    <th className={`azv-th ${classes.thVault}`}>Vault</th>
+                    <th className={`azv-th ${classes.thAction}`}>Action</th>
+                    <th className={`azv-th ${classes.thType}`}>Type</th>
+                    <th className={`azv-th ${classes.thItem}`}>Item</th>
+                    <th className={`azv-th ${classes.thResult}`}>Result</th>
+                    <th className={`azv-th ${classes.thDetails}`}>Details</th>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {visibleEntries.map((entry, i) => (
                     <TableRow key={i}>
                       <TableCell>
-                        <Text size={200} className="azv-mono" style={{ fontSize: 10 }}>
+                        <Text size={200} className={`azv-mono ${classes.timeText}`}>
                           {(() => {
                             try {
                               return format(new Date(entry.timestamp), 'MMM d HH:mm:ss');
@@ -271,12 +368,12 @@ export function AuditLog() {
                         <Text size={200}>{entry.itemType}</Text>
                       </TableCell>
                       <TableCell>
-                        <Text size={200} className="azv-mono" style={{ fontSize: 11 }}>
+                        <Text size={200} className={`azv-mono ${classes.itemNameText}`}>
                           {entry.itemName}
                         </Text>
                       </TableCell>
                       <TableCell>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <div className={classes.resultCell}>
                           <span
                             className="azv-status-dot"
                             style={{
@@ -291,19 +388,7 @@ export function AuditLog() {
                       </TableCell>
                       <TableCell>
                         <Tooltip content={entry.details || '—'} relationship="label">
-                          <Text
-                            size={200}
-                            className="azv-mono"
-                            style={{
-                              color: tokens.colorNeutralForeground3,
-                              display: 'inline-block',
-                              maxWidth: 240,
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                              fontSize: 10,
-                            }}
-                          >
+                          <Text size={200} className={`azv-mono ${classes.detailsText}`}>
                             {entry.details || '—'}
                           </Text>
                         </Tooltip>
@@ -315,7 +400,7 @@ export function AuditLog() {
             </div>
 
             {entries.length > visibleCount && (
-              <div style={{ display: 'flex', justifyContent: 'center', padding: 10 }}>
+              <div className={classes.loadMoreContainer}>
                 <Button
                   onClick={() => setVisibleCount((c) => c + 200)}
                   appearance="secondary"
@@ -330,15 +415,8 @@ export function AuditLog() {
       </div>
 
       {/* Redaction guarantee banner */}
-      <div
-        style={{
-          padding: '4px 12px',
-          borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
-          background: tokens.colorNeutralBackground3,
-          fontSize: 10,
-        }}
-      >
-        <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>
+      <div className={classes.banner}>
+        <Text size={100} className={classes.bannerText}>
           Secret values are NEVER recorded in the audit log. Only operation metadata is logged.
         </Text>
       </div>
