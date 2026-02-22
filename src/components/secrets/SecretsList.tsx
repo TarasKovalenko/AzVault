@@ -1,41 +1,39 @@
-/**
- * SecretsList.tsx – Secrets data-plane browser.
- *
- * Features:
- * - Paginated table of secrets with search filtering
- * - Bulk selection & delete with confirmation dialog
- * - JSON / CSV export (metadata only, no secret values)
- * - Details drawer for individual secret inspection
- * - Create dialog for new secrets
- */
-
 import {
   Button,
-  Dialog,
-  DialogActions,
-  DialogBody,
-  DialogContent,
-  DialogSurface,
-  DialogTitle,
   Input,
-  Spinner,
+  Menu,
+  MenuItem,
+  MenuList,
+  MenuPopover,
+  MenuTrigger,
   Text,
+  makeStyles,
+  mergeClasses,
   tokens,
 } from '@fluentui/react-components';
-import { Add24Regular, ArrowDownload24Regular, Delete24Regular } from '@fluentui/react-icons';
+import {
+  Add24Regular,
+  ArrowDownload24Regular,
+  Delete24Regular,
+  Search24Regular,
+} from '@fluentui/react-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { deleteSecret, exportItems, listSecrets } from '../../services/tauri';
 import { useAppStore } from '../../stores/appStore';
 import type { SecretItem } from '../../types';
-import { DetailsDrawer } from '../common/DetailsDrawer';
+import { DangerConfirmDialog } from '../common/DangerConfirmDialog';
+import { EmptyState } from '../common/EmptyState';
+import { ErrorMessage } from '../common/ErrorMessage';
 import type { Column } from '../common/ItemTable';
 import { ItemTable, renderDate, renderEnabled, renderTags } from '../common/ItemTable';
+import { LoadingSkeleton } from '../common/LoadingSkeleton';
+import { SplitPane } from '../common/SplitPane';
 import { CreateSecretDialog } from './CreateSecretDialog';
+import { SecretDetails } from './SecretDetails';
 import {
   filterOutDeletedSecrets,
   getSelectedSecrets,
-  isDeleteConfirmationValid,
   nextDeleteProgress,
   pruneSelectedIds,
   removeSucceededSelection,
@@ -44,93 +42,203 @@ import {
 } from './secretsBulkDeleteLogic';
 import { type ExportFormat, exportSecretMetadata } from './secretsExport';
 
-/** Column definitions for the secrets table. */
-const columns: Column<SecretItem>[] = [
-  {
-    key: 'name',
-    label: 'Name',
-    width: '30%',
-    render: (item) => (
-      <Text weight="semibold" size={200} className="azv-mono">
-        {item.name}
-      </Text>
-    ),
+const useStyles = makeStyles({
+  listRoot: {
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
   },
-  {
-    key: 'enabled',
-    label: 'Status',
-    width: '10%',
-    render: (item) => renderEnabled(item.enabled),
+  toolbar: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '6px 12px',
+    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+    background: tokens.colorNeutralBackground2,
+    gap: '8px',
   },
-  {
-    key: 'contentType',
-    label: 'Type',
-    width: '15%',
-    render: (item) => (
-      <Text size={200} className="azv-mono" style={{ opacity: item.contentType ? 1 : 0.4 }}>
-        {item.contentType || '—'}
-      </Text>
-    ),
+  toolbarLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    flex: 1,
   },
-  {
-    key: 'updated',
-    label: 'Updated',
-    width: '20%',
-    render: (item) => renderDate(item.updated),
+  countText: {
+    color: tokens.colorNeutralForeground3,
   },
-  {
-    key: 'expires',
-    label: 'Expires',
-    width: '15%',
-    render: (item) => {
-      if (!item.expires)
-        return (
-          <Text size={200} style={{ opacity: 0.4 }}>
-            Never
-          </Text>
-        );
-      const expired = new Date(item.expires) < new Date();
-      return (
-        <Text
-          size={200}
-          className="azv-mono"
-          style={{
-            color: expired ? 'var(--azv-danger)' : undefined,
-            fontSize: 11,
-          }}
-        >
-          {renderDate(item.expires)}
-        </Text>
-      );
-    },
+  selectedText: {
+    color: tokens.colorBrandForeground1,
   },
-  {
-    key: 'tags',
-    label: 'Tags',
-    width: '10%',
-    render: (item) => renderTags(item.tags),
+  searchInput: {
+    marginLeft: 'auto',
+    maxWidth: '180px',
+    fontSize: '12px',
   },
-];
+  toolbarButtons: {
+    display: 'flex',
+    gap: '4px',
+  },
+  exportMessage: {
+    padding: '4px 12px',
+    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+  },
+  exportMessageSuccess: {
+    background: tokens.colorPaletteGreenBackground1,
+  },
+  exportMessageError: {
+    background: tokens.colorPaletteRedBackground1,
+  },
+  exportMessageTextSuccess: {
+    color: tokens.colorPaletteGreenForeground1,
+  },
+  exportMessageTextError: {
+    color: tokens.colorPaletteRedForeground1,
+  },
+  tableWrap: {
+    flex: 1,
+    overflow: 'auto',
+    padding: '0 12px',
+    minHeight: 0,
+  },
+  errorWrap: {
+    padding: '16px',
+  },
+  loadMoreWrap: {
+    display: 'flex',
+    justifyContent: 'center',
+    padding: '10px',
+  },
+  bulkDeleteDetails: {
+    marginTop: '12px',
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    borderRadius: '6px',
+    padding: '8px 10px',
+  },
+  bulkDeleteSummary: {
+    cursor: 'pointer',
+    fontSize: '12px',
+  },
+  bulkDeleteList: {
+    marginTop: '8px',
+    maxHeight: '200px',
+    overflow: 'auto',
+  },
+  bulkDeleteItem: {
+    padding: '2px 0',
+  },
+  bulkDeleteProgress: {
+    marginTop: '10px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  bulkDeleteError: {
+    marginTop: '10px',
+    padding: '8px',
+    borderRadius: '4px',
+    background: tokens.colorPaletteRedBackground1,
+    color: tokens.colorPaletteRedForeground1,
+    fontSize: '12px',
+  },
+  textDim: {
+    opacity: 0.4,
+  },
+  textExpires: {
+    fontSize: '11px',
+  },
+});
 
 export function SecretsList() {
-  const { selectedVaultUri, searchQuery } = useAppStore();
+  const classes = useStyles();
+  const { selectedVaultUri, searchQuery, detailPanelOpen, splitRatio, setSplitRatio } =
+    useAppStore();
   const queryClient = useQueryClient();
   const [selectedSecret, setSelectedSecret] = useState<SecretItem | null>(null);
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(50);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
   const [bulkDeleteError, setBulkDeleteError] = useState<string | null>(null);
-  const [deleteConfirmInput, setDeleteConfirmInput] = useState('');
-  const [exportMessage, setExportMessage] = useState<string | null>(null);
-  const [exportMessageTone, setExportMessageTone] = useState<'success' | 'error'>('success');
   const [bulkDeleteProgress, setBulkDeleteProgress] = useState({
     total: 0,
     completed: 0,
     failed: 0,
   });
+  const [localFilter, setLocalFilter] = useState('');
+  const [exportMessage, setExportMessage] = useState<string | null>(null);
+  const [exportMessageTone, setExportMessageTone] = useState<'success' | 'error'>('success');
+
+  const columns: Column<SecretItem>[] = useMemo(
+    () => [
+      {
+        key: 'name',
+        label: 'Name',
+        width: '30%',
+        render: (item) => (
+          <Text weight="semibold" size={200} className="azv-mono">
+            {item.name}
+          </Text>
+        ),
+      },
+      {
+        key: 'enabled',
+        label: 'Status',
+        width: '10%',
+        render: (item) => renderEnabled(item.enabled),
+      },
+      {
+        key: 'contentType',
+        label: 'Type',
+        width: '15%',
+        render: (item) => (
+          <Text
+            size={200}
+            className="azv-mono"
+            style={{ opacity: item.contentType ? 1 : 0.4 }}
+          >
+            {item.contentType || '—'}
+          </Text>
+        ),
+      },
+      {
+        key: 'updated',
+        label: 'Updated',
+        width: '20%',
+        render: (item) => renderDate(item.updated),
+      },
+      {
+        key: 'expires',
+        label: 'Expires',
+        width: '15%',
+        render: (item) => {
+          if (!item.expires)
+            return (
+              <Text size={200} className={mergeClasses('azv-mono', classes.textDim)}>
+                Never
+              </Text>
+            );
+          const expired = new Date(item.expires) < new Date();
+          return (
+            <Text
+              size={200}
+              className={mergeClasses('azv-mono', classes.textExpires)}
+              style={expired ? { color: 'var(--azv-danger)' } : undefined}
+            >
+              {renderDate(item.expires)}
+            </Text>
+          );
+        },
+      },
+      {
+        key: 'tags',
+        label: 'Tags',
+        width: '10%',
+        render: (item) => renderTags(item.tags),
+      },
+    ],
+    [classes.textDim, classes.textExpires],
+  );
 
   const secretsQuery = useQuery({
     queryKey: ['secrets', selectedVaultUri],
@@ -138,11 +246,10 @@ export function SecretsList() {
     enabled: !!selectedVaultUri,
   });
 
-  // ── Derived / filtered data ──
-
   const allSecrets = useMemo(() => secretsQuery.data ?? [], [secretsQuery.data]);
+  const filterText = localFilter || searchQuery;
   const filteredSecrets = allSecrets.filter((s) =>
-    s.name.toLowerCase().includes(searchQuery.toLowerCase()),
+    s.name.toLowerCase().includes(filterText.toLowerCase()),
   );
   const visibleSecrets = filteredSecrets.slice(0, visibleCount);
   const selectedSecrets = useMemo(
@@ -162,7 +269,6 @@ export function SecretsList() {
         ? true
         : 'mixed';
 
-  // Clean up stale selections when data refreshes
   useEffect(() => {
     const existingIds = new Set(allSecrets.map((s) => s.id));
     setSelectedIds((prev) => {
@@ -171,20 +277,14 @@ export function SecretsList() {
     });
   }, [allSecrets]);
 
-  // Close drawer if the selected secret was deleted
   useEffect(() => {
     if (!selectedSecret) return;
     const stillExists = allSecrets.some((s) => s.id === selectedSecret.id);
-    if (!stillExists) {
-      setSelectedSecret(null);
-      setDrawerOpen(false);
-    }
+    if (!stillExists) setSelectedSecret(null);
   }, [selectedSecret, allSecrets]);
 
-  // Reset dialog input/error/progress when dialog closes
   useEffect(() => {
     if (!showBulkDeleteConfirm) {
-      setDeleteConfirmInput('');
       setBulkDeleteError(null);
       setBulkDeleteProgress({ total: 0, completed: 0, failed: 0 });
     }
@@ -196,7 +296,20 @@ export function SecretsList() {
     return () => window.clearTimeout(timer);
   }, [exportMessage]);
 
-  // ── Handlers ──
+  // Listen for custom events from command palette
+  useEffect(() => {
+    const onNewSecret = () => setCreateOpen(true);
+    const onFocusSearch = () => {
+      const input = document.querySelector<HTMLInputElement>('[data-azv-list-search]');
+      input?.focus();
+    };
+    window.addEventListener('azv:new-secret', onNewSecret);
+    window.addEventListener('azv:focus-search', onFocusSearch);
+    return () => {
+      window.removeEventListener('azv:new-secret', onNewSecret);
+      window.removeEventListener('azv:focus-search', onFocusSearch);
+    };
+  }, []);
 
   const downloadExport = (content: string, format: ExportFormat) => {
     const mimeType = format === 'json' ? 'application/json' : 'text/csv;charset=utf-8';
@@ -212,12 +325,6 @@ export function SecretsList() {
     URL.revokeObjectURL(url);
   };
 
-  const handleSelect = (item: SecretItem) => {
-    setSelectedSecret(item);
-    setDrawerOpen(true);
-  };
-
-  /** Export metadata (never secret values) as JSON or CSV. */
   const handleExport = async (format: ExportFormat) => {
     await exportSecretMetadata(filteredSecrets, format, {
       exportItems,
@@ -225,34 +332,23 @@ export function SecretsList() {
       writeClipboard: navigator.clipboard?.writeText
         ? (content) => navigator.clipboard.writeText(content)
         : undefined,
-      onError: (error) => {
+      onError: () => {
         setExportMessageTone('error');
         setExportMessage('Export failed.');
-        console.error('Export failed:', error);
       },
       onSuccess: (mode) => {
         setExportMessageTone('success');
         setExportMessage(
           mode === 'download'
             ? `${format.toUpperCase()} downloaded.`
-            : `${format.toUpperCase()} copied to clipboard.`,
+            : `${format.toUpperCase()} copied.`,
         );
       },
     });
   };
 
-  const toggleSelect = (id: string, checked: boolean) => {
-    setSelectedIds((prev) => toggleSelection(prev, id, checked, bulkDeleteLoading));
-  };
-
-  const toggleSelectAll = (checked: boolean) => {
-    setSelectedIds((prev) => toggleSelectionAll(prev, visibleIds, checked, bulkDeleteLoading));
-  };
-
-  /** Bulk-delete selected secrets with typed confirmation and progress reporting. */
   const handleBulkDelete = async () => {
-    if (!selectedVaultUri || !isDeleteConfirmationValid(deleteConfirmInput)) return;
-
+    if (!selectedVaultUri) return;
     const items = selectedSecrets;
     if (items.length === 0) return;
 
@@ -299,55 +395,53 @@ export function SecretsList() {
     }
   };
 
-  const deleteConfirmationValid = isDeleteConfirmationValid(deleteConfirmInput);
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+  const listPane = (
+    <div className={classes.listRoot}>
       {/* Toolbar */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '8px 16px',
-          borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
-          background: tokens.colorNeutralBackground2,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div className={classes.toolbar}>
+        <div className={classes.toolbarLeft}>
           <Text weight="semibold" size={300}>
             Secrets
           </Text>
-          <Text className="azv-title">data-plane</Text>
           {secretsQuery.data && (
-            <Text size={200} className="azv-mono" style={{ color: tokens.colorNeutralForeground3 }}>
+            <Text size={200} className={mergeClasses('azv-mono', classes.countText)}>
               ({filteredSecrets.length}
-              {searchQuery ? ` / ${secretsQuery.data.length}` : ''})
+              {filterText ? ` / ${allSecrets.length}` : ''})
             </Text>
           )}
           {selectedIds.size > 0 && (
-            <Text size={200} className="azv-mono" style={{ color: tokens.colorBrandForeground1 }}>
+            <Text size={200} className={mergeClasses('azv-mono', classes.selectedText)}>
               {selectedIds.size} selected
             </Text>
           )}
+          <Input
+            data-azv-list-search
+            placeholder="Filter..."
+            contentBefore={<Search24Regular style={{ fontSize: 14 }} />}
+            size="small"
+            value={localFilter}
+            onChange={(_, d) => setLocalFilter(d.value)}
+            className={classes.searchInput}
+          />
         </div>
-        <div style={{ display: 'flex', gap: 6 }}>
-          <Button
-            appearance="subtle"
-            icon={<ArrowDownload24Regular />}
-            size="small"
-            onClick={() => handleExport('json')}
-          >
-            JSON
-          </Button>
-          <Button
-            appearance="subtle"
-            icon={<ArrowDownload24Regular />}
-            size="small"
-            onClick={() => handleExport('csv')}
-          >
-            CSV
-          </Button>
+        <div className={classes.toolbarButtons}>
+          <Menu>
+            <MenuTrigger disableButtonEnhancement>
+              <Button
+                appearance="subtle"
+                icon={<ArrowDownload24Regular />}
+                size="small"
+              >
+                Export
+              </Button>
+            </MenuTrigger>
+            <MenuPopover>
+              <MenuList>
+                <MenuItem onClick={() => handleExport('json')}>Export as JSON</MenuItem>
+                <MenuItem onClick={() => handleExport('csv')}>Export as CSV</MenuItem>
+              </MenuList>
+            </MenuPopover>
+          </Menu>
           <Button
             appearance="primary"
             icon={<Add24Regular />}
@@ -363,30 +457,28 @@ export function SecretsList() {
             disabled={selectedIds.size === 0 || bulkDeleteLoading}
             onClick={() => setShowBulkDeleteConfirm(true)}
           >
-            Delete
+            Delete{selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}
           </Button>
         </div>
       </div>
+
       {exportMessage && (
         <div
-          style={{
-            padding: '6px 16px',
-            borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
-            background:
-              exportMessageTone === 'success'
-                ? tokens.colorPaletteGreenBackground1
-                : tokens.colorPaletteRedBackground1,
-          }}
+          className={mergeClasses(
+            classes.exportMessage,
+            exportMessageTone === 'success'
+              ? classes.exportMessageSuccess
+              : classes.exportMessageError,
+          )}
         >
           <Text
             size={200}
-            className="azv-mono"
-            style={{
-              color:
-                exportMessageTone === 'success'
-                  ? tokens.colorPaletteGreenForeground1
-                  : tokens.colorPaletteRedForeground1,
-            }}
+            className={mergeClasses(
+              'azv-mono',
+              exportMessageTone === 'success'
+                ? classes.exportMessageTextSuccess
+                : classes.exportMessageTextError,
+            )}
           >
             {exportMessage}
           </Text>
@@ -394,46 +486,65 @@ export function SecretsList() {
       )}
 
       {/* Table */}
-      <div style={{ flex: 1, overflow: 'auto', padding: '0 16px' }}>
-        <ItemTable
-          items={visibleSecrets}
-          columns={columns}
-          loading={secretsQuery.isLoading}
-          selectedId={selectedSecret?.id}
-          onSelect={handleSelect}
-          getItemId={(s) => s.id}
-          selectable
-          selectedIds={selectedIds}
-          selectAllState={selectAllState}
-          onToggleSelect={toggleSelect}
-          onToggleSelectAll={toggleSelectAll}
-          emptyMessage={
-            secretsQuery.isError ? `Error: ${secretsQuery.error}` : 'No secrets found in this vault'
-          }
-        />
-        {filteredSecrets.length > visibleCount && (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: 12 }}>
-            <Button
-              onClick={() => setVisibleCount((c) => c + 50)}
-              appearance="secondary"
-              size="small"
-            >
-              Load 50 more
-            </Button>
+      <div className={classes.tableWrap}>
+        {secretsQuery.isLoading ? (
+          <LoadingSkeleton rows={8} columns={[30, 10, 15, 20, 15, 10]} />
+        ) : secretsQuery.isError ? (
+          <div className={classes.errorWrap}>
+            <ErrorMessage
+              error={String(secretsQuery.error)}
+              onRetry={() => secretsQuery.refetch()}
+            />
           </div>
+        ) : allSecrets.length === 0 ? (
+          <EmptyState
+            title="No secrets yet"
+            description="This vault doesn't contain any secrets. Create one to get started."
+            action={{ label: '+ New Secret', onClick: () => setCreateOpen(true) }}
+          />
+        ) : filteredSecrets.length === 0 ? (
+          <EmptyState
+            title="No matches"
+            description={`No secrets match '${filterText}'. Try a different search term.`}
+            action={{ label: 'Clear Filter', onClick: () => setLocalFilter('') }}
+          />
+        ) : (
+          <>
+            <ItemTable
+              items={visibleSecrets}
+              columns={columns}
+              loading={false}
+              selectedId={selectedSecret?.id}
+              onSelect={(item) => setSelectedSecret(item)}
+              getItemId={(s) => s.id}
+              selectable
+              selectedIds={selectedIds}
+              selectAllState={selectAllState}
+              onToggleSelect={(id, checked) =>
+                setSelectedIds((prev) => toggleSelection(prev, id, checked, bulkDeleteLoading))
+              }
+              onToggleSelectAll={(checked) =>
+                setSelectedIds((prev) =>
+                  toggleSelectionAll(prev, visibleIds, checked, bulkDeleteLoading),
+                )
+              }
+            />
+            {filteredSecrets.length > visibleCount && (
+              <div className={classes.loadMoreWrap}>
+                <Button
+                  onClick={() => setVisibleCount((c) => c + 50)}
+                  appearance="secondary"
+                  size="small"
+                >
+                  Load 50 more ({filteredSecrets.length - visibleCount} remaining)
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </div>
 
-      {/* Details Drawer */}
-      <DetailsDrawer
-        item={selectedSecret}
-        vaultUri={selectedVaultUri!}
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        onRefresh={() => secretsQuery.refetch()}
-      />
-
-      {/* Create Dialog */}
+      {/* Create dialog */}
       <CreateSecretDialog
         open={createOpen}
         vaultUri={selectedVaultUri!}
@@ -441,111 +552,72 @@ export function SecretsList() {
         onCreated={() => secretsQuery.refetch()}
       />
 
-      {/* Bulk Delete Confirmation */}
-      <Dialog
+      {/* Bulk delete */}
+      <DangerConfirmDialog
         open={showBulkDeleteConfirm}
-        onOpenChange={(_, d) => {
-          if (bulkDeleteLoading) return;
-          setShowBulkDeleteConfirm(d.open);
+        title={`Delete ${selectedSecrets.length} Secret${selectedSecrets.length !== 1 ? 's' : ''}`}
+        description={
+          <>
+            Delete <strong>{selectedSecrets.length}</strong> secret(s) from this vault? Recoverable
+            only if soft-delete is enabled.
+          </>
+        }
+        confirmText="delete"
+        confirmLabel="Delete All Selected"
+        dangerLevel="warning"
+        loading={bulkDeleteLoading}
+        onConfirm={handleBulkDelete}
+        onCancel={() => {
+          if (!bulkDeleteLoading) setShowBulkDeleteConfirm(false);
         }}
       >
-        <DialogSurface>
-          <DialogBody>
-            <DialogTitle>Delete Selected Secrets</DialogTitle>
-            <DialogContent>
-              <Text size={200}>
-                Delete <strong>{selectedSecrets.length}</strong> secret(s)? Recoverable only if
-                soft-delete is enabled.
-              </Text>
-
-              <details
-                style={{
-                  marginTop: 12,
-                  border: `1px solid ${tokens.colorNeutralStroke2}`,
-                  borderRadius: 6,
-                  padding: '8px 10px',
-                }}
-              >
-                <summary style={{ cursor: 'pointer', fontSize: 12 }}>
-                  Selected items to delete
-                </summary>
-                <div style={{ marginTop: 8, maxHeight: 200, overflow: 'auto' }}>
-                  {selectedSecrets.length === 0 ? (
-                    <Text size={200} style={{ opacity: 0.7 }}>
-                      No selected items.
-                    </Text>
-                  ) : (
-                    selectedSecrets.map((item) => (
-                      <div key={item.id} style={{ padding: '2px 0' }}>
-                        <Text size={200} className="azv-mono">
-                          {item.name}
-                        </Text>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </details>
-
-              <div style={{ marginTop: 12 }}>
-                <Text size={200}>
-                  Type <strong className="azv-mono">delete</strong> to confirm.
+        <details className={classes.bulkDeleteDetails}>
+          <summary className={classes.bulkDeleteSummary}>
+            Selected items ({selectedSecrets.length})
+          </summary>
+          <div className={classes.bulkDeleteList}>
+            {selectedSecrets.map((item) => (
+              <div key={item.id} className={classes.bulkDeleteItem}>
+                <Text size={200} className="azv-mono">
+                  {item.name}
                 </Text>
-                <Input
-                  value={deleteConfirmInput}
-                  onChange={(_, data) => setDeleteConfirmInput(data.value)}
-                  placeholder="delete"
-                  disabled={bulkDeleteLoading}
-                  style={{ marginTop: 6, width: '100%' }}
-                />
               </div>
-
-              {bulkDeleteLoading && (
-                <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Spinner size="tiny" />
-                  <Text size={200}>
-                    Deleting {bulkDeleteProgress.completed} / {bulkDeleteProgress.total} (failed:{' '}
-                    {bulkDeleteProgress.failed})
-                  </Text>
-                </div>
-              )}
-
-              {bulkDeleteError && (
-                <div
-                  style={{
-                    marginTop: 10,
-                    padding: 8,
-                    borderRadius: 4,
-                    background: tokens.colorPaletteRedBackground1,
-                    color: tokens.colorPaletteRedForeground1,
-                    fontSize: 12,
-                  }}
-                >
-                  {bulkDeleteError}
-                </div>
-              )}
-            </DialogContent>
-            <DialogActions>
-              <Button
-                appearance="secondary"
-                onClick={() => setShowBulkDeleteConfirm(false)}
-                disabled={bulkDeleteLoading}
-              >
-                Cancel
-              </Button>
-              <Button
-                appearance="primary"
-                onClick={handleBulkDelete}
-                disabled={
-                  bulkDeleteLoading || selectedSecrets.length === 0 || !deleteConfirmationValid
-                }
-                style={{ background: tokens.colorPaletteRedBackground3 }}
-              >
-                {bulkDeleteLoading ? <Spinner size="tiny" /> : 'Delete All Selected'}
-              </Button>
-            </DialogActions>
-          </DialogBody>
-        </DialogSurface>
-      </Dialog>
+            ))}
+          </div>
+        </details>
+        {bulkDeleteLoading && (
+          <div className={classes.bulkDeleteProgress}>
+            <Text size={200}>
+              Deleting {bulkDeleteProgress.completed} / {bulkDeleteProgress.total} (failed:{' '}
+              {bulkDeleteProgress.failed})
+            </Text>
+          </div>
+        )}
+        {bulkDeleteError && (
+          <div className={classes.bulkDeleteError}>{bulkDeleteError}</div>
+        )}
+      </DangerConfirmDialog>
     </div>
+  );
+
+  const detailPane = (
+    <SecretDetails
+      item={selectedSecret}
+      vaultUri={selectedVaultUri!}
+      onClose={() => setSelectedSecret(null)}
+      onRefresh={() => secretsQuery.refetch()}
+    />
+  );
+
+  return (
+    <SplitPane
+      left={listPane}
+      right={detailPane}
+      rightVisible={detailPanelOpen}
+      defaultRatio={splitRatio}
+      minLeft={320}
+      minRight={260}
+      onRatioChange={setSplitRatio}
+    />
   );
 }

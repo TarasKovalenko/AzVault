@@ -82,6 +82,19 @@ pre,
   border-color: var(--azv-accent-dim);
 }
 
+/* ── Inline cell helpers ── */
+.azv-status-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.azv-tag-row {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
 /* ── Keyboard shortcut badge ── */
 .azv-kbd {
   border: 1px solid rgba(130, 145, 170, 0.4);
@@ -106,15 +119,30 @@ pre,
 .azv-table-wrap {
   border-radius: var(--azv-radius-sm);
   border: 1px solid var(--azv-border-subtle);
-  overflow: hidden;
+  overflow: auto;
 }
 
 .azv-table-wrap .fui-TableHeader {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   background: rgba(127, 145, 169, 0.06);
 }
 
-.azv-table-wrap .fui-TableCell,
-.azv-table-wrap .fui-TableHeaderCell {
+.azv-table-wrap .azv-th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: inherit;
+  padding: 7px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+  border: none;
+}
+
+.azv-table-wrap .fui-TableCell {
   padding-top: 7px;
   padding-bottom: 7px;
   font-size: 12px;

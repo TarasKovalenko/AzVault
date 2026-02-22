@@ -1,19 +1,17 @@
-/**
- * App.tsx – Root component for AzVault.
- *
- * Responsibilities:
- * - Initialise React-Query client with sane defaults for Azure API calls
- * - Auto-detect existing Azure CLI session on mount
- * - Toggle Fluent UI theme based on user preference
- * - Gate main layout behind authentication
- */
-
-import { FluentProvider, tokens, webDarkTheme, webLightTheme } from '@fluentui/react-components';
+import {
+  FluentProvider,
+  makeStyles,
+  tokens,
+  webDarkTheme,
+  webLightTheme,
+} from '@fluentui/react-components';
+import { LockClosed24Regular } from '@fluentui/react-icons';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect } from 'react';
-import { AccessView } from './components/access/AccessView';
 import { SignIn } from './components/auth/SignIn';
 import { CertificatesList } from './components/certificates/CertificatesList';
+import { CommandPalette } from './components/command-palette/CommandPalette';
+import { EmptyState } from './components/common/EmptyState';
 import { KeysList } from './components/keys/KeysList';
 import { ContentTabs } from './components/layout/ContentTabs';
 import { Sidebar } from './components/layout/Sidebar';
@@ -21,17 +19,17 @@ import { StatusBar } from './components/layout/StatusBar';
 import { TopBar } from './components/layout/TopBar';
 import { AuditLog } from './components/logs/AuditLog';
 import { SecretsList } from './components/secrets/SecretsList';
-import { authStatus } from './services/tauri';
+import { SettingsDialog } from './components/settings/SettingsDialog';
+import { VaultDashboard } from './components/vault/VaultDashboard';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useAppStore } from './stores/appStore';
 
-/** Shared React-Query client – 30s stale time, no retry on 401/403. */
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 30_000,
       retry: (failureCount, error) => {
         const msg = String(error);
-        // Never retry auth failures – surface them immediately
         if (msg.includes('401') || msg.includes('403')) return false;
         return failureCount < 2;
       },
@@ -40,83 +38,107 @@ const queryClient = new QueryClient({
   },
 });
 
-/**
- * Renders the currently active tab content based on sidebar selection.
- * Shows the empty-state ContentTabs placeholder when no vault is selected.
- */
+const useStyles = makeStyles({
+  shell: {
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100vh',
+  },
+  middle: {
+    display: 'flex',
+    flex: 1,
+    overflow: 'hidden',
+  },
+  pane: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    backgroundColor: tokens.colorNeutralBackground1,
+    overflow: 'hidden',
+    marginLeft: '0',
+    borderLeft: 'none',
+  },
+  tabContent: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    minHeight: 0,
+  },
+});
+
 function MainContent() {
   const { activeTab, selectedVaultName } = useAppStore();
+  const classes = useStyles();
 
   if (!selectedVaultName) {
-    return <ContentTabs />;
+    return (
+      <EmptyState
+        icon={<LockClosed24Regular />}
+        title="Select a Key Vault"
+        description="Choose a vault from the workspace switcher or sidebar to browse secrets, keys, and certificates."
+      />
+    );
   }
 
   return (
     <>
       <ContentTabs />
-      <div style={{ flex: 1, overflow: 'hidden' }}>
+      <div className={classes.tabContent}>
+        {activeTab === 'dashboard' && <VaultDashboard />}
         {activeTab === 'secrets' && <SecretsList />}
         {activeTab === 'keys' && <KeysList />}
         {activeTab === 'certificates' && <CertificatesList />}
-        {activeTab === 'access' && <AccessView />}
         {activeTab === 'logs' && <AuditLog />}
       </div>
     </>
   );
 }
 
-/** Shell layout – top bar, sidebar, content pane, status bar. */
 function AppLayout() {
+  useKeyboardShortcuts();
+  const classes = useStyles();
+
+  useEffect(() => {
+    const onRefresh = () => queryClient.invalidateQueries();
+    window.addEventListener('azv:refresh', onRefresh);
+    return () => window.removeEventListener('azv:refresh', onRefresh);
+  }, []);
+
+  useEffect(() => {
+    const onSignOut = async () => {
+      const { authSignOut } = await import('./services/tauri');
+      try {
+        await authSignOut();
+      } catch {
+        /* ignore */
+      }
+      useAppStore.getState().signOut();
+      queryClient.clear();
+    };
+    window.addEventListener('azv:sign-out', onSignOut);
+    return () => window.removeEventListener('azv:sign-out', onSignOut);
+  }, []);
+
   return (
-    <div
-      className="azv-shell"
-      style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}
-    >
+    <div className={`azv-shell ${classes.shell}`}>
       <TopBar />
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+      <div className={classes.middle}>
         <Sidebar />
-        <div
-          className="azv-pane"
-          style={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            background: tokens.colorNeutralBackground1,
-            overflow: 'hidden',
-            marginLeft: 0,
-            borderLeft: 'none',
-          }}
-        >
+        <div className={`azv-pane ${classes.pane}`}>
           <MainContent />
         </div>
       </div>
       <StatusBar />
+      <CommandPalette />
+      <SettingsDialog />
     </div>
   );
 }
 
-/** App entry – wraps providers, checks session, renders sign-in or layout. */
 function App() {
-  const { isSignedIn, setSignedIn, themeMode } = useAppStore();
+  const { isSignedIn, themeMode } = useAppStore();
 
-  // On mount, probe for an existing Azure CLI session so the user
-  // doesn't have to click "Connect" if they're already logged in.
-  useEffect(() => {
-    let mounted = true;
-    authStatus()
-      .then((s) => {
-        if (!mounted || !s.signed_in) return;
-        setSignedIn(true, s.user_name ?? 'Azure User');
-      })
-      .catch(() => {
-        // Keep sign-in state false if status check fails
-      });
-    return () => {
-      mounted = false;
-    };
-  }, [setSignedIn]);
-
-  // Sync theme attribute so CSS custom properties update
   useEffect(() => {
     document.body.setAttribute('data-theme', themeMode);
   }, [themeMode]);
