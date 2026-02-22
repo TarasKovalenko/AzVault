@@ -123,7 +123,7 @@ export function RevealSecretValue({ secretName, vaultUri }: RevealSecretValuePro
 
   const { isRevealed, secondsLeft, reveal, hide } = useAutoHide({
     timeoutSeconds: autoHideSeconds,
-    onHide: () => {},
+    onHide: () => setSecretValue(null),
   });
 
   const handleFetchValue = useCallback(async () => {
@@ -141,7 +141,7 @@ export function RevealSecretValue({ secretName, vaultUri }: RevealSecretValuePro
 
   const confirmAndFetch = useCallback(async () => {
     if (requireReauthForReveal && !reauthConfirmed) {
-      setFetchError('Re-authentication confirmation required.');
+      setFetchError('Confirmation required before fetching secret value.');
       return;
     }
     setShowFetchConfirm(false);
@@ -274,7 +274,7 @@ export function RevealSecretValue({ secretName, vaultUri }: RevealSecretValuePro
                     onClick={() => setReauthConfirmed((v) => !v)}
                     size="small"
                   >
-                    {reauthConfirmed ? 'Re-auth confirmed' : 'Confirm re-authentication'}
+                    {reauthConfirmed ? 'Confirmation complete' : 'Confirm fetch intent'}
                   </Button>
                 </div>
               )}

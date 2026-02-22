@@ -328,7 +328,7 @@ function useCommands(): PaletteCommand[] {
       },
       {
         id: 'toggle-reauth',
-        label: 'Toggle Re-auth Requirement',
+        label: 'Toggle Fetch Confirmation',
         category: 'settings',
         execute: () => store.setRequireReauthForReveal(!store.requireReauthForReveal),
       },

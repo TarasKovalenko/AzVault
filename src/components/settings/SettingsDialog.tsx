@@ -180,14 +180,14 @@ export function SettingsDialog() {
                 <div className={classes.columnGap12}>
                   <div>
                     <div className={classes.rowBetween}>
-                      <Text size={200}>Require re-auth before fetching values</Text>
+                      <Text size={200}>Require confirmation before fetching values</Text>
                       <Switch
                         checked={requireReauthForReveal}
                         onChange={(_, d) => setRequireReauthForReveal(d.checked)}
                       />
                     </div>
                     <Text size={100} className={classes.descriptionText}>
-                      Re-verify your Azure CLI session before any secret value is retrieved.
+                      Adds an in-app confirmation step before retrieving any secret value.
                     </Text>
                   </div>
 

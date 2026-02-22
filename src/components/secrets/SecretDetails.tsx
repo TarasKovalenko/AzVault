@@ -1,16 +1,9 @@
 import {
   Badge,
   Button,
-  Dialog,
-  DialogActions,
-  DialogBody,
-  DialogContent,
-  DialogSurface,
-  DialogTitle,
   Divider,
   Field,
   makeStyles,
-  Spinner,
   Text,
   tokens,
 } from '@fluentui/react-components';
@@ -103,12 +96,6 @@ const useStyles = makeStyles({
   },
   errorText: {
     color: tokens.colorPaletteRedForeground1,
-  },
-  dialogContent: {
-    lineHeight: 1.5,
-  },
-  deleteConfirmButton: {
-    background: tokens.colorPaletteRedBackground3,
   },
   metaValue: {
     wordBreak: 'break-all',
@@ -352,33 +339,23 @@ export function SecretDetails({ item, vaultUri, onClose, onRefresh }: SecretDeta
       />
 
       {/* Delete confirmation */}
-      <Dialog open={showDeleteDialog} onOpenChange={(_, d) => setShowDeleteDialog(d.open)}>
-        <DialogSurface>
-          <DialogBody>
-            <DialogTitle>Delete Secret</DialogTitle>
-            <DialogContent>
-              <Text size={200} className={classes.dialogContent}>
-                Delete <strong className="azv-mono">{item.name}</strong>? If soft-delete is enabled
-                on this vault, you can recover it within the retention period. Otherwise, this
-                action is permanent.
-              </Text>
-            </DialogContent>
-            <DialogActions>
-              <Button appearance="secondary" onClick={() => setShowDeleteDialog(false)}>
-                Cancel
-              </Button>
-              <Button
-                appearance="primary"
-                onClick={handleDelete}
-                disabled={actionLoading}
-                className={classes.deleteConfirmButton}
-              >
-                {actionLoading ? <Spinner size="tiny" /> : 'Delete'}
-              </Button>
-            </DialogActions>
-          </DialogBody>
-        </DialogSurface>
-      </Dialog>
+      <DangerConfirmDialog
+        open={showDeleteDialog}
+        title="Delete Secret"
+        description={
+          <>
+            Delete <strong className="azv-mono">{item.name}</strong>? If soft-delete is enabled on
+            this vault, you can recover it within the retention period. Otherwise, this action is
+            permanent.
+          </>
+        }
+        confirmText="delete"
+        confirmLabel="Delete"
+        dangerLevel="warning"
+        loading={actionLoading}
+        onConfirm={handleDelete}
+        onCancel={() => setShowDeleteDialog(false)}
+      />
 
       {/* Purge confirmation */}
       <DangerConfirmDialog
