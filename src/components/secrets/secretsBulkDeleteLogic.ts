@@ -87,3 +87,9 @@ export function nextDeleteProgress(
     failed,
   };
 }
+
+export function filterSecretsByPrefix(secrets: SecretItem[], prefix: string): SecretItem[] {
+  const normalized = prefix.toLowerCase();
+  if (normalized.length === 0) return [];
+  return secrets.filter((s) => s.name.toLowerCase().startsWith(normalized));
+}

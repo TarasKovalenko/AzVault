@@ -30,6 +30,7 @@ import { ItemTable, renderDate, renderEnabled, renderTags } from '../common/Item
 import { LoadingSkeleton } from '../common/LoadingSkeleton';
 import { SplitPane } from '../common/SplitPane';
 import { CreateSecretDialog } from './CreateSecretDialog';
+import { DeleteByPrefixDialog } from './DeleteByPrefixDialog';
 import { SecretDetails } from './SecretDetails';
 import {
   filterOutDeletedSecrets,
@@ -166,6 +167,7 @@ export function SecretsList() {
     failed: 0,
   });
   const [localFilter, setLocalFilter] = useState('');
+  const [showPrefixDeleteDialog, setShowPrefixDeleteDialog] = useState(false);
   const [exportMessage, setExportMessage] = useState<string | null>(null);
   const [exportMessageTone, setExportMessageTone] = useState<'success' | 'error'>('success');
 
@@ -303,11 +305,14 @@ export function SecretsList() {
       const input = document.querySelector<HTMLInputElement>('[data-azv-list-search]');
       input?.focus();
     };
+    const onDeleteByPrefix = () => setShowPrefixDeleteDialog(true);
     window.addEventListener('azv:new-secret', onNewSecret);
     window.addEventListener('azv:focus-search', onFocusSearch);
+    window.addEventListener('azv:delete-by-prefix', onDeleteByPrefix);
     return () => {
       window.removeEventListener('azv:new-secret', onNewSecret);
       window.removeEventListener('azv:focus-search', onFocusSearch);
+      window.removeEventListener('azv:delete-by-prefix', onDeleteByPrefix);
     };
   }, []);
 
@@ -450,15 +455,34 @@ export function SecretsList() {
           >
             New
           </Button>
-          <Button
-            appearance="secondary"
-            icon={<Delete24Regular />}
-            size="small"
-            disabled={selectedIds.size === 0 || bulkDeleteLoading}
-            onClick={() => setShowBulkDeleteConfirm(true)}
-          >
-            Delete{selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}
-          </Button>
+          <Menu>
+            <MenuTrigger disableButtonEnhancement>
+              <Button
+                appearance="secondary"
+                icon={<Delete24Regular />}
+                size="small"
+                disabled={bulkDeleteLoading}
+              >
+                Delete
+              </Button>
+            </MenuTrigger>
+            <MenuPopover>
+              <MenuList>
+                <MenuItem
+                  disabled={selectedIds.size === 0}
+                  onClick={() => setShowBulkDeleteConfirm(true)}
+                >
+                  Delete Selected{selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}
+                </MenuItem>
+                <MenuItem
+                  disabled={!selectedVaultUri}
+                  onClick={() => setShowPrefixDeleteDialog(true)}
+                >
+                  Delete by Prefix
+                </MenuItem>
+              </MenuList>
+            </MenuPopover>
+          </Menu>
         </div>
       </div>
 
@@ -597,6 +621,23 @@ export function SecretsList() {
           <div className={classes.bulkDeleteError}>{bulkDeleteError}</div>
         )}
       </DangerConfirmDialog>
+
+      {/* Delete by prefix */}
+      <DeleteByPrefixDialog
+        open={showPrefixDeleteDialog}
+        allSecrets={allSecrets}
+        vaultUri={selectedVaultUri!}
+        onDelete={(name) => deleteSecret(selectedVaultUri!, name)}
+        onClose={() => setShowPrefixDeleteDialog(false)}
+        onCompleted={(deletedIds) => {
+          if (selectedVaultUri && deletedIds.length > 0) {
+            queryClient.setQueryData<SecretItem[]>(['secrets', selectedVaultUri], (current) =>
+              filterOutDeletedSecrets(current, deletedIds),
+            );
+          }
+          secretsQuery.refetch();
+        }}
+      />
     </div>
   );
 

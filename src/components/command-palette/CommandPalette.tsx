@@ -352,6 +352,13 @@ function useCommands(): PaletteCommand[] {
         shortcut: `${mod}⇧D`,
         execute: () => window.dispatchEvent(new CustomEvent('azv:delete-selected')),
       },
+      {
+        id: 'delete-by-prefix',
+        label: 'Delete Secrets by Prefix',
+        category: 'action',
+        execute: () => window.dispatchEvent(new CustomEvent('azv:delete-by-prefix')),
+        when: () => !!store.selectedVaultName,
+      },
     ],
     [store, mod],
   );
