@@ -474,7 +474,10 @@ export function SecretsList() {
                 >
                   Delete Selected{selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}
                 </MenuItem>
-                <MenuItem onClick={() => setShowPrefixDeleteDialog(true)}>
+                <MenuItem
+                  disabled={!selectedVaultUri}
+                  onClick={() => setShowPrefixDeleteDialog(true)}
+                >
                   Delete by Prefix
                 </MenuItem>
               </MenuList>

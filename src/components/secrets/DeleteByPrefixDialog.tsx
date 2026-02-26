@@ -16,7 +16,7 @@ import {
 import { Warning24Regular } from '@fluentui/react-icons';
 import { useEffect, useMemo, useState } from 'react';
 import type { SecretItem } from '../../types';
-import { filterSecretsByPrefix, nextDeleteProgress } from './secretsBulkDeleteLogic';
+import { filterSecretsByPrefix } from './secretsBulkDeleteLogic';
 
 interface DeleteByPrefixDialogProps {
   open: boolean;
@@ -122,29 +122,35 @@ export function DeleteByPrefixDialog({
   const handleDelete = async () => {
     if (!vaultUri || matchingSecrets.length === 0) return;
 
+    const total = matchingSecrets.length;
     setLoading(true);
     setError(null);
-    setProgress({ total: matchingSecrets.length, completed: 0, failed: 0 });
-
-    const succeededIds: string[] = [];
-    let failed = 0;
+    setProgress({ total, completed: 0, failed: 0 });
 
     try {
-      await Promise.all(
+      const results = await Promise.all(
         matchingSecrets.map(async (item) => {
           try {
             await onDelete(item.name);
-            succeededIds.push(item.id);
+            return { id: item.id, ok: true } as const;
           } catch {
-            failed += 1;
+            return { id: item.id, ok: false } as const;
           } finally {
-            setProgress((prev) => nextDeleteProgress(prev, failed));
+            setProgress((prev) => ({
+              ...prev,
+              completed: prev.completed + 1,
+            }));
           }
         }),
       );
 
-      if (failed > 0) {
-        setError(`${failed} secret(s) failed to delete. Check permissions.`);
+      const succeededIds = results.filter((r) => r.ok).map((r) => r.id);
+      const failedCount = results.filter((r) => !r.ok).length;
+
+      setProgress((prev) => ({ ...prev, failed: failedCount }));
+
+      if (failedCount > 0) {
+        setError(`${failedCount} secret(s) failed to delete. Check permissions.`);
       } else {
         onClose();
       }
