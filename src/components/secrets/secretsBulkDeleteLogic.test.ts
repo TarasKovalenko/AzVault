@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { SecretItem } from '../../types';
 import {
   filterOutDeletedSecrets,
+  filterSecretsByPrefix,
   getSelectedSecrets,
   isDeleteConfirmationValid,
   nextDeleteProgress,
@@ -91,5 +92,48 @@ describe('secretsBulkDeleteLogic', () => {
     const start = { total: 4, completed: 1, failed: 0 };
     expect(nextDeleteProgress(start, 0)).toEqual({ total: 4, completed: 2, failed: 0 });
     expect(nextDeleteProgress(start, 2)).toEqual({ total: 4, completed: 2, failed: 2 });
+  });
+
+  describe('filterSecretsByPrefix', () => {
+    const secrets = [
+      makeSecret('1', 'staging-db-password'),
+      makeSecret('2', 'staging-api-key'),
+      makeSecret('3', 'prod-db-password'),
+      makeSecret('4', 'prod-api-key'),
+      makeSecret('5', 'dev-token'),
+    ];
+
+    it('returns secrets whose names start with the prefix', () => {
+      const result = filterSecretsByPrefix(secrets, 'staging-');
+      expect(result.map((s) => s.id)).toEqual(['1', '2']);
+    });
+
+    it('is case-insensitive', () => {
+      const result = filterSecretsByPrefix(secrets, 'STAGING-');
+      expect(result.map((s) => s.id)).toEqual(['1', '2']);
+    });
+
+    it('returns empty array for empty prefix', () => {
+      expect(filterSecretsByPrefix(secrets, '')).toEqual([]);
+    });
+
+    it('returns empty array when no secrets match', () => {
+      expect(filterSecretsByPrefix(secrets, 'nonexistent-')).toEqual([]);
+    });
+
+    it('matches a single-character prefix', () => {
+      const result = filterSecretsByPrefix(secrets, 'd');
+      expect(result.map((s) => s.id)).toEqual(['5']);
+    });
+
+    it('matches the full name as a prefix', () => {
+      const result = filterSecretsByPrefix(secrets, 'dev-token');
+      expect(result.map((s) => s.id)).toEqual(['5']);
+    });
+
+    it('returns all secrets when prefix matches everything', () => {
+      const all = [makeSecret('a', 'app-1'), makeSecret('b', 'app-2')];
+      expect(filterSecretsByPrefix(all, 'app-').length).toBe(2);
+    });
   });
 });
