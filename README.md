@@ -37,6 +37,7 @@ To learn more about the war and how you can help, [click here](https://war.ukrai
 - Browse Secrets, Keys, Certificates
 - Secret metadata + explicit value fetch flow
 - Secret CRUD lifecycle (set/delete/recover/purge)
+- Import secrets from JSON file
 - Bulk delete safety flow:
   - typed confirmation (`delete`)
   - collapsible list of selected secrets
@@ -117,6 +118,46 @@ Optional mock mode for UI development:
 ```bash
 VITE_ENABLE_MOCK_MODE=true npm run dev
 ```
+
+## Import Secrets from JSON
+
+Use the **Import JSON** button in the Secrets toolbar, or run **Import Secrets from JSON** from the command palette.
+
+Accepted formats:
+
+```json
+[
+  {
+    "name": "my-secret",
+    "value": "secret-value",
+    "contentType": "text/plain",
+    "enabled": true,
+    "expires": "2030-01-01T00:00:00Z",
+    "notBefore": "2026-01-01T00:00:00Z",
+    "tags": {
+      "env": "prod"
+    }
+  }
+]
+```
+
+or:
+
+```json
+{
+  "secrets": [
+    { "name": "my-secret", "value": "secret-value" }
+  ]
+}
+```
+
+Rules:
+- `name` and `value` are required.
+- `name` supports letters, numbers, and dashes only.
+- `tags` must be an object with string values.
+- `expires` and `notBefore` must be valid date strings.
+
+Sample file: [`examples/secrets-import.example.json`](./examples/secrets-import.example.json)
 
 ## Quality Gates
 

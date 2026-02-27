@@ -8,10 +8,10 @@ import {
   DialogSurface,
   DialogTitle,
   Divider,
+  makeStyles,
   Option,
   Switch,
   Text,
-  makeStyles,
   tokens,
 } from '@fluentui/react-components';
 import { Dismiss24Regular } from '@fluentui/react-icons';
@@ -262,13 +262,33 @@ export function SettingsDialog() {
                   Keyboard Shortcuts
                 </Text>
                 <div className={classes.shortcutsList}>
-                  <ShortcutRow label="Command palette" keys={`${mod}K`} className={classes.shortcutRow} />
+                  <ShortcutRow
+                    label="Command palette"
+                    keys={`${mod}K`}
+                    className={classes.shortcutRow}
+                  />
                   <ShortcutRow label="Settings" keys={`${mod},`} className={classes.shortcutRow} />
-                  <ShortcutRow label="Toggle sidebar" keys={`${mod}B`} className={classes.shortcutRow} />
-                  <ShortcutRow label="Toggle detail panel" keys={`${mod}\\`} className={classes.shortcutRow} />
-                  <ShortcutRow label="Secrets tab" keys={`${mod}1`} className={classes.shortcutRow} />
+                  <ShortcutRow
+                    label="Toggle sidebar"
+                    keys={`${mod}B`}
+                    className={classes.shortcutRow}
+                  />
+                  <ShortcutRow
+                    label="Toggle detail panel"
+                    keys={`${mod}\\`}
+                    className={classes.shortcutRow}
+                  />
+                  <ShortcutRow
+                    label="Secrets tab"
+                    keys={`${mod}1`}
+                    className={classes.shortcutRow}
+                  />
                   <ShortcutRow label="Keys tab" keys={`${mod}2`} className={classes.shortcutRow} />
-                  <ShortcutRow label="Certificates tab" keys={`${mod}3`} className={classes.shortcutRow} />
+                  <ShortcutRow
+                    label="Certificates tab"
+                    keys={`${mod}3`}
+                    className={classes.shortcutRow}
+                  />
                   <ShortcutRow label="Dashboard" keys={`${mod}4`} className={classes.shortcutRow} />
                   <ShortcutRow label="Audit Log" keys={`${mod}5`} className={classes.shortcutRow} />
                 </div>

@@ -3,8 +3,8 @@ import {
   Button,
   Divider,
   Field,
-  Text,
   makeStyles,
+  Text,
   tokens,
 } from '@fluentui/react-components';
 import { Dismiss24Regular, LockClosed24Regular } from '@fluentui/react-icons';
@@ -206,11 +206,7 @@ function MetaField({ label, value, mono }: { label: string; value: string; mono?
   const classes = useStyles();
   return (
     <Field label={label}>
-      <Text
-        size={200}
-        font={mono ? 'monospace' : undefined}
-        className={classes.metaFieldValue}
-      >
+      <Text size={200} font={mono ? 'monospace' : undefined} className={classes.metaFieldValue}>
         {value}
       </Text>
     </Field>

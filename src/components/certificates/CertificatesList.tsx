@@ -1,11 +1,4 @@
-import {
-  Button,
-  Input,
-  Text,
-  makeStyles,
-  mergeClasses,
-  tokens,
-} from '@fluentui/react-components';
+import { Button, Input, makeStyles, mergeClasses, Text, tokens } from '@fluentui/react-components';
 import { Search24Regular } from '@fluentui/react-icons';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
@@ -161,10 +154,7 @@ export function CertificatesList() {
             );
           const expired = new Date(item.expires) < new Date();
           return (
-            <Text
-              size={200}
-              style={{ color: expired ? 'var(--azv-danger)' : undefined }}
-            >
+            <Text size={200} style={{ color: expired ? 'var(--azv-danger)' : undefined }}>
               {renderDate(item.expires)}
             </Text>
           );

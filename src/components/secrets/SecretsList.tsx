@@ -1,14 +1,21 @@
 import {
   Button,
+  Dialog,
+  DialogActions,
+  DialogBody,
+  DialogContent,
+  DialogSurface,
+  DialogTitle,
   Input,
   Menu,
   MenuItem,
   MenuList,
   MenuPopover,
   MenuTrigger,
-  Text,
   makeStyles,
   mergeClasses,
+  Spinner,
+  Text,
   tokens,
 } from '@fluentui/react-components';
 import {
@@ -18,8 +25,8 @@ import {
   Search24Regular,
 } from '@fluentui/react-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useState } from 'react';
-import { deleteSecret, exportItems, listSecrets } from '../../services/tauri';
+import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { deleteSecret, exportItems, listSecrets, setSecret } from '../../services/tauri';
 import { useAppStore } from '../../stores/appStore';
 import type { SecretItem } from '../../types';
 import { DangerConfirmDialog } from '../common/DangerConfirmDialog';
@@ -42,6 +49,7 @@ import {
   toggleSelectionAll,
 } from './secretsBulkDeleteLogic';
 import { type ExportFormat, exportSecretMetadata } from './secretsExport';
+import { parseSecretsImportJson } from './secretsImport';
 
 const useStyles = makeStyles({
   listRoot: {
@@ -147,7 +155,59 @@ const useStyles = makeStyles({
   textExpires: {
     fontSize: '11px',
   },
+  importConfirmMeta: {
+    display: 'grid',
+    gridTemplateColumns: '160px 1fr',
+    gap: '6px 10px',
+    marginTop: '8px',
+    marginBottom: '10px',
+    fontSize: '12px',
+  },
+  importConfirmLabel: {
+    color: tokens.colorNeutralForeground3,
+  },
+  importConfirmValue: {
+    fontFamily: "'IBM Plex Mono', monospace",
+    wordBreak: 'break-word',
+  },
+  importConfirmWarning: {
+    marginTop: '8px',
+    marginBottom: '8px',
+    padding: '8px 10px',
+    borderRadius: '6px',
+    background: tokens.colorPaletteYellowBackground1,
+    color: tokens.colorPaletteYellowForeground1,
+    fontSize: '12px',
+  },
+  importConfirmListWrap: {
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    borderRadius: '6px',
+    padding: '8px 10px',
+    marginTop: '10px',
+  },
+  importConfirmList: {
+    marginTop: '6px',
+    maxHeight: '180px',
+    overflow: 'auto',
+  },
+  importConfirmItem: {
+    padding: '2px 0',
+  },
 });
+
+interface PendingImport {
+  fileName: string;
+  fileSizeBytes: number;
+  requests: ReturnType<typeof parseSecretsImportJson>['requests'];
+  duplicateNamesInFile: string[];
+  existingSecretNames: string[];
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 export function SecretsList() {
   const classes = useStyles();
@@ -170,6 +230,12 @@ export function SecretsList() {
   const [showPrefixDeleteDialog, setShowPrefixDeleteDialog] = useState(false);
   const [exportMessage, setExportMessage] = useState<string | null>(null);
   const [exportMessageTone, setExportMessageTone] = useState<'success' | 'error'>('success');
+  const [importMessage, setImportMessage] = useState<string | null>(null);
+  const [importMessageTone, setImportMessageTone] = useState<'success' | 'error'>('success');
+  const [importLoading, setImportLoading] = useState(false);
+  const [showImportConfirm, setShowImportConfirm] = useState(false);
+  const [pendingImport, setPendingImport] = useState<PendingImport | null>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   const columns: Column<SecretItem>[] = useMemo(
     () => [
@@ -194,11 +260,7 @@ export function SecretsList() {
         label: 'Type',
         width: '15%',
         render: (item) => (
-          <Text
-            size={200}
-            className="azv-mono"
-            style={{ opacity: item.contentType ? 1 : 0.4 }}
-          >
+          <Text size={200} className="azv-mono" style={{ opacity: item.contentType ? 1 : 0.4 }}>
             {item.contentType || '—'}
           </Text>
         ),
@@ -298,6 +360,12 @@ export function SecretsList() {
     return () => window.clearTimeout(timer);
   }, [exportMessage]);
 
+  useEffect(() => {
+    if (!importMessage) return;
+    const timer = window.setTimeout(() => setImportMessage(null), 5000);
+    return () => window.clearTimeout(timer);
+  }, [importMessage]);
+
   // Listen for custom events from command palette
   useEffect(() => {
     const onNewSecret = () => setCreateOpen(true);
@@ -306,15 +374,120 @@ export function SecretsList() {
       input?.focus();
     };
     const onDeleteByPrefix = () => setShowPrefixDeleteDialog(true);
+    const onImportSecrets = () => {
+      if (!importInputRef.current) return;
+      importInputRef.current.value = '';
+      importInputRef.current.click();
+    };
     window.addEventListener('azv:new-secret', onNewSecret);
     window.addEventListener('azv:focus-search', onFocusSearch);
     window.addEventListener('azv:delete-by-prefix', onDeleteByPrefix);
+    window.addEventListener('azv:import-secrets', onImportSecrets);
     return () => {
       window.removeEventListener('azv:new-secret', onNewSecret);
       window.removeEventListener('azv:focus-search', onFocusSearch);
       window.removeEventListener('azv:delete-by-prefix', onDeleteByPrefix);
+      window.removeEventListener('azv:import-secrets', onImportSecrets);
     };
   }, []);
+
+  const handleImportButtonClick = () => {
+    const input = importInputRef.current;
+    if (!input) return;
+    input.value = '';
+    input.click();
+  };
+
+  const handleImportFromFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !selectedVaultUri) return;
+
+    setImportLoading(true);
+    setImportMessage(null);
+
+    try {
+      const content = await file.text();
+      const { requests } = parseSecretsImportJson(content);
+      const existingLower = new Map(allSecrets.map((s) => [s.name.toLowerCase(), s.name]));
+      const importNameCounts = new Map<string, number>();
+      const importNameCanonical = new Map<string, string>();
+      for (const request of requests) {
+        const key = request.name.toLowerCase();
+        importNameCounts.set(key, (importNameCounts.get(key) ?? 0) + 1);
+        if (!importNameCanonical.has(key)) {
+          importNameCanonical.set(key, request.name);
+        }
+      }
+      const duplicateNamesInFile = Array.from(importNameCounts.entries())
+        .filter(([, count]) => count > 1)
+        .map(([name]) => importNameCanonical.get(name) ?? name)
+        .sort((a, b) => a.localeCompare(b));
+      const existingSecretNames = requests
+        .filter((request) => existingLower.has(request.name.toLowerCase()))
+        .map((request) => existingLower.get(request.name.toLowerCase()) ?? request.name);
+      const existingUnique = Array.from(new Set(existingSecretNames)).sort((a, b) =>
+        a.localeCompare(b),
+      );
+
+      setPendingImport({
+        fileName: file.name,
+        fileSizeBytes: file.size,
+        requests,
+        duplicateNamesInFile,
+        existingSecretNames: existingUnique,
+      });
+      setShowImportConfirm(true);
+    } catch (e) {
+      setImportMessageTone('error');
+      setImportMessage(`Import failed: ${String(e)}`);
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
+  const handleConfirmImport = async () => {
+    if (!pendingImport || !selectedVaultUri) return;
+    const { requests, fileName } = pendingImport;
+
+    setImportLoading(true);
+    setImportMessage(null);
+
+    try {
+      let successCount = 0;
+      const failures: string[] = [];
+
+      for (const request of requests) {
+        try {
+          await setSecret(selectedVaultUri, request);
+          successCount += 1;
+        } catch (e) {
+          failures.push(`${request.name}: ${String(e)}`);
+        }
+      }
+
+      await secretsQuery.refetch();
+
+      if (failures.length === 0) {
+        setImportMessageTone('success');
+        setImportMessage(`Imported ${successCount} secret(s) from ${fileName}.`);
+      } else {
+        const failedNamesPreview = failures
+          .slice(0, 3)
+          .map((entry) => entry.split(':', 1)[0])
+          .join(', ');
+        const remaining = failures.length - 3;
+        const previewSuffix = remaining > 0 ? ` (+${remaining} more)` : '';
+        setImportMessageTone('error');
+        setImportMessage(
+          `Imported ${successCount}/${requests.length} from ${fileName}. Failed: ${failures.length} secret(s): ${failedNamesPreview}${previewSuffix}. First error: ${failures[0]}`,
+        );
+      }
+    } finally {
+      setImportLoading(false);
+      setShowImportConfirm(false);
+      setPendingImport(null);
+    }
+  };
 
   const downloadExport = (content: string, format: ExportFormat) => {
     const mimeType = format === 'json' ? 'application/json' : 'text/csv;charset=utf-8';
@@ -430,13 +603,16 @@ export function SecretsList() {
           />
         </div>
         <div className={classes.toolbarButtons}>
+          <input
+            ref={importInputRef}
+            type="file"
+            accept="application/json,.json"
+            onChange={handleImportFromFile}
+            style={{ display: 'none' }}
+          />
           <Menu>
             <MenuTrigger disableButtonEnhancement>
-              <Button
-                appearance="subtle"
-                icon={<ArrowDownload24Regular />}
-                size="small"
-              >
+              <Button appearance="subtle" icon={<ArrowDownload24Regular />} size="small">
                 Export
               </Button>
             </MenuTrigger>
@@ -448,10 +624,19 @@ export function SecretsList() {
             </MenuPopover>
           </Menu>
           <Button
+            appearance="secondary"
+            size="small"
+            onClick={handleImportButtonClick}
+            disabled={!selectedVaultUri || importLoading}
+          >
+            {importLoading ? 'Importing...' : 'Import JSON'}
+          </Button>
+          <Button
             appearance="primary"
             icon={<Add24Regular />}
             size="small"
             onClick={() => setCreateOpen(true)}
+            disabled={importLoading}
           >
             New
           </Button>
@@ -505,6 +690,29 @@ export function SecretsList() {
             )}
           >
             {exportMessage}
+          </Text>
+        </div>
+      )}
+
+      {importMessage && (
+        <div
+          className={mergeClasses(
+            classes.exportMessage,
+            importMessageTone === 'success'
+              ? classes.exportMessageSuccess
+              : classes.exportMessageError,
+          )}
+        >
+          <Text
+            size={200}
+            className={mergeClasses(
+              'azv-mono',
+              importMessageTone === 'success'
+                ? classes.exportMessageTextSuccess
+                : classes.exportMessageTextError,
+            )}
+          >
+            {importMessage}
           </Text>
         </div>
       )}
@@ -617,9 +825,7 @@ export function SecretsList() {
             </Text>
           </div>
         )}
-        {bulkDeleteError && (
-          <div className={classes.bulkDeleteError}>{bulkDeleteError}</div>
-        )}
+        {bulkDeleteError && <div className={classes.bulkDeleteError}>{bulkDeleteError}</div>}
       </DangerConfirmDialog>
 
       {/* Delete by prefix */}
@@ -638,6 +844,98 @@ export function SecretsList() {
           secretsQuery.refetch();
         }}
       />
+
+      <Dialog
+        open={showImportConfirm}
+        onOpenChange={(_, data) => {
+          if (!data.open && !importLoading) {
+            setShowImportConfirm(false);
+            setPendingImport(null);
+          }
+        }}
+      >
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>Confirm Secret Import</DialogTitle>
+            <DialogContent>
+              <Text size={200}>
+                Review file contents before importing. This operation creates new secrets or new
+                versions for existing names.
+              </Text>
+
+              {pendingImport && (
+                <>
+                  <div className={classes.importConfirmMeta}>
+                    <Text className={classes.importConfirmLabel}>File</Text>
+                    <Text className={classes.importConfirmValue}>{pendingImport.fileName}</Text>
+                    <Text className={classes.importConfirmLabel}>Size</Text>
+                    <Text className={classes.importConfirmValue}>
+                      {formatFileSize(pendingImport.fileSizeBytes)}
+                    </Text>
+                    <Text className={classes.importConfirmLabel}>Secrets in file</Text>
+                    <Text className={classes.importConfirmValue}>
+                      {pendingImport.requests.length}
+                    </Text>
+                    <Text className={classes.importConfirmLabel}>Will update existing</Text>
+                    <Text className={classes.importConfirmValue}>
+                      {pendingImport.existingSecretNames.length}
+                    </Text>
+                  </div>
+
+                  {pendingImport.duplicateNamesInFile.length > 0 && (
+                    <div className={classes.importConfirmWarning}>
+                      File contains duplicate names: {pendingImport.duplicateNamesInFile.join(', ')}
+                    </div>
+                  )}
+
+                  {pendingImport.existingSecretNames.length > 0 && (
+                    <div className={classes.importConfirmWarning}>
+                      Existing secrets matched (new versions will be created):{' '}
+                      {pendingImport.existingSecretNames.slice(0, 5).join(', ')}
+                      {pendingImport.existingSecretNames.length > 5
+                        ? ` (+${pendingImport.existingSecretNames.length - 5} more)`
+                        : ''}
+                    </div>
+                  )}
+
+                  <div className={classes.importConfirmListWrap}>
+                    <Text size={200}>Secrets to import</Text>
+                    <div className={classes.importConfirmList}>
+                      {pendingImport.requests.slice(0, 30).map((request, index) => (
+                        <div key={`${request.name}-${index}`} className={classes.importConfirmItem}>
+                          <Text size={200} className="azv-mono">
+                            {request.name}
+                          </Text>
+                        </div>
+                      ))}
+                      {pendingImport.requests.length > 30 && (
+                        <Text size={100}>
+                          +{pendingImport.requests.length - 30} more
+                        </Text>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </DialogContent>
+            <DialogActions>
+              <Button
+                appearance="secondary"
+                onClick={() => {
+                  setShowImportConfirm(false);
+                  setPendingImport(null);
+                }}
+                disabled={importLoading}
+              >
+                Cancel
+              </Button>
+              <Button appearance="primary" onClick={handleConfirmImport} disabled={importLoading}>
+                {importLoading ? <Spinner size="tiny" /> : 'Import Secrets'}
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
     </div>
   );
 

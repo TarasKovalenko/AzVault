@@ -2,9 +2,9 @@ import {
   Badge,
   Button,
   Field,
-  Text,
   makeStyles,
   mergeClasses,
+  Text,
   tokens,
 } from '@fluentui/react-components';
 import { Certificate24Regular, Copy24Regular, Dismiss24Regular } from '@fluentui/react-icons';

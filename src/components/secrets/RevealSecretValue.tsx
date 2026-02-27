@@ -10,8 +10,8 @@ import {
   makeStyles,
   Spinner,
   Text,
-  tokens,
   Tooltip,
+  tokens,
 } from '@fluentui/react-components';
 import {
   Checkmark24Regular,
@@ -21,7 +21,7 @@ import {
   Timer24Regular,
   Warning24Regular,
 } from '@fluentui/react-icons';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAutoHide } from '../../hooks/useAutoHide';
 import { getSecretValue } from '../../services/tauri';
 import { useAppStore } from '../../stores/appStore';
@@ -120,6 +120,7 @@ export function RevealSecretValue({ secretName, vaultUri }: RevealSecretValuePro
   const [reauthConfirmed, setReauthConfirmed] = useState(false);
   const [copied, setCopied] = useState(false);
   const [clipboardWarning, setClipboardWarning] = useState(false);
+  const fetchRequestIdRef = useRef(0);
 
   const { isRevealed, secondsLeft, reveal, hide } = useAutoHide({
     timeoutSeconds: autoHideSeconds,
@@ -127,17 +128,35 @@ export function RevealSecretValue({ secretName, vaultUri }: RevealSecretValuePro
   });
 
   const handleFetchValue = useCallback(async () => {
+    const requestId = ++fetchRequestIdRef.current;
     setFetching(true);
     setFetchError(null);
     try {
       const val = await getSecretValue(vaultUri, secretName);
+      if (requestId !== fetchRequestIdRef.current) return;
       setSecretValue(val);
     } catch (e) {
+      if (requestId !== fetchRequestIdRef.current) return;
       setFetchError(String(e));
     } finally {
-      setFetching(false);
+      if (requestId === fetchRequestIdRef.current) {
+        setFetching(false);
+      }
     }
   }, [secretName, vaultUri]);
+
+  useEffect(() => {
+    // Switching selected secret should always clear prior sensitive UI state
+    fetchRequestIdRef.current += 1;
+    setSecretValue(null);
+    setFetching(false);
+    setFetchError(null);
+    setShowFetchConfirm(false);
+    setReauthConfirmed(false);
+    setCopied(false);
+    setClipboardWarning(false);
+    hide();
+  }, [hide]);
 
   const confirmAndFetch = useCallback(async () => {
     if (requireReauthForReveal && !reauthConfirmed) {
@@ -223,7 +242,12 @@ export function RevealSecretValue({ secretName, vaultUri }: RevealSecretValuePro
                 />
               </Tooltip>
             )}
-            <Button appearance="subtle" size="small" onClick={clearValue} className={styles.clearButton}>
+            <Button
+              appearance="subtle"
+              size="small"
+              onClick={clearValue}
+              className={styles.clearButton}
+            >
               Clear
             </Button>
           </div>

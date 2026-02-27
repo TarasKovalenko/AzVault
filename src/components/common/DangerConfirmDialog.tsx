@@ -7,9 +7,9 @@ import {
   DialogSurface,
   DialogTitle,
   Input,
+  makeStyles,
   Spinner,
   Text,
-  makeStyles,
   tokens,
 } from '@fluentui/react-components';
 import { Warning24Regular } from '@fluentui/react-icons';
@@ -99,9 +99,7 @@ export function DangerConfirmDialog({
           </DialogTitle>
           <DialogContent>
             {isCritical && (
-              <div className={classes.criticalBanner}>
-                This action is irreversible.
-              </div>
+              <div className={classes.criticalBanner}>This action is irreversible.</div>
             )}
 
             <Text size={200} className={classes.descriptionText}>
