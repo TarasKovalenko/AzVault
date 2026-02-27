@@ -18,8 +18,8 @@ import {
   Search24Regular,
 } from '@fluentui/react-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useState } from 'react';
-import { deleteSecret, exportItems, listSecrets } from '../../services/tauri';
+import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { deleteSecret, exportItems, listSecrets, setSecret } from '../../services/tauri';
 import { useAppStore } from '../../stores/appStore';
 import type { SecretItem } from '../../types';
 import { DangerConfirmDialog } from '../common/DangerConfirmDialog';
@@ -42,6 +42,7 @@ import {
   toggleSelectionAll,
 } from './secretsBulkDeleteLogic';
 import { type ExportFormat, exportSecretMetadata } from './secretsExport';
+import { parseSecretsImportJson } from './secretsImport';
 
 const useStyles = makeStyles({
   listRoot: {
@@ -170,6 +171,10 @@ export function SecretsList() {
   const [showPrefixDeleteDialog, setShowPrefixDeleteDialog] = useState(false);
   const [exportMessage, setExportMessage] = useState<string | null>(null);
   const [exportMessageTone, setExportMessageTone] = useState<'success' | 'error'>('success');
+  const [importMessage, setImportMessage] = useState<string | null>(null);
+  const [importMessageTone, setImportMessageTone] = useState<'success' | 'error'>('success');
+  const [importLoading, setImportLoading] = useState(false);
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   const columns: Column<SecretItem>[] = useMemo(
     () => [
@@ -298,6 +303,12 @@ export function SecretsList() {
     return () => window.clearTimeout(timer);
   }, [exportMessage]);
 
+  useEffect(() => {
+    if (!importMessage) return;
+    const timer = window.setTimeout(() => setImportMessage(null), 5000);
+    return () => window.clearTimeout(timer);
+  }, [importMessage]);
+
   // Listen for custom events from command palette
   useEffect(() => {
     const onNewSecret = () => setCreateOpen(true);
@@ -306,15 +317,70 @@ export function SecretsList() {
       input?.focus();
     };
     const onDeleteByPrefix = () => setShowPrefixDeleteDialog(true);
+    const onImportSecrets = () => {
+      if (!importInputRef.current) return;
+      importInputRef.current.value = '';
+      importInputRef.current.click();
+    };
     window.addEventListener('azv:new-secret', onNewSecret);
     window.addEventListener('azv:focus-search', onFocusSearch);
     window.addEventListener('azv:delete-by-prefix', onDeleteByPrefix);
+    window.addEventListener('azv:import-secrets', onImportSecrets);
     return () => {
       window.removeEventListener('azv:new-secret', onNewSecret);
       window.removeEventListener('azv:focus-search', onFocusSearch);
       window.removeEventListener('azv:delete-by-prefix', onDeleteByPrefix);
+      window.removeEventListener('azv:import-secrets', onImportSecrets);
     };
   }, []);
+
+  const handleImportButtonClick = () => {
+    const input = importInputRef.current;
+    if (!input) return;
+    input.value = '';
+    input.click();
+  };
+
+  const handleImportFromFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !selectedVaultUri) return;
+
+    setImportLoading(true);
+    setImportMessage(null);
+
+    try {
+      const content = await file.text();
+      const { requests } = parseSecretsImportJson(content);
+      let successCount = 0;
+      const failures: string[] = [];
+
+      for (const request of requests) {
+        try {
+          await setSecret(selectedVaultUri, request);
+          successCount += 1;
+        } catch (e) {
+          failures.push(`${request.name}: ${String(e)}`);
+        }
+      }
+
+      await secretsQuery.refetch();
+
+      if (failures.length === 0) {
+        setImportMessageTone('success');
+        setImportMessage(`Imported ${successCount} secret(s) from ${file.name}.`);
+      } else {
+        setImportMessageTone('error');
+        setImportMessage(
+          `Imported ${successCount}/${requests.length} from ${file.name}. Failed: ${failures[0]}`,
+        );
+      }
+    } catch (e) {
+      setImportMessageTone('error');
+      setImportMessage(`Import failed: ${String(e)}`);
+    } finally {
+      setImportLoading(false);
+    }
+  };
 
   const downloadExport = (content: string, format: ExportFormat) => {
     const mimeType = format === 'json' ? 'application/json' : 'text/csv;charset=utf-8';
@@ -430,6 +496,13 @@ export function SecretsList() {
           />
         </div>
         <div className={classes.toolbarButtons}>
+          <input
+            ref={importInputRef}
+            type="file"
+            accept="application/json,.json"
+            onChange={handleImportFromFile}
+            style={{ display: 'none' }}
+          />
           <Menu>
             <MenuTrigger disableButtonEnhancement>
               <Button
@@ -448,10 +521,19 @@ export function SecretsList() {
             </MenuPopover>
           </Menu>
           <Button
+            appearance="secondary"
+            size="small"
+            onClick={handleImportButtonClick}
+            disabled={!selectedVaultUri || importLoading}
+          >
+            {importLoading ? 'Importing...' : 'Import JSON'}
+          </Button>
+          <Button
             appearance="primary"
             icon={<Add24Regular />}
             size="small"
             onClick={() => setCreateOpen(true)}
+            disabled={importLoading}
           >
             New
           </Button>
@@ -505,6 +587,29 @@ export function SecretsList() {
             )}
           >
             {exportMessage}
+          </Text>
+        </div>
+      )}
+
+      {importMessage && (
+        <div
+          className={mergeClasses(
+            classes.exportMessage,
+            importMessageTone === 'success'
+              ? classes.exportMessageSuccess
+              : classes.exportMessageError,
+          )}
+        >
+          <Text
+            size={200}
+            className={mergeClasses(
+              'azv-mono',
+              importMessageTone === 'success'
+                ? classes.exportMessageTextSuccess
+                : classes.exportMessageTextError,
+            )}
+          >
+            {importMessage}
           </Text>
         </div>
       )}

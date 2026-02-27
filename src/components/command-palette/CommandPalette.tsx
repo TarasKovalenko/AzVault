@@ -246,6 +246,13 @@ function useCommands(): PaletteCommand[] {
         when: () => !!store.selectedVaultName,
       },
       {
+        id: 'import-secrets-json',
+        label: 'Import Secrets from JSON',
+        category: 'action',
+        execute: () => window.dispatchEvent(new CustomEvent('azv:import-secrets')),
+        when: () => !!store.selectedVaultName,
+      },
+      {
         id: 'select-all',
         label: 'Select All Items',
         category: 'action',
