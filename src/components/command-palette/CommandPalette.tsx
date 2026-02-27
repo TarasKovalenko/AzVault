@@ -1,4 +1,4 @@
-import { Input, Text, makeStyles, tokens } from '@fluentui/react-components';
+import { Input, makeStyles, Text, tokens } from '@fluentui/react-components';
 import { Search24Regular } from '@fluentui/react-icons';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../../stores/appStore';
@@ -133,11 +133,7 @@ export function CommandPalette() {
                 onClick={() => execute(result.item)}
                 onMouseEnter={() => setActiveIndex(i)}
               >
-                {result.item.icon && (
-                  <span className={classes.itemIcon}>
-                    {result.item.icon}
-                  </span>
-                )}
+                {result.item.icon && <span className={classes.itemIcon}>{result.item.icon}</span>}
                 <span>
                   <Text size={200}>{result.item.label}</Text>
                   <Text size={100} className={classes.categoryText}>

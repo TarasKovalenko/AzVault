@@ -2,6 +2,7 @@
 import {
   Badge,
   Checkbox,
+  makeStyles,
   Spinner,
   Table,
   TableBody,
@@ -9,7 +10,6 @@ import {
   TableHeader,
   TableRow,
   Text,
-  makeStyles,
   tokens,
 } from '@fluentui/react-components';
 import { format } from 'date-fns';
@@ -117,7 +117,9 @@ export function ItemTable<T>({
                 />
               </th>
             )}
-            <th className="azv-th" style={{ width: 46 }}>#</th>
+            <th className="azv-th" style={{ width: 46 }}>
+              #
+            </th>
             {columns.map((col) => (
               <th className="azv-th" key={col.key} style={{ width: col.width }}>
                 {col.label}
@@ -210,7 +212,13 @@ export function renderTags(tags: Record<string, string> | null) {
       {Object.entries(tags)
         .slice(0, 3)
         .map(([k, v]) => (
-          <Badge key={k} size="small" appearance="outline" className="azv-tag-pill" title={`${k}=${v}`}>
+          <Badge
+            key={k}
+            size="small"
+            appearance="outline"
+            className="azv-tag-pill"
+            title={`${k}=${v}`}
+          >
             <span className="azv-tag-text">
               {k}={v}
             </span>

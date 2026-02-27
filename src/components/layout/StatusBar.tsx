@@ -1,4 +1,4 @@
-import { Badge, Text, makeStyles, tokens } from '@fluentui/react-components';
+import { Badge, makeStyles, Text, tokens } from '@fluentui/react-components';
 import { useAppStore } from '../../stores/appStore';
 
 const useStyles = makeStyles({

@@ -1,11 +1,4 @@
-import {
-  Badge,
-  Button,
-  Input,
-  Text,
-  makeStyles,
-  tokens,
-} from '@fluentui/react-components';
+import { Badge, Button, Input, makeStyles, Text, tokens } from '@fluentui/react-components';
 import { Search24Regular } from '@fluentui/react-icons';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -92,10 +85,7 @@ function ExpiresCell({ item }: { item: KeyItem }) {
     );
   const expired = new Date(item.expires) < new Date();
   return (
-    <Text
-      size={200}
-      style={{ color: expired ? 'var(--azv-danger)' : undefined }}
-    >
+    <Text size={200} style={{ color: expired ? 'var(--azv-danger)' : undefined }}>
       {renderDate(item.expires)}
     </Text>
   );

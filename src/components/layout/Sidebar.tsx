@@ -1,4 +1,12 @@
-import { Badge, Button, Text, Tooltip, makeStyles, mergeClasses, tokens } from '@fluentui/react-components';
+import {
+  Badge,
+  Button,
+  makeStyles,
+  mergeClasses,
+  Text,
+  Tooltip,
+  tokens,
+} from '@fluentui/react-components';
 import {
   Certificate24Regular,
   ClipboardTextLtr24Regular,
@@ -25,10 +33,18 @@ interface NavItem {
 const navIconStyle = { fontSize: 16 } as const;
 
 const VAULT_NAV: NavItem[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: <TextBulletListSquare24Regular style={navIconStyle} /> },
+  {
+    id: 'dashboard',
+    label: 'Dashboard',
+    icon: <TextBulletListSquare24Regular style={navIconStyle} />,
+  },
   { id: 'secrets', label: 'Secrets', icon: <Key24Regular style={navIconStyle} /> },
   { id: 'keys', label: 'Keys', icon: <LockClosed24Regular style={navIconStyle} /> },
-  { id: 'certificates', label: 'Certificates', icon: <Certificate24Regular style={navIconStyle} /> },
+  {
+    id: 'certificates',
+    label: 'Certificates',
+    icon: <Certificate24Regular style={navIconStyle} />,
+  },
   { id: 'logs', label: 'Audit Log', icon: <ClipboardTextLtr24Regular style={navIconStyle} /> },
 ];
 

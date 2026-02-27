@@ -70,9 +70,7 @@ function parseItem(item: RawImportItem, index: number): CreateSecretRequest {
     throw new Error(`Item ${index + 1}: 'name' is required.`);
   }
   if (!SECRET_NAME_PATTERN.test(name)) {
-    throw new Error(
-      `Item ${index + 1}: 'name' may only contain letters, numbers, and dashes.`,
-    );
+    throw new Error(`Item ${index + 1}: 'name' may only contain letters, numbers, and dashes.`);
   }
 
   if (typeof item.value !== 'string' || !item.value.trim()) {

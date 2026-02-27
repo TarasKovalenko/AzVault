@@ -10,8 +10,8 @@ import {
   makeStyles,
   Spinner,
   Text,
-  tokens,
   Tooltip,
+  tokens,
 } from '@fluentui/react-components';
 import {
   Checkmark24Regular,
@@ -156,7 +156,7 @@ export function RevealSecretValue({ secretName, vaultUri }: RevealSecretValuePro
     setCopied(false);
     setClipboardWarning(false);
     hide();
-  }, [secretName, vaultUri, hide]);
+  }, [hide]);
 
   const confirmAndFetch = useCallback(async () => {
     if (requireReauthForReveal && !reauthConfirmed) {
@@ -242,7 +242,12 @@ export function RevealSecretValue({ secretName, vaultUri }: RevealSecretValuePro
                 />
               </Tooltip>
             )}
-            <Button appearance="subtle" size="small" onClick={clearValue} className={styles.clearButton}>
+            <Button
+              appearance="subtle"
+              size="small"
+              onClick={clearValue}
+              className={styles.clearButton}
+            >
               Clear
             </Button>
           </div>

@@ -4,10 +4,10 @@ import {
   Card,
   CardFooter,
   CardHeader,
+  makeStyles,
   Spinner,
   Text,
   Tooltip,
-  makeStyles,
   tokens,
 } from '@fluentui/react-components';
 import {
@@ -243,9 +243,7 @@ export function SignIn() {
     <div className={`azv-shell ${classes.shellCenterWithPadding}`}>
       <Card className={`azv-pane ${classes.card}`}>
         <CardHeader
-          image={
-            <ShieldLock24Regular className={classes.headerIcon} />
-          }
+          image={<ShieldLock24Regular className={classes.headerIcon} />}
           header={
             <div>
               <Text weight="bold" size={500} className={classes.titleLetterSpacing}>
@@ -338,9 +336,7 @@ export function SignIn() {
                 />
               </Tooltip>
             </div>
-            <p className={classes.terminalHint}>
-              Then click Connect below to verify the session.
-            </p>
+            <p className={classes.terminalHint}>Then click Connect below to verify the session.</p>
           </div>
 
           {/* Error */}

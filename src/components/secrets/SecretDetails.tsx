@@ -382,11 +382,7 @@ function MetaField({ label, value, mono }: { label: string; value: string; mono?
   const classes = useStyles();
   return (
     <Field label={label}>
-      <Text
-        size={200}
-        font={mono ? 'monospace' : undefined}
-        className={classes.metaValue}
-      >
+      <Text size={200} font={mono ? 'monospace' : undefined} className={classes.metaValue}>
         {value}
       </Text>
     </Field>

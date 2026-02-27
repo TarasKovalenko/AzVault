@@ -1,4 +1,4 @@
-import { Button, Text, makeStyles, tokens } from '@fluentui/react-components';
+import { Button, makeStyles, Text, tokens } from '@fluentui/react-components';
 
 interface EmptyStateProps {
   icon?: React.ReactNode;
@@ -37,7 +37,12 @@ export function EmptyState({ icon, title, description, action }: EmptyStateProps
         </Text>
       )}
       {action && (
-        <Button appearance="primary" size="small" onClick={action.onClick} className={classes.actionBtn}>
+        <Button
+          appearance="primary"
+          size="small"
+          onClick={action.onClick}
+          className={classes.actionBtn}
+        >
           {action.label}
         </Button>
       )}

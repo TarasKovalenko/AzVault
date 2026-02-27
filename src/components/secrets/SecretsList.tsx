@@ -6,9 +6,9 @@ import {
   MenuList,
   MenuPopover,
   MenuTrigger,
-  Text,
   makeStyles,
   mergeClasses,
+  Text,
   tokens,
 } from '@fluentui/react-components';
 import {
@@ -199,11 +199,7 @@ export function SecretsList() {
         label: 'Type',
         width: '15%',
         render: (item) => (
-          <Text
-            size={200}
-            className="azv-mono"
-            style={{ opacity: item.contentType ? 1 : 0.4 }}
-          >
+          <Text size={200} className="azv-mono" style={{ opacity: item.contentType ? 1 : 0.4 }}>
             {item.contentType || '—'}
           </Text>
         ),
@@ -505,11 +501,7 @@ export function SecretsList() {
           />
           <Menu>
             <MenuTrigger disableButtonEnhancement>
-              <Button
-                appearance="subtle"
-                icon={<ArrowDownload24Regular />}
-                size="small"
-              >
+              <Button appearance="subtle" icon={<ArrowDownload24Regular />} size="small">
                 Export
               </Button>
             </MenuTrigger>
@@ -722,9 +714,7 @@ export function SecretsList() {
             </Text>
           </div>
         )}
-        {bulkDeleteError && (
-          <div className={classes.bulkDeleteError}>{bulkDeleteError}</div>
-        )}
+        {bulkDeleteError && <div className={classes.bulkDeleteError}>{bulkDeleteError}</div>}
       </DangerConfirmDialog>
 
       {/* Delete by prefix */}

@@ -7,10 +7,10 @@ import {
   DialogSurface,
   DialogTitle,
   Input,
-  Spinner,
-  Text,
   makeStyles,
   mergeClasses,
+  Spinner,
+  Text,
   tokens,
 } from '@fluentui/react-components';
 import { Warning24Regular } from '@fluentui/react-icons';

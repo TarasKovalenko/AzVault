@@ -1,4 +1,4 @@
-import { Tab, TabList, makeStyles, tokens } from '@fluentui/react-components';
+import { makeStyles, Tab, TabList, tokens } from '@fluentui/react-components';
 import {
   Certificate24Regular,
   ClipboardTextLtr24Regular,

@@ -5,8 +5,8 @@ import {
   MenuList,
   MenuPopover,
   MenuTrigger,
-  Text,
   makeStyles,
+  Text,
   tokens,
 } from '@fluentui/react-components';
 import {

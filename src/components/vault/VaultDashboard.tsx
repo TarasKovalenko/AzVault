@@ -1,11 +1,4 @@
-import {
-  Badge,
-  Button,
-  Card,
-  makeStyles,
-  Text,
-  tokens,
-} from '@fluentui/react-components';
+import { Badge, Button, Card, makeStyles, Text, tokens } from '@fluentui/react-components';
 import {
   Add24Regular,
   Certificate24Regular,

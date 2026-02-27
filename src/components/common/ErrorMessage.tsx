@@ -1,4 +1,4 @@
-import { Button, Text, makeStyles, tokens } from '@fluentui/react-components';
+import { Button, makeStyles, Text, tokens } from '@fluentui/react-components';
 import { DismissCircle24Regular } from '@fluentui/react-icons';
 import type { UserFacingError } from '../../types';
 

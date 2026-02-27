@@ -7,8 +7,8 @@ import {
   MenuList,
   MenuPopover,
   MenuTrigger,
-  Text,
   makeStyles,
+  Text,
   tokens,
 } from '@fluentui/react-components';
 import {
@@ -120,7 +120,11 @@ export function TopBar() {
 
       <WorkspaceSwitcher />
 
-      <button type="button" onClick={() => setCommandPaletteOpen(true)} className={classes.paletteBtn}>
+      <button
+        type="button"
+        onClick={() => setCommandPaletteOpen(true)}
+        className={classes.paletteBtn}
+      >
         <Search24Regular className={classes.searchIcon} />
         <span className={classes.paletteBtnText}>Search or run a command...</span>
         <span className="azv-kbd">{shortcutLabel}</span>
