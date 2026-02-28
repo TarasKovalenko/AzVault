@@ -101,7 +101,8 @@ jobs:
           path: release-assets
 
       - name: Upload assets to GitHub Release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-        run: gh release upload ${{ github.event.release.tag_name }} release-assets/* --clobber --repo ${{ github.repository }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.release.tag_name }}
+          files: |
+            release-assets/*
