@@ -11,7 +11,89 @@ mod commands;
 mod models;
 
 use commands::AppState;
-use tauri::Manager;
+use tauri::{
+    menu::{AboutMetadataBuilder, MenuBuilder, SubmenuBuilder},
+    Manager, Runtime,
+};
+
+const APP_AUTHOR: &str = "Taras Kovalenko";
+const APP_COPYRIGHT: &str = "Copyright © 2026 Taras Kovalenko";
+const APP_DESCRIPTION: &str = "Azure Key Vault Explorer desktop app";
+
+fn build_app_menu<R: Runtime>(app: &tauri::App<R>) -> tauri::Result<tauri::menu::Menu<R>> {
+    let handle = app.handle();
+    let package_info = app.package_info();
+    let app_name = package_info.name.clone();
+    let about_metadata = AboutMetadataBuilder::new()
+        .name(Some(app_name.clone()))
+        .version(Some(package_info.version.to_string()))
+        .authors(Some(vec![APP_AUTHOR.to_string()]))
+        .comments(Some(APP_DESCRIPTION))
+        .copyright(Some(APP_COPYRIGHT))
+        .license(Some("MIT"))
+        .credits(Some(format!("Created by {APP_AUTHOR}")))
+        .build();
+
+    let mut menu = MenuBuilder::new(handle);
+
+    #[cfg(target_os = "macos")]
+    {
+        let app_menu = SubmenuBuilder::new(handle, &app_name)
+            .about(Some(about_metadata.clone()))
+            .separator()
+            .services()
+            .separator()
+            .hide()
+            .hide_others()
+            .separator()
+            .quit()
+            .build()?;
+        menu = menu.item(&app_menu);
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    let file_menu = SubmenuBuilder::new(handle, "File")
+        .close_window()
+        .separator()
+        .quit();
+    #[cfg(target_os = "macos")]
+    let file_menu = SubmenuBuilder::new(handle, "File").close_window();
+    let file_menu = file_menu.build()?;
+    menu = menu.item(&file_menu);
+
+    let edit_menu = SubmenuBuilder::new(handle, "Edit")
+        .undo()
+        .redo()
+        .separator()
+        .cut()
+        .copy()
+        .paste()
+        .separator()
+        .select_all()
+        .build()?;
+    menu = menu.item(&edit_menu);
+
+    let view_menu = SubmenuBuilder::new(handle, "View").fullscreen().build()?;
+    menu = menu.item(&view_menu);
+
+    let window_menu = SubmenuBuilder::new(handle, "Window")
+        .minimize()
+        .maximize()
+        .separator()
+        .close_window()
+        .build()?;
+    menu = menu.item(&window_menu);
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        let help_menu = SubmenuBuilder::new(handle, "Help")
+            .about(Some(about_metadata))
+            .build()?;
+        menu = menu.item(&help_menu);
+    }
+
+    menu.build()
+}
 
 /// Initialises and runs the Tauri application.
 ///
@@ -23,6 +105,8 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_store::Builder::new().build())
         .setup(|app| {
+            app.set_menu(build_app_menu(app)?)?;
+
             // Enable structured logging in debug builds
             if cfg!(debug_assertions) {
                 app.handle().plugin(
