@@ -357,7 +357,7 @@ export function SettingsDialog() {
                   About
                 </Text>
                 <Text size={200} block className="azv-mono">
-                  AzVault v0.1.0
+                  AzVault v1.0.0
                 </Text>
                 <Text size={100} className={classes.aboutBody}>
                   Tauri v2 · React · Fluent UI

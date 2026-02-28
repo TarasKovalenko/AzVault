@@ -16,22 +16,30 @@ use tauri::{
     Manager, Runtime,
 };
 
-const APP_AUTHOR: &str = "Taras Kovalenko";
-const APP_COPYRIGHT: &str = "Copyright © 2026 Taras Kovalenko";
-const APP_DESCRIPTION: &str = "Azure Key Vault Explorer desktop app";
+const APP_AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
+const APP_DESCRIPTION: &str = env!("CARGO_PKG_DESCRIPTION");
+const APP_LICENSE: &str = env!("CARGO_PKG_LICENSE");
+const APP_COPYRIGHT_YEAR: &str = "2026";
 
 fn build_app_menu<R: Runtime>(app: &tauri::App<R>) -> tauri::Result<tauri::menu::Menu<R>> {
     let handle = app.handle();
     let package_info = app.package_info();
     let app_name = package_info.name.clone();
+    let authors = APP_AUTHORS
+        .split(':')
+        .filter(|author| !author.is_empty())
+        .map(str::to_owned)
+        .collect::<Vec<_>>();
+    let primary_author = authors.first().cloned().unwrap_or_else(|| app_name.clone());
+    let copyright = format!("Copyright © {APP_COPYRIGHT_YEAR} {primary_author}");
     let about_metadata = AboutMetadataBuilder::new()
         .name(Some(app_name.clone()))
         .version(Some(package_info.version.to_string()))
-        .authors(Some(vec![APP_AUTHOR.to_string()]))
+        .authors(Some(authors))
         .comments(Some(APP_DESCRIPTION))
-        .copyright(Some(APP_COPYRIGHT))
-        .license(Some("MIT"))
-        .credits(Some(format!("Created by {APP_AUTHOR}")))
+        .copyright(Some(copyright))
+        .license(Some(APP_LICENSE))
+        .credits(Some(format!("Created by {primary_author}")))
         .build();
 
     let mut menu = MenuBuilder::new(handle);
@@ -77,8 +85,6 @@ fn build_app_menu<R: Runtime>(app: &tauri::App<R>) -> tauri::Result<tauri::menu:
     let window_menu = SubmenuBuilder::new(handle, "Window")
         .minimize()
         .maximize()
-        .separator()
-        .close_window()
         .build()?;
     menu = menu.item(&window_menu);
 
