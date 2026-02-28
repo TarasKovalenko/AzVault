@@ -51,14 +51,12 @@ fn build_app_menu<R: Runtime>(app: &tauri::App<R>) -> tauri::Result<tauri::menu:
         menu = menu.item(&app_menu);
     }
 
+    let mut file_menu_builder = SubmenuBuilder::new(handle, "File").close_window();
     #[cfg(not(target_os = "macos"))]
-    let file_menu = SubmenuBuilder::new(handle, "File")
-        .close_window()
-        .separator()
-        .quit();
-    #[cfg(target_os = "macos")]
-    let file_menu = SubmenuBuilder::new(handle, "File").close_window();
-    let file_menu = file_menu.build()?;
+    {
+        file_menu_builder = file_menu_builder.separator().quit();
+    }
+    let file_menu = file_menu_builder.build()?;
     menu = menu.item(&file_menu);
 
     let edit_menu = SubmenuBuilder::new(handle, "Edit")
