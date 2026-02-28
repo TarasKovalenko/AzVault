@@ -175,7 +175,7 @@ export function TopBar() {
                 </MenuItem>
               )}
               <MenuItem icon={<Info24Regular />} disabled>
-                AzVault v0.1.0
+                AzVault v1.0.0
               </MenuItem>
               <MenuItem icon={<SignOut24Regular />} onClick={handleSignOut}>
                 Sign Out

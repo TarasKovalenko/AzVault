@@ -1,8 +1,8 @@
 [package]
 name = "azvault"
-version = "0.1.0"
+version = "1.0.0"
 description = "Azure Key Vault Explorer"
-authors = ["AzVault"]
+authors = ["Taras Kovalenko"]
 license = "MIT"
 repository = ""
 edition = "2021"
