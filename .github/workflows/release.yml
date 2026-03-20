@@ -84,11 +84,61 @@ jobs:
       - name: Install Tauri CLI
         run: cargo install tauri-cli --version "^2.0" --locked
 
-      - name: Build application bundles
+      - name: Prepare macOS signing
+        if: runner.os == 'macOS'
+        shell: bash
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_SIGNING_IDENTITY_SECRET: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          if [ -z "$APPLE_CERTIFICATE" ] || [ -z "$APPLE_CERTIFICATE_PASSWORD" ]; then
+            echo "No Apple signing certificate secrets found. Falling back to ad-hoc signing."
+            echo "APPLE_SIGNING_IDENTITY=-" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          cert_path="$RUNNER_TEMP/apple-signing-cert.p12"
+          keychain_path="$RUNNER_TEMP/azvault-signing.keychain-db"
+          keychain_password="${KEYCHAIN_PASSWORD:-$(uuidgen)}"
+          login_keychain="$(security login-keychain | tr -d '"')"
+
+          printf '%s' "$APPLE_CERTIFICATE" | base64 --decode -o "$cert_path"
+
+          echo "Validating PKCS#12 certificate payload..."
+          openssl pkcs12 -in "$cert_path" -passin pass:"$APPLE_CERTIFICATE_PASSWORD" -info -noout
+
+          security create-keychain -p "$keychain_password" "$keychain_path"
+          security set-keychain-settings -lut 21600 "$keychain_path"
+          security unlock-keychain -p "$keychain_password" "$keychain_path"
+          security default-keychain -s "$keychain_path"
+          security list-keychains -d user -s "$keychain_path" "$login_keychain"
+          security import "$cert_path" -k "$keychain_path" -f pkcs12 -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$keychain_password" "$keychain_path"
+
+          security find-identity -v -p codesigning "$keychain_path"
+
+          if [ -n "$APPLE_SIGNING_IDENTITY_SECRET" ]; then
+            if ! security find-identity -v -p codesigning "$keychain_path" | grep -F "\"$APPLE_SIGNING_IDENTITY_SECRET\"" >/dev/null; then
+              echo "Configured APPLE_SIGNING_IDENTITY was not found in the imported keychain."
+              exit 1
+            fi
+            identity="$APPLE_SIGNING_IDENTITY_SECRET"
+          else
+            identity="$(security find-identity -v -p codesigning "$keychain_path" | sed -n 's/.*\"\\(.*\\)\"/\\1/p' | head -n 1)"
+          fi
+
+          if [ -z "$identity" ]; then
+            echo "No Apple code-signing identity was found after importing the certificate."
+            exit 1
+          fi
+
+          echo "APPLE_SIGNING_IDENTITY=$identity" >> "$GITHUB_ENV"
+          echo "APPLE_TEMP_KEYCHAIN=$keychain_path" >> "$GITHUB_ENV"
+
+      - name: Build application bundles
+        env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
@@ -134,6 +184,14 @@ jobs:
           name: release-${{ matrix.artifact_name }}
           path: release-assets/*
           if-no-files-found: error
+
+      - name: Cleanup macOS signing keychain
+        if: runner.os == 'macOS' && always()
+        shell: bash
+        run: |
+          if [ -n "${APPLE_TEMP_KEYCHAIN:-}" ] && [ -f "$APPLE_TEMP_KEYCHAIN" ]; then
+            security delete-keychain "$APPLE_TEMP_KEYCHAIN" || true
+          fi
 
   publish:
     name: Attach Assets To Release
