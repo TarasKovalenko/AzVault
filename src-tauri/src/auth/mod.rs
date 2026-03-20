@@ -11,12 +11,22 @@
 //! attack surface minimal for a desktop developer tool.
 
 use serde_json::Value;
-use std::process::Command;
 use std::sync::Arc;
+use std::{env, ffi::OsStr, path::PathBuf, process::Command};
 use tokio::sync::RwLock;
 
 /// Default tenant value used by Azure CLI when no explicit tenant is specified.
 const TENANT_DEFAULT: &str = "organizations";
+
+/// Common Azure CLI install locations that Finder-launched macOS apps do not
+/// always inherit via PATH.
+#[cfg(target_os = "macos")]
+const MACOS_AZ_CLI_FALLBACK_DIRS: &[&str] = &[
+    "/opt/homebrew/bin",
+    "/usr/local/bin",
+    "/opt/azure-cli/bin",
+    "/Library/Frameworks/Python.framework/Versions/Current/bin",
+];
 
 /// Manages Azure CLI-based authentication for the app.
 pub struct AuthManager {
@@ -94,7 +104,14 @@ impl AuthManager {
             }
         }
 
-        let output = Command::new("az")
+        let mut command = Command::new(Self::resolve_az_cli_path());
+        #[cfg(target_os = "macos")]
+        command.env(
+            "PATH",
+            Self::build_command_path(env::var_os("PATH").as_deref()),
+        );
+
+        let output = command
             .args(args)
             .output()
             .map_err(|e| format!("Azure CLI not available: {}", e))?;
@@ -114,6 +131,61 @@ impl AuthManager {
             resource,
             "https://management.azure.com/" | "https://vault.azure.net"
         )
+    }
+
+    /// Builds the PATH used for child processes, augmenting GUI-launched macOS
+    /// apps with common Azure CLI install directories.
+    fn build_command_path(path_env: Option<&OsStr>) -> PathBuf {
+        env::join_paths(Self::az_cli_search_paths(path_env))
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| PathBuf::from(path_env.unwrap_or_else(|| OsStr::new(""))))
+    }
+
+    /// Resolves the Azure CLI executable path with support for Apple Silicon
+    /// Homebrew installs when the app is launched from Finder.
+    fn resolve_az_cli_path() -> PathBuf {
+        if let Some(path) = env::var_os("AZURE_CLI_PATH") {
+            if !path.is_empty() {
+                return PathBuf::from(path);
+            }
+        }
+
+        for dir in Self::az_cli_search_paths(env::var_os("PATH").as_deref()) {
+            let candidate = dir.join("az");
+            if candidate.is_file() {
+                return candidate;
+            }
+        }
+
+        PathBuf::from("az")
+    }
+
+    /// Candidate directories used to locate Azure CLI.
+    fn az_cli_search_paths(path_env: Option<&OsStr>) -> Vec<PathBuf> {
+        let mut paths = Vec::new();
+
+        if let Some(path_env) = path_env {
+            for dir in env::split_paths(path_env) {
+                Self::push_unique_path(&mut paths, dir);
+            }
+        }
+
+        #[cfg(target_os = "macos")]
+        for dir in MACOS_AZ_CLI_FALLBACK_DIRS {
+            Self::push_unique_path(&mut paths, PathBuf::from(dir));
+        }
+
+        paths
+    }
+
+    fn push_unique_path(paths: &mut Vec<PathBuf>, candidate: PathBuf) {
+        if candidate.as_os_str().is_empty() {
+            return;
+        }
+
+        if !paths.iter().any(|existing| existing == &candidate) {
+            paths.push(candidate);
+        }
     }
 
     /// Parses the JSON output of `az account get-access-token` and extracts
@@ -187,6 +259,23 @@ mod tests {
     fn fails_on_invalid_json_payload() {
         let payload = b"not json at all";
         assert!(AuthManager::parse_cli_access_token(payload).is_err());
+    }
+
+    #[test]
+    fn az_cli_search_paths_preserve_existing_path_entries() {
+        let paths = AuthManager::az_cli_search_paths(Some(OsStr::new("/usr/bin:/custom/bin")));
+
+        assert_eq!(paths[0], PathBuf::from("/usr/bin"));
+        assert_eq!(paths[1], PathBuf::from("/custom/bin"));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn az_cli_search_paths_include_common_macos_install_dirs() {
+        let paths = AuthManager::az_cli_search_paths(Some(OsStr::new("/usr/bin")));
+
+        assert!(paths.contains(&PathBuf::from("/opt/homebrew/bin")));
+        assert!(paths.contains(&PathBuf::from("/usr/local/bin")));
     }
 
     #[test]

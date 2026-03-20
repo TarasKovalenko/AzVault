@@ -1,7 +1,7 @@
 {
   "name": "azvault",
   "private": false,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Azure Key Vault Explorer - Desktop App",
   "author": {
     "name": "Taras Kovalenko",

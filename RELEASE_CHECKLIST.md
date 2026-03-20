@@ -19,6 +19,8 @@
 
 - [ ] Build release artifacts with `npm run tauri build`
 - [ ] Verify app launch on target OSes
+- [ ] Verify installed macOS builds on both Apple Silicon (`aarch64`) and Intel when publishing dual-arch DMGs
+- [ ] Verify Azure CLI is discoverable from the installed macOS app (`/opt/homebrew/bin/az` on Apple Silicon)
 - [ ] Verify signing/notarization requirements for distribution channels
 
 ## Post-release
