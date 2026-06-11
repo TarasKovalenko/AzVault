@@ -62,11 +62,11 @@ export function StatusBar() {
           |
         </Text>
         <Text size={100} font="monospace">
-          tenant:
+          tenant:{' '}
           {currentTenant?.display_name || (selectedTenantId ? selectedTenantId.slice(0, 8) : '—')}
         </Text>
         <Text size={100} font="monospace">
-          sub:
+          sub:{' '}
           {currentSub?.displayName ||
             (selectedSubscriptionId ? selectedSubscriptionId.slice(0, 8) : '—')}
         </Text>
@@ -74,13 +74,10 @@ export function StatusBar() {
 
       <div className={`${classes.section} azv-mono`}>
         <Text size={100} font="monospace">
-          vault:{selectedVaultName || '—'}
+          vault:{' '}
+          {selectedVaultName || '—'}
         </Text>
-        <Badge
-          appearance="outline"
-          size="small"
-          color={themeMode === 'dark' ? 'important' : 'success'}
-        >
+        <Badge appearance="outline" size="small" color="informative">
           {themeMode}
         </Badge>
       </div>

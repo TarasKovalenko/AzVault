@@ -342,7 +342,7 @@ export function AuditLog() {
                 </TableHeader>
                 <TableBody>
                   {visibleEntries.map((entry, i) => (
-                    <TableRow key={i}>
+                    <TableRow key={`${entry.timestamp}-${entry.action}-${entry.itemName}-${i}`}>
                       <TableCell>
                         <Text size={200} className={`azv-mono ${classes.timeText}`}>
                           {(() => {

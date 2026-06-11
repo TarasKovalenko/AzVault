@@ -1,6 +1,7 @@
 import {
   Badge,
   Button,
+  Input,
   makeStyles,
   mergeClasses,
   Text,
@@ -8,50 +9,18 @@ import {
   tokens,
 } from '@fluentui/react-components';
 import {
-  Certificate24Regular,
-  ClipboardTextLtr24Regular,
-  Delete24Regular,
-  Key24Regular,
-  LockClosed24Regular,
+  Search24Regular,
   ShieldLock24Regular,
   Star24Filled,
   Star24Regular,
-  TextBulletListSquare24Regular,
 } from '@fluentui/react-icons';
-import { useQuery } from '@tanstack/react-query';
-import { listCertificates, listKeys, listSecrets } from '../../services/tauri';
+import { useMemo, useState } from 'react';
 import { useAppStore } from '../../stores/appStore';
-import type { ItemTab } from '../../types';
-
-interface NavItem {
-  id: ItemTab;
-  label: string;
-  icon: React.ReactElement;
-  countKey?: string;
-}
-
-const navIconStyle = { fontSize: 16 } as const;
-
-const VAULT_NAV: NavItem[] = [
-  {
-    id: 'dashboard',
-    label: 'Dashboard',
-    icon: <TextBulletListSquare24Regular style={navIconStyle} />,
-  },
-  { id: 'secrets', label: 'Secrets', icon: <Key24Regular style={navIconStyle} /> },
-  { id: 'keys', label: 'Keys', icon: <LockClosed24Regular style={navIconStyle} /> },
-  {
-    id: 'certificates',
-    label: 'Certificates',
-    icon: <Certificate24Regular style={navIconStyle} />,
-  },
-  { id: 'logs', label: 'Audit Log', icon: <ClipboardTextLtr24Regular style={navIconStyle} /> },
-];
 
 const useStyles = makeStyles({
   root: {
-    width: '220px',
-    minWidth: '220px',
+    width: '240px',
+    minWidth: '240px',
     height: '100%',
     display: 'flex',
     flexDirection: 'column',
@@ -70,305 +39,262 @@ const useStyles = makeStyles({
     width: '36px',
     height: '36px',
   },
-  section: {
-    padding: '8px 10px 4px',
-  },
-  sectionRecent: {
-    padding: '4px 10px',
-  },
-  sectionLabel: {
-    marginBottom: '4px',
-    padding: '0 4px',
-  },
-  sectionHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '0 4px',
-  },
-  clearBtn: {
-    width: '20px',
-    height: '20px',
-    minWidth: '20px',
-  },
-  vaultItem: {
-    padding: '4px 8px',
-    borderRadius: '4px',
-    cursor: 'pointer',
+  header: {
     display: 'flex',
     alignItems: 'center',
     gap: '6px',
+    padding: '8px 10px 4px',
+  },
+  headerTitle: {
+    flex: 1,
+  },
+  filterWrap: {
+    padding: '0 10px 6px',
+  },
+  filterInput: {
+    width: '100%',
+  },
+  scroll: {
+    flex: 1,
+    overflowY: 'auto',
+    minHeight: 0,
+    padding: '0 10px 10px',
+  },
+  section: {
+    marginTop: '6px',
+  },
+  sectionLabel: {
+    padding: '2px 4px',
     marginBottom: '2px',
   },
-  vaultItemSelected: {
+  vaultRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '2px',
+    marginBottom: '2px',
+  },
+  vaultSelect: {
+    flex: 1,
+    minWidth: 0,
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '5px 8px',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    width: '100%',
+    backgroundColor: 'transparent',
+    color: 'inherit',
+    fontFamily: 'inherit',
+    fontSize: 'inherit',
+    textAlign: 'left',
+  },
+  vaultSelectSelected: {
     backgroundColor: tokens.colorBrandBackground2,
   },
-  starIcon: {
-    fontSize: '12px',
-    color: tokens.colorPaletteYellowForeground1,
+  vaultIcon: {
+    fontSize: '14px',
+    opacity: 0.6,
     flexShrink: 0,
   },
-  recentIcon: {
-    fontSize: '12px',
-    opacity: 0.5,
+  starIcon: {
+    fontSize: '14px',
+    color: tokens.colorPaletteYellowForeground1,
     flexShrink: 0,
   },
   vaultName: {
     flex: 1,
-  },
-  divider: {
-    borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
-    margin: '4px 10px',
-  },
-  navSection: {
-    padding: '4px 10px',
-  },
-  navHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    padding: '0 4px',
-    marginBottom: '4px',
-  },
-  navTitle: {
-    flex: 1,
+    minWidth: 0,
   },
   pinBtn: {
     width: '24px',
     height: '24px',
     minWidth: '24px',
-  },
-  navItem: {
-    padding: '6px 8px',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    marginBottom: '2px',
-  },
-  navItemActive: {
-    backgroundColor: tokens.colorBrandBackground2,
-    fontWeight: 600,
-  },
-  navIcon: {
-    opacity: 0.6,
-  },
-  navIconActive: {
-    opacity: 1,
-  },
-  navLabel: {
-    flex: 1,
+    flexShrink: 0,
   },
   emptyState: {
-    padding: '20px',
+    padding: '24px 16px',
     textAlign: 'center' as const,
   },
   emptyIcon: {
-    fontSize: '32px',
-    opacity: 0.3,
+    fontSize: '30px',
+    opacity: 0.4,
   },
   emptyText: {
-    color: tokens.colorNeutralForeground3,
+    color: tokens.colorNeutralForeground2,
     marginTop: '8px',
+    lineHeight: 1.5,
   },
 });
 
 export function Sidebar() {
   const {
     selectedVaultUri,
-    selectedVaultName,
-    activeTab,
-    setActiveTab,
+    keyvaults,
     pinnedVaults,
-    recentVaults,
-    selectVault,
-    unpinVault,
-    pinVault,
-    clearRecentVaults,
-    sidebarCollapsed,
-    selectedTenantId,
     selectedSubscriptionId,
+    selectedTenantId,
+    selectVault,
+    pinVault,
+    unpinVault,
+    sidebarCollapsed,
   } = useAppStore();
   const classes = useStyles();
+  const [filter, setFilter] = useState('');
 
-  const secretsQuery = useQuery({
-    queryKey: ['secrets', selectedVaultUri],
-    queryFn: () => listSecrets(selectedVaultUri!),
-    enabled: !!selectedVaultUri,
-  });
-  const keysQuery = useQuery({
-    queryKey: ['keys', selectedVaultUri],
-    queryFn: () => listKeys(selectedVaultUri!),
-    enabled: !!selectedVaultUri,
-  });
-  const certsQuery = useQuery({
-    queryKey: ['certificates', selectedVaultUri],
-    queryFn: () => listCertificates(selectedVaultUri!),
-    enabled: !!selectedVaultUri,
-  });
+  const isPinned = (uri: string) => pinnedVaults.some((v) => v.uri === uri);
 
-  const counts: Record<string, number | undefined> = {
-    secrets: secretsQuery.data?.length,
-    keys: keysQuery.data?.length,
-    certificates: certsQuery.data?.length,
+  const togglePin = (name: string, uri: string) => {
+    if (isPinned(uri)) {
+      unpinVault(uri);
+    } else if (selectedTenantId && selectedSubscriptionId) {
+      pinVault({ name, uri, tenantId: selectedTenantId, subscriptionId: selectedSubscriptionId });
+    }
   };
 
-  const isPinned = pinnedVaults.some((v) => v.uri === selectedVaultUri);
+  const q = filter.trim().toLowerCase();
+  const subVaults = useMemo(
+    () => keyvaults.filter((v) => !q || v.name.toLowerCase().includes(q)),
+    [keyvaults, q],
+  );
+  const pinnedFiltered = useMemo(
+    () => pinnedVaults.filter((v) => !q || v.name.toLowerCase().includes(q)),
+    [pinnedVaults, q],
+  );
 
   if (sidebarCollapsed) {
     return (
-      <div className={mergeClasses(classes.root, classes.collapsed)}>
-        {selectedVaultName &&
-          VAULT_NAV.map((item) => (
-            <Tooltip key={item.id} content={item.label} relationship="label" positioning="after">
-              <Button
-                appearance={activeTab === item.id ? 'primary' : 'subtle'}
-                size="small"
-                icon={item.icon}
-                onClick={() => setActiveTab(item.id)}
-                className={classes.collapsedBtn}
-              />
-            </Tooltip>
-          ))}
-      </div>
+      <nav className={mergeClasses(classes.root, classes.collapsed)} aria-label="Pinned vaults">
+        {pinnedVaults.map((v) => (
+          <Tooltip key={v.uri} content={v.name} relationship="label" positioning="after">
+            <Button
+              appearance={v.uri === selectedVaultUri ? 'primary' : 'subtle'}
+              size="small"
+              icon={<Star24Filled />}
+              onClick={() => selectVault(v.name, v.uri)}
+              className={classes.collapsedBtn}
+              aria-label={`Open vault ${v.name}`}
+            />
+          </Tooltip>
+        ))}
+      </nav>
     );
   }
 
+  const VaultRow = ({ name, uri }: { name: string; uri: string }) => {
+    const pinned = isPinned(uri);
+    const selected = uri === selectedVaultUri;
+    return (
+      <div className={`azv-vault-row ${classes.vaultRow}`}>
+        <button
+          type="button"
+          aria-pressed={selected}
+          onClick={() => selectVault(name, uri)}
+          className={mergeClasses(
+            'azv-list-item',
+            classes.vaultSelect,
+            selected && classes.vaultSelectSelected,
+          )}
+        >
+          {pinned ? (
+            <Star24Filled className={classes.starIcon} />
+          ) : (
+            <ShieldLock24Regular className={classes.vaultIcon} />
+          )}
+          <Text size={200} truncate wrap={false} className={`azv-mono ${classes.vaultName}`}>
+            {name}
+          </Text>
+        </button>
+        <Tooltip content={pinned ? 'Unpin' : 'Pin'} relationship="label">
+          <Button
+            appearance="subtle"
+            size="small"
+            className={`azv-pin ${classes.pinBtn}`}
+            aria-label={pinned ? `Unpin ${name}` : `Pin ${name}`}
+            icon={
+              pinned ? (
+                <Star24Filled style={{ color: tokens.colorPaletteYellowForeground1 }} />
+              ) : (
+                <Star24Regular />
+              )
+            }
+            onClick={() => togglePin(name, uri)}
+          />
+        </Tooltip>
+      </div>
+    );
+  };
+
+  const hasAnything = pinnedVaults.length > 0 || keyvaults.length > 0;
+
   return (
-    <div className={classes.root}>
-      {pinnedVaults.length > 0 && (
-        <div className={classes.section}>
-          <Text size={100} className={`azv-title ${classes.sectionLabel}`} block>
-            Pinned
-          </Text>
-          {pinnedVaults.map((v) => (
-            <div
-              key={v.uri}
-              onClick={() => selectVault(v.name, v.uri)}
-              className={mergeClasses(
-                'azv-list-item',
-                classes.vaultItem,
-                v.uri === selectedVaultUri && classes.vaultItemSelected,
-              )}
-            >
-              <Star24Filled className={classes.starIcon} />
-              <Text size={200} truncate wrap={false} className={`azv-mono ${classes.vaultName}`}>
-                {v.name}
-              </Text>
-            </div>
-          ))}
+    <nav className={classes.root} aria-label="Vaults">
+      <div className={classes.header}>
+        <Text size={100} className={`azv-title ${classes.headerTitle}`}>
+          Vaults
+        </Text>
+        {keyvaults.length > 0 && (
+          <Badge size="small" appearance="outline">
+            {keyvaults.length}
+          </Badge>
+        )}
+      </div>
+
+      {hasAnything && (keyvaults.length > 6 || pinnedVaults.length > 6) && (
+        <div className={classes.filterWrap}>
+          <Input
+            value={filter}
+            onChange={(_, d) => setFilter(d.value)}
+            placeholder="Filter vaults..."
+            size="small"
+            contentBefore={<Search24Regular style={{ fontSize: 14 }} />}
+            className={classes.filterInput}
+          />
         </div>
       )}
 
-      {recentVaults.length > 0 && (
-        <div className={classes.sectionRecent}>
-          <div className={classes.sectionHeader}>
-            <Text size={100} className="azv-title">
-              Recent
+      <div className={classes.scroll}>
+        {pinnedFiltered.length > 0 && (
+          <div className={classes.section}>
+            <Text size={100} className={`azv-title ${classes.sectionLabel}`} block>
+              Pinned
             </Text>
-            <Button
-              icon={<Delete24Regular />}
-              appearance="subtle"
-              size="small"
-              onClick={clearRecentVaults}
-              title="Clear recent vaults"
-              className={classes.clearBtn}
-            />
+            {pinnedFiltered.map((v) => (
+              <VaultRow key={`pin-${v.uri}`} name={v.name} uri={v.uri} />
+            ))}
           </div>
-          {recentVaults.slice(0, 5).map((v) => (
-            <div
-              key={v.uri}
-              onClick={() => selectVault(v.name, v.uri)}
-              className={mergeClasses(
-                'azv-list-item',
-                classes.vaultItem,
-                v.uri === selectedVaultUri && classes.vaultItemSelected,
-              )}
-            >
-              <ShieldLock24Regular className={classes.recentIcon} />
-              <Text size={200} truncate wrap={false} className={`azv-mono ${classes.vaultName}`}>
-                {v.name}
-              </Text>
-            </div>
-          ))}
-        </div>
-      )}
+        )}
 
-      {selectedVaultName && (
-        <>
-          <div className={classes.divider} />
-          <div className={classes.navSection}>
-            <div className={classes.navHeader}>
-              <Text size={100} className={`azv-title ${classes.navTitle}`}>
-                {selectedVaultName}
-              </Text>
-              <Tooltip content={isPinned ? 'Unpin vault' : 'Pin vault'} relationship="label">
-                <Button
-                  appearance="subtle"
-                  size="small"
-                  icon={
-                    isPinned ? (
-                      <Star24Filled style={{ color: tokens.colorPaletteYellowForeground1 }} />
-                    ) : (
-                      <Star24Regular />
-                    )
-                  }
-                  onClick={() => {
-                    if (isPinned) {
-                      unpinVault(selectedVaultUri!);
-                    } else if (selectedTenantId && selectedSubscriptionId && selectedVaultUri) {
-                      pinVault({
-                        name: selectedVaultName,
-                        uri: selectedVaultUri,
-                        tenantId: selectedTenantId,
-                        subscriptionId: selectedSubscriptionId,
-                      });
-                    }
-                  }}
-                  className={classes.pinBtn}
-                />
-              </Tooltip>
-            </div>
-
-            {VAULT_NAV.map((item) => {
-              const isActive = activeTab === item.id;
-              return (
-                <div
-                  key={item.id}
-                  onClick={() => setActiveTab(item.id)}
-                  className={mergeClasses(
-                    'azv-list-item',
-                    classes.navItem,
-                    isActive && classes.navItemActive,
-                  )}
-                >
-                  <span className={isActive ? classes.navIconActive : classes.navIcon}>
-                    {item.icon}
-                  </span>
-                  <Text size={200} className={classes.navLabel}>
-                    {item.label}
-                  </Text>
-                  {counts[item.id] !== undefined && (
-                    <Badge size="small" appearance="outline">
-                      {counts[item.id]}
-                    </Badge>
-                  )}
-                </div>
-              );
-            })}
+        {subVaults.length > 0 && (
+          <div className={classes.section}>
+            <Text size={100} className={`azv-title ${classes.sectionLabel}`} block>
+              This Subscription
+            </Text>
+            {subVaults.map((v) => (
+              <VaultRow key={v.id} name={v.name} uri={v.vaultUri} />
+            ))}
           </div>
-        </>
-      )}
+        )}
 
-      {!selectedVaultName && pinnedVaults.length === 0 && recentVaults.length === 0 && (
-        <div className={classes.emptyState}>
-          <ShieldLock24Regular className={classes.emptyIcon} />
-          <Text block size={200} className={classes.emptyText}>
-            Select a vault from the workspace switcher
-          </Text>
-        </div>
-      )}
-    </div>
+        {q && pinnedFiltered.length === 0 && subVaults.length === 0 && (
+          <div className={classes.emptyState}>
+            <Text block size={200} className={classes.emptyText}>
+              No vaults match “{filter}”.
+            </Text>
+          </div>
+        )}
+
+        {!hasAnything && (
+          <div className={classes.emptyState}>
+            <ShieldLock24Regular className={classes.emptyIcon} />
+            <Text block size={200} className={classes.emptyText}>
+              {selectedSubscriptionId
+                ? 'No Key Vaults in this subscription.'
+                : 'Pick a tenant and subscription in the top bar to list its vaults here.'}
+            </Text>
+          </div>
+        )}
+      </div>
+    </nav>
   );
 }

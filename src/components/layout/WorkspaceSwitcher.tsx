@@ -6,6 +6,7 @@ import {
   MenuPopover,
   MenuTrigger,
   makeStyles,
+  Spinner,
   Text,
   tokens,
 } from '@fluentui/react-components';
@@ -34,13 +35,13 @@ const useStyles = makeStyles({
     fontSize: '14px',
   },
   tenantText: {
-    maxWidth: '100px',
+    maxWidth: '140px',
   },
   subText: {
-    maxWidth: '120px',
+    maxWidth: '160px',
   },
   vaultText: {
-    maxWidth: '130px',
+    maxWidth: '170px',
   },
   separator: {
     opacity: 0.3,
@@ -125,8 +126,15 @@ export function WorkspaceSwitcher() {
           <Button
             appearance="subtle"
             size="small"
-            icon={<Building24Regular className={classes.tenantIcon} />}
+            icon={
+              tenantsQuery.isLoading ? (
+                <Spinner size="extra-tiny" />
+              ) : (
+                <Building24Regular className={classes.tenantIcon} />
+              )
+            }
             className={classes.triggerBtn}
+            title={`Tenant: ${currentTenant?.display_name || selectedTenantId || 'none selected'}`}
           >
             <Text size={100} className={`azv-mono ${classes.tenantText}`} truncate wrap={false}>
               {currentTenant?.display_name ||
@@ -165,8 +173,15 @@ export function WorkspaceSwitcher() {
           <Button
             appearance="subtle"
             size="small"
-            icon={<CreditCardPerson24Regular className={classes.tenantIcon} />}
+            icon={
+              subsQuery.isLoading ? (
+                <Spinner size="extra-tiny" />
+              ) : (
+                <CreditCardPerson24Regular className={classes.tenantIcon} />
+              )
+            }
             className={classes.triggerBtn}
+            title={`Subscription: ${currentSub?.displayName || 'none selected'}`}
           >
             <Text size={100} className={`azv-mono ${classes.subText}`} truncate wrap={false}>
               {currentSub?.displayName || '—'}
@@ -210,9 +225,16 @@ export function WorkspaceSwitcher() {
           <Button
             appearance="subtle"
             size="small"
-            icon={<ShieldLock24Regular className={classes.tenantIcon} />}
+            icon={
+              vaultsQuery.isLoading ? (
+                <Spinner size="extra-tiny" />
+              ) : (
+                <ShieldLock24Regular className={classes.tenantIcon} />
+              )
+            }
             iconPosition="before"
             className={classes.triggerBtn}
+            title={`Vault: ${selectedVaultName || 'none selected'}`}
           >
             <Text size={100} className={`azv-mono ${classes.vaultText}`} truncate wrap={false}>
               {selectedVaultName || '—'}

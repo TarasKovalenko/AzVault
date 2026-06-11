@@ -60,10 +60,10 @@ const useStyles = makeStyles({
     fontSize: '11px',
   },
   dimText: {
-    opacity: 0.5,
+    opacity: 0.65,
   },
   dimmerText: {
-    opacity: 0.4,
+    opacity: 0.55,
   },
   tagWrap: {
     display: 'flex',
@@ -134,6 +134,15 @@ export function ItemTable<T>({
               <TableRow
                 key={id}
                 onClick={() => onSelect?.(item)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onSelect?.(item);
+                  }
+                }}
+                tabIndex={onSelect ? 0 : undefined}
+                role="button"
+                aria-selected={selectedId === id}
                 className={classes.row}
                 style={{
                   background: selectedId === id ? tokens.colorBrandBackground2 : undefined,
@@ -172,9 +181,11 @@ export function renderEnabled(enabled: boolean) {
     <span className="azv-status-row">
       <span
         className="azv-status-dot"
-        style={{ background: enabled ? 'var(--azv-success)' : 'var(--azv-danger)' }}
+        style={{ background: enabled ? 'var(--azv-success)' : 'var(--azv-scroll-thumb)' }}
       />
-      <Text size={200}>{enabled ? 'Active' : 'Disabled'}</Text>
+      <Text size={200} style={enabled ? undefined : { opacity: 0.7 }}>
+        {enabled ? 'Active' : 'Disabled'}
+      </Text>
     </span>
   );
 }
@@ -183,7 +194,7 @@ export function renderEnabled(enabled: boolean) {
 export function renderDate(dateStr: string | null) {
   if (!dateStr)
     return (
-      <Text size={200} style={{ opacity: 0.5 }}>
+      <Text size={200} style={{ opacity: 0.6 }}>
         —
       </Text>
     );

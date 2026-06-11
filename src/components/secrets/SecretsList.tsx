@@ -26,6 +26,7 @@ import {
 } from '@fluentui/react-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { useAppToast } from '../../lib/toast';
 import { deleteSecret, exportItems, listSecrets, setSecret } from '../../services/tauri';
 import { useAppStore } from '../../stores/appStore';
 import type { SecretItem } from '../../types';
@@ -86,22 +87,6 @@ const useStyles = makeStyles({
   toolbarButtons: {
     display: 'flex',
     gap: '4px',
-  },
-  exportMessage: {
-    padding: '4px 12px',
-    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
-  },
-  exportMessageSuccess: {
-    background: tokens.colorPaletteGreenBackground1,
-  },
-  exportMessageError: {
-    background: tokens.colorPaletteRedBackground1,
-  },
-  exportMessageTextSuccess: {
-    color: tokens.colorPaletteGreenForeground1,
-  },
-  exportMessageTextError: {
-    color: tokens.colorPaletteRedForeground1,
   },
   tableWrap: {
     flex: 1,
@@ -211,9 +196,9 @@ function formatFileSize(bytes: number): string {
 
 export function SecretsList() {
   const classes = useStyles();
-  const { selectedVaultUri, searchQuery, detailPanelOpen, splitRatio, setSplitRatio } =
-    useAppStore();
+  const { selectedVaultUri, detailPanelOpen, splitRatio, setSplitRatio } = useAppStore();
   const queryClient = useQueryClient();
+  const toast = useAppToast();
   const [selectedSecret, setSelectedSecret] = useState<SecretItem | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(50);
@@ -228,10 +213,6 @@ export function SecretsList() {
   });
   const [localFilter, setLocalFilter] = useState('');
   const [showPrefixDeleteDialog, setShowPrefixDeleteDialog] = useState(false);
-  const [exportMessage, setExportMessage] = useState<string | null>(null);
-  const [exportMessageTone, setExportMessageTone] = useState<'success' | 'error'>('success');
-  const [importMessage, setImportMessage] = useState<string | null>(null);
-  const [importMessageTone, setImportMessageTone] = useState<'success' | 'error'>('success');
   const [importLoading, setImportLoading] = useState(false);
   const [showImportConfirm, setShowImportConfirm] = useState(false);
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(null);
@@ -311,7 +292,7 @@ export function SecretsList() {
   });
 
   const allSecrets = useMemo(() => secretsQuery.data ?? [], [secretsQuery.data]);
-  const filterText = localFilter || searchQuery;
+  const filterText = localFilter;
   const filteredSecrets = allSecrets.filter((s) =>
     s.name.toLowerCase().includes(filterText.toLowerCase()),
   );
@@ -354,18 +335,6 @@ export function SecretsList() {
     }
   }, [showBulkDeleteConfirm]);
 
-  useEffect(() => {
-    if (!exportMessage) return;
-    const timer = window.setTimeout(() => setExportMessage(null), 3000);
-    return () => window.clearTimeout(timer);
-  }, [exportMessage]);
-
-  useEffect(() => {
-    if (!importMessage) return;
-    const timer = window.setTimeout(() => setImportMessage(null), 5000);
-    return () => window.clearTimeout(timer);
-  }, [importMessage]);
-
   // Listen for custom events from command palette
   useEffect(() => {
     const onNewSecret = () => setCreateOpen(true);
@@ -403,7 +372,6 @@ export function SecretsList() {
     if (!file || !selectedVaultUri) return;
 
     setImportLoading(true);
-    setImportMessage(null);
 
     try {
       const content = await file.text();
@@ -438,8 +406,7 @@ export function SecretsList() {
       });
       setShowImportConfirm(true);
     } catch (e) {
-      setImportMessageTone('error');
-      setImportMessage(`Import failed: ${String(e)}`);
+      toast.error('Import failed', String(e));
     } finally {
       setImportLoading(false);
     }
@@ -450,7 +417,6 @@ export function SecretsList() {
     const { requests, fileName } = pendingImport;
 
     setImportLoading(true);
-    setImportMessage(null);
 
     try {
       let successCount = 0;
@@ -468,8 +434,7 @@ export function SecretsList() {
       await secretsQuery.refetch();
 
       if (failures.length === 0) {
-        setImportMessageTone('success');
-        setImportMessage(`Imported ${successCount} secret(s) from ${fileName}.`);
+        toast.success('Import complete', `Imported ${successCount} secret(s) from ${fileName}.`);
       } else {
         const failedNamesPreview = failures
           .slice(0, 3)
@@ -477,9 +442,9 @@ export function SecretsList() {
           .join(', ');
         const remaining = failures.length - 3;
         const previewSuffix = remaining > 0 ? ` (+${remaining} more)` : '';
-        setImportMessageTone('error');
-        setImportMessage(
-          `Imported ${successCount}/${requests.length} from ${fileName}. Failed: ${failures.length} secret(s): ${failedNamesPreview}${previewSuffix}. First error: ${failures[0]}`,
+        toast.error(
+          `Imported ${successCount}/${requests.length} from ${fileName}`,
+          `Failed ${failures.length}: ${failedNamesPreview}${previewSuffix}. First error: ${failures[0]}`,
         );
       }
     } finally {
@@ -511,15 +476,13 @@ export function SecretsList() {
         ? (content) => navigator.clipboard.writeText(content)
         : undefined,
       onError: () => {
-        setExportMessageTone('error');
-        setExportMessage('Export failed.');
+        toast.error('Export failed');
       },
       onSuccess: (mode) => {
-        setExportMessageTone('success');
-        setExportMessage(
+        toast.success(
           mode === 'download'
-            ? `${format.toUpperCase()} downloaded.`
-            : `${format.toUpperCase()} copied.`,
+            ? `${format.toUpperCase()} downloaded`
+            : `${format.toUpperCase()} copied to clipboard`,
         );
       },
     });
@@ -537,19 +500,25 @@ export function SecretsList() {
     const succeededIds: string[] = [];
     let failed = 0;
 
+    // Cap parallelism so large selections don't hammer Key Vault into throttling (429s).
+    const CONCURRENCY = 5;
+
     try {
-      await Promise.all(
-        items.map(async (item) => {
-          try {
-            await deleteSecret(selectedVaultUri, item.name);
-            succeededIds.push(item.id);
-          } catch {
-            failed += 1;
-          } finally {
-            setBulkDeleteProgress((prev) => nextDeleteProgress(prev, failed));
-          }
-        }),
-      );
+      for (let i = 0; i < items.length; i += CONCURRENCY) {
+        const batch = items.slice(i, i + CONCURRENCY);
+        await Promise.all(
+          batch.map(async (item) => {
+            try {
+              await deleteSecret(selectedVaultUri, item.name);
+              succeededIds.push(item.id);
+            } catch {
+              failed += 1;
+            } finally {
+              setBulkDeleteProgress((prev) => nextDeleteProgress(prev, failed));
+            }
+          }),
+        );
+      }
 
       setSelectedIds((prev) => removeSucceededSelection(prev, succeededIds));
 
@@ -670,52 +639,6 @@ export function SecretsList() {
           </Menu>
         </div>
       </div>
-
-      {exportMessage && (
-        <div
-          className={mergeClasses(
-            classes.exportMessage,
-            exportMessageTone === 'success'
-              ? classes.exportMessageSuccess
-              : classes.exportMessageError,
-          )}
-        >
-          <Text
-            size={200}
-            className={mergeClasses(
-              'azv-mono',
-              exportMessageTone === 'success'
-                ? classes.exportMessageTextSuccess
-                : classes.exportMessageTextError,
-            )}
-          >
-            {exportMessage}
-          </Text>
-        </div>
-      )}
-
-      {importMessage && (
-        <div
-          className={mergeClasses(
-            classes.exportMessage,
-            importMessageTone === 'success'
-              ? classes.exportMessageSuccess
-              : classes.exportMessageError,
-          )}
-        >
-          <Text
-            size={200}
-            className={mergeClasses(
-              'azv-mono',
-              importMessageTone === 'success'
-                ? classes.exportMessageTextSuccess
-                : classes.exportMessageTextError,
-            )}
-          >
-            {importMessage}
-          </Text>
-        </div>
-      )}
 
       {/* Table */}
       <div className={classes.tableWrap}>

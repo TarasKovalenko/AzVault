@@ -132,7 +132,7 @@ export function TopBar() {
 
       <div className={classes.controls}>
         {mockMode && (
-          <Badge appearance="filled" color="danger" size="small">
+          <Badge appearance="filled" color="warning" size="small" title="Showing mock data">
             MOCK
           </Badge>
         )}

@@ -38,6 +38,7 @@ const useStyles = makeStyles({
   },
   card: {
     width: '580px',
+    maxWidth: '90vw',
     padding: '28px 32px',
   },
   headerIcon: {
