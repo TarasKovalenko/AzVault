@@ -31,6 +31,26 @@ To learn more about the war and how you can help, [click here](https://war.ukrai
 - **macOS**
 - **Windows**
 
+## Installation
+
+Download the latest bundle for your platform from the [Releases](../../releases) page.
+
+### macOS
+
+macOS builds are **ad-hoc signed** (not notarized with an Apple Developer ID), so
+Gatekeeper blocks them on first launch. This is expected. To open:
+
+1. Move `AzVault.app` to `/Applications`.
+2. Right-click `AzVault.app` → **Open** → **Open** (one time only).
+
+If macOS still refuses ("damaged" / "cannot be opened"), strip the quarantine flag:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/AzVault.app
+```
+
+After the first open, launch it normally.
+
 ## Features
 
 - Tenant/subscription/key vault discovery

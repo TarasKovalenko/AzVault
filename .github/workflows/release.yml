@@ -139,10 +139,13 @@ jobs:
 
       - name: Build application bundles
         env:
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          APPLE_PROVIDER_SHORT_NAME: ${{ secrets.APPLE_PROVIDER_SHORT_NAME }}
+          # Only pass notarization creds when a real Developer ID identity was
+          # imported. Ad-hoc signing ("-") cannot be notarized, and an empty
+          # APPLE_TEAM_ID triggers "Team ID must be at least 3 characters".
+          APPLE_ID: ${{ env.APPLE_SIGNING_IDENTITY != '-' && secrets.APPLE_ID || '' }}
+          APPLE_PASSWORD: ${{ env.APPLE_SIGNING_IDENTITY != '-' && secrets.APPLE_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ env.APPLE_SIGNING_IDENTITY != '-' && secrets.APPLE_TEAM_ID || '' }}
+          APPLE_PROVIDER_SHORT_NAME: ${{ env.APPLE_SIGNING_IDENTITY != '-' && secrets.APPLE_PROVIDER_SHORT_NAME || '' }}
         run: cargo tauri build --bundles ${{ matrix.bundles }} ${{ matrix.target && format('--target {0}', matrix.target) || '' }}
 
       - name: Verify macOS bundle architecture
