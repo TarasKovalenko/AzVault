@@ -181,11 +181,11 @@ export function Sidebar() {
     );
   }
 
-  const VaultRow = ({ name, uri }: { name: string; uri: string }) => {
+  const renderVaultRow = (name: string, uri: string, key: string) => {
     const pinned = isPinned(uri);
     const selected = uri === selectedVaultUri;
     return (
-      <div className={`azv-vault-row ${classes.vaultRow}`}>
+      <div key={key} className={`azv-vault-row ${classes.vaultRow}`}>
         <button
           type="button"
           aria-pressed={selected}
@@ -259,9 +259,7 @@ export function Sidebar() {
             <Text size={100} className={`azv-title ${classes.sectionLabel}`} block>
               Pinned
             </Text>
-            {pinnedFiltered.map((v) => (
-              <VaultRow key={`pin-${v.uri}`} name={v.name} uri={v.uri} />
-            ))}
+            {pinnedFiltered.map((v) => renderVaultRow(v.name, v.uri, `pin-${v.uri}`))}
           </div>
         )}
 
@@ -270,9 +268,7 @@ export function Sidebar() {
             <Text size={100} className={`azv-title ${classes.sectionLabel}`} block>
               This Subscription
             </Text>
-            {subVaults.map((v) => (
-              <VaultRow key={v.id} name={v.name} uri={v.vaultUri} />
-            ))}
+            {subVaults.map((v) => renderVaultRow(v.name, v.vaultUri, v.id))}
           </div>
         )}
 
