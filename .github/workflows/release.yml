@@ -28,7 +28,7 @@ jobs:
             bundle_dir: src-tauri/target/release/bundle
           - label: macOS Apple Silicon
             os: macos-15
-            bundles: dmg
+            bundles: app,dmg
             artifact_name: macos-aarch64
             target: aarch64-apple-darwin
             expected_arch: arm64
@@ -36,7 +36,7 @@ jobs:
             bundle_dir: src-tauri/target/aarch64-apple-darwin/release/bundle
           - label: macOS Intel
             os: macos-15-intel
-            bundles: dmg
+            bundles: app,dmg
             artifact_name: macos-x86_64
             target: x86_64-apple-darwin
             expected_arch: x86_64
@@ -177,6 +177,21 @@ jobs:
             echo "No installer assets were produced."
             exit 1
           fi
+
+      - name: Package macOS .app bundle
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          app_path="$(find "${{ matrix.bundle_dir }}/macos" -maxdepth 1 -type d -name '*.app' | head -n 1)"
+
+          if [ -z "$app_path" ]; then
+            echo "No .app bundle was produced under ${{ matrix.bundle_dir }}/macos."
+            exit 1
+          fi
+
+          echo "Zipping $app_path"
+          ditto -c -k --sequesterRsrc --keepParent "$app_path" \
+            "release-assets/AzVault-${{ matrix.artifact_name }}.app.zip"
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
