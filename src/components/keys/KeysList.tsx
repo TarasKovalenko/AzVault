@@ -140,8 +140,7 @@ const columns: Column<KeyItem>[] = [
 
 export function KeysList() {
   const classes = useStyles();
-  const { selectedVaultUri, searchQuery, detailPanelOpen, splitRatio, setSplitRatio } =
-    useAppStore();
+  const { selectedVaultUri, detailPanelOpen, splitRatio, setSplitRatio } = useAppStore();
   const [visibleCount, setVisibleCount] = useState(50);
   const [selectedKey, setSelectedKey] = useState<KeyItem | null>(null);
   const [localFilter, setLocalFilter] = useState('');
@@ -152,7 +151,7 @@ export function KeysList() {
     enabled: !!selectedVaultUri,
   });
 
-  const filterText = localFilter || searchQuery;
+  const filterText = localFilter;
   const allKeys = keysQuery.data || [];
   const filteredKeys = allKeys.filter((k) =>
     k.name.toLowerCase().includes(filterText.toLowerCase()),

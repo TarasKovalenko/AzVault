@@ -8,16 +8,15 @@ import {
   tokens,
 } from '@fluentui/react-components';
 import {
-  ArrowUndo24Regular,
   Delete24Regular,
   Dismiss24Regular,
   Edit24Regular,
-  Key24Regular,
+  LockClosed24Regular,
   Warning24Regular,
 } from '@fluentui/react-icons';
 import { format } from 'date-fns';
 import { useCallback, useState } from 'react';
-import { deleteSecret, purgeSecret, recoverSecret } from '../../services/tauri';
+import { deleteSecret, purgeSecret } from '../../services/tauri';
 import type { SecretItem } from '../../types';
 import { DangerConfirmDialog } from '../common/DangerConfirmDialog';
 import { CreateSecretDialog } from './CreateSecretDialog';
@@ -79,13 +78,34 @@ const useStyles = makeStyles({
     gap: '8px',
     flexWrap: 'wrap',
   },
-  actionsRowSecond: {
-    display: 'flex',
-    gap: '8px',
-    flexWrap: 'wrap',
-    marginTop: '8px',
-  },
   dangerButton: {
+    color: 'var(--azv-danger)',
+  },
+  dangerZone: {
+    marginTop: '16px',
+    padding: '12px',
+    borderRadius: '6px',
+    border: '1px solid var(--azv-danger)',
+  },
+  dangerZoneHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    marginBottom: '6px',
+  },
+  dangerZoneIcon: {
+    fontSize: '16px',
+    color: 'var(--azv-danger)',
+  },
+  dangerZoneTitle: {
+    color: 'var(--azv-danger)',
+  },
+  dangerZoneHint: {
+    color: tokens.colorNeutralForeground2,
+    lineHeight: 1.5,
+    marginBottom: '10px',
+  },
+  purgeButton: {
     color: 'var(--azv-danger)',
   },
   errorBox: {
@@ -140,20 +160,6 @@ export function SecretDetails({ item, vaultUri, onClose, onRefresh }: SecretDeta
     }
   }, [item, vaultUri, onRefresh, onClose]);
 
-  const handleRecover = useCallback(async () => {
-    if (!item) return;
-    setActionLoading(true);
-    setActionError(null);
-    try {
-      await recoverSecret(vaultUri, item.name);
-      onRefresh();
-    } catch (e) {
-      setActionError(String(e));
-    } finally {
-      setActionLoading(false);
-    }
-  }, [item, vaultUri, onRefresh]);
-
   const handlePurge = useCallback(async () => {
     if (!item) return;
     setActionLoading(true);
@@ -173,7 +179,7 @@ export function SecretDetails({ item, vaultUri, onClose, onRefresh }: SecretDeta
   if (!item) {
     return (
       <div className={`azv-empty ${classes.emptyRoot}`}>
-        <Key24Regular className={classes.emptyIcon} />
+        <LockClosed24Regular className={classes.emptyIcon} />
         <Text size={300} weight="semibold" className={classes.emptyTitle}>
           No secret selected
         </Text>
@@ -199,7 +205,7 @@ export function SecretDetails({ item, vaultUri, onClose, onRefresh }: SecretDeta
         <div className={classes.statusRow}>
           <span
             className="azv-status-dot"
-            style={{ background: item.enabled ? 'var(--azv-success)' : 'var(--azv-danger)' }}
+            style={{ background: item.enabled ? 'var(--azv-success)' : 'var(--azv-scroll-thumb)' }}
           />
           <Text size={200}>{item.enabled ? 'Active' : 'Disabled'}</Text>
         </div>
@@ -281,17 +287,6 @@ export function SecretDetails({ item, vaultUri, onClose, onRefresh }: SecretDeta
         </Button>
         <Button
           appearance="secondary"
-          icon={<ArrowUndo24Regular />}
-          size="small"
-          onClick={handleRecover}
-          disabled={actionLoading}
-        >
-          Recover
-        </Button>
-      </div>
-      <div className={classes.actionsRowSecond}>
-        <Button
-          appearance="secondary"
           icon={<Delete24Regular />}
           size="small"
           onClick={() => setShowDeleteDialog(true)}
@@ -300,12 +295,27 @@ export function SecretDetails({ item, vaultUri, onClose, onRefresh }: SecretDeta
         >
           Delete
         </Button>
+      </div>
+
+      {/* Danger zone — irreversible, visually separated */}
+      <div className={classes.dangerZone}>
+        <div className={classes.dangerZoneHeader}>
+          <Warning24Regular className={classes.dangerZoneIcon} />
+          <Text size={200} weight="semibold" className={classes.dangerZoneTitle}>
+            Danger zone
+          </Text>
+        </div>
+        <Text size={200} block className={classes.dangerZoneHint}>
+          Purging destroys the secret and all its versions permanently — it cannot be undone, even
+          with soft-delete enabled.
+        </Text>
         <Button
-          appearance="secondary"
+          appearance="outline"
           icon={<Warning24Regular />}
           size="small"
           onClick={() => setShowPurgeDialog(true)}
-          className={classes.dangerButton}
+          className={classes.purgeButton}
+          style={{ borderColor: 'var(--azv-danger)' }}
           disabled={actionLoading}
         >
           Purge Permanently

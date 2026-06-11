@@ -71,8 +71,7 @@ const useStyles = makeStyles({
 
 export function CertificatesList() {
   const classes = useStyles();
-  const { selectedVaultUri, searchQuery, detailPanelOpen, splitRatio, setSplitRatio } =
-    useAppStore();
+  const { selectedVaultUri, detailPanelOpen, splitRatio, setSplitRatio } = useAppStore();
   const [visibleCount, setVisibleCount] = useState(50);
   const [selectedCert, setSelectedCert] = useState<CertificateItem | null>(null);
   const [localFilter, setLocalFilter] = useState('');
@@ -83,7 +82,7 @@ export function CertificatesList() {
     enabled: !!selectedVaultUri,
   });
 
-  const filterText = localFilter || searchQuery;
+  const filterText = localFilter;
   const allCerts = certsQuery.data || [];
   const filteredCerts = allCerts.filter((c) =>
     c.name.toLowerCase().includes(filterText.toLowerCase()),

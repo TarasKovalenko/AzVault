@@ -45,9 +45,9 @@ pre,
 .azv-title {
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
-  opacity: 0.6;
+  opacity: 0.8;
 }
 
 /* ── Status dot indicator (green/red/yellow) ── */
@@ -82,6 +82,22 @@ pre,
   border-color: var(--azv-accent-dim);
 }
 
+/* ── Inline pin button: hidden until the vault row is hovered/focused ── */
+.azv-pin {
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.azv-vault-row:hover .azv-pin,
+.azv-vault-row:focus-within .azv-pin {
+  opacity: 0.8;
+}
+
+/* Always show the pin control for the currently pinned vaults so they're discoverable. */
+.azv-pin[aria-label^="Unpin"] {
+  opacity: 0.7;
+}
+
 /* ── Inline cell helpers ── */
 .azv-status-row {
   display: flex;
@@ -97,21 +113,21 @@ pre,
 
 /* ── Keyboard shortcut badge ── */
 .azv-kbd {
-  border: 1px solid rgba(130, 145, 170, 0.4);
+  border: 1px solid rgba(130, 145, 170, 0.5);
   border-bottom-width: 2px;
   border-radius: 3px;
   padding: 1px 5px;
-  font-size: 10px;
+  font-size: 11px;
   font-family: "IBM Plex Mono", ui-monospace, monospace;
-  opacity: 0.7;
+  opacity: 0.85;
   line-height: 1.4;
 }
 
 /* ── Tab route hint ── */
 .azv-tab-hint {
-  font-size: 10px;
+  font-size: 11px;
   font-family: "IBM Plex Mono", ui-monospace, monospace;
-  opacity: 0.5;
+  opacity: 0.65;
   margin-left: 4px;
 }
 

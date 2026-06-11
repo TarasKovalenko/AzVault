@@ -10,6 +10,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { useState } from 'react';
+import { useAppToast } from '../../lib/toast';
 import { getAuditLog, listCertificates, listKeys, listSecrets } from '../../services/tauri';
 import { useAppStore } from '../../stores/appStore';
 
@@ -132,6 +133,7 @@ export function VaultDashboard() {
   const classes = useStyles();
   const { selectedVaultUri, selectedVaultName, keyvaults, setActiveTab } = useAppStore();
   const [copiedUri, setCopiedUri] = useState(false);
+  const toast = useAppToast();
 
   const currentVault = keyvaults.find((v) => v.vaultUri === selectedVaultUri);
 
@@ -159,6 +161,7 @@ export function VaultDashboard() {
     if (selectedVaultUri) {
       navigator.clipboard.writeText(selectedVaultUri);
       setCopiedUri(true);
+      toast.success('Vault URI copied to clipboard');
       setTimeout(() => setCopiedUri(false), 2000);
     }
   };
@@ -312,7 +315,10 @@ export function VaultDashboard() {
               .reverse()
               .slice(0, 5)
               .map((entry, i) => (
-                <div key={i} className={classes.activityRow}>
+                <div
+                  key={`${entry.timestamp}-${entry.action}-${entry.itemName ?? i}`}
+                  className={classes.activityRow}
+                >
                   <Text size={100} className={`azv-mono ${classes.activityTime}`}>
                     {(() => {
                       try {
@@ -372,7 +378,19 @@ function CountCard({
   const classes = useCountCardStyles();
 
   return (
-    <Card className={classes.card} onClick={onClick}>
+    <Card
+      className={classes.card}
+      onClick={onClick}
+      role="button"
+      tabIndex={0}
+      aria-label={`View ${label}`}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+    >
       <div className={classes.inner}>
         <span className={classes.icon}>{icon}</span>
         <Text size={500} weight="bold" className="azv-mono">

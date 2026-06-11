@@ -1,6 +1,7 @@
 import {
   FluentProvider,
   makeStyles,
+  Toaster,
   tokens,
   webDarkTheme,
   webLightTheme,
@@ -22,6 +23,7 @@ import { SecretsList } from './components/secrets/SecretsList';
 import { SettingsDialog } from './components/settings/SettingsDialog';
 import { VaultDashboard } from './components/vault/VaultDashboard';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { APP_TOASTER_ID } from './lib/toast';
 import { useAppStore } from './stores/appStore';
 
 const queryClient = new QueryClient({
@@ -76,7 +78,7 @@ function MainContent() {
       <EmptyState
         icon={<LockClosed24Regular />}
         title="Select a Key Vault"
-        description="Choose a vault from the workspace switcher or sidebar to browse secrets, keys, and certificates."
+        description="Use the workspace switcher in the top bar — pick a tenant, then a subscription, then a vault — to browse its secrets, keys, and certificates. Press ⌘K / Ctrl+K to search anything."
       />
     );
   }
@@ -147,6 +149,7 @@ function App() {
     <FluentProvider theme={themeMode === 'dark' ? webDarkTheme : webLightTheme}>
       <QueryClientProvider client={queryClient}>
         {isSignedIn ? <AppLayout /> : <SignIn />}
+        <Toaster toasterId={APP_TOASTER_ID} position="bottom-end" />
       </QueryClientProvider>
     </FluentProvider>
   );

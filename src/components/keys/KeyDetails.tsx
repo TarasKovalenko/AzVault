@@ -120,7 +120,7 @@ export function KeyDetails({ item, onClose }: KeyDetailsProps) {
         <div className={classes.statusRow}>
           <span
             className="azv-status-dot"
-            style={{ background: item.enabled ? 'var(--azv-success)' : 'var(--azv-danger)' }}
+            style={{ background: item.enabled ? 'var(--azv-success)' : 'var(--azv-scroll-thumb)' }}
           />
           <Text size={200}>{item.enabled ? 'Active' : 'Disabled'}</Text>
         </div>
