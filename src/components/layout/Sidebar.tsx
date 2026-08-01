@@ -19,31 +19,20 @@ import { useAppStore } from '../../stores/appStore';
 
 const useStyles = makeStyles({
   root: {
-    width: '240px',
-    minWidth: '240px',
+    width: '252px',
+    minWidth: '252px',
     height: '100%',
     display: 'flex',
     flexDirection: 'column',
-    backgroundColor: tokens.colorNeutralBackground2,
+    backgroundColor: tokens.colorNeutralBackground1,
     borderRight: `1px solid ${tokens.colorNeutralStroke2}`,
     overflow: 'hidden',
-  },
-  collapsed: {
-    width: '48px',
-    minWidth: '48px',
-    alignItems: 'center',
-    padding: '8px 0',
-    gap: '4px',
-  },
-  collapsedBtn: {
-    width: '36px',
-    height: '36px',
   },
   header: {
     display: 'flex',
     alignItems: 'center',
     gap: '6px',
-    padding: '8px 10px 4px',
+    padding: '16px 14px 10px',
   },
   headerTitle: {
     flex: 1,
@@ -58,7 +47,7 @@ const useStyles = makeStyles({
     flex: 1,
     overflowY: 'auto',
     minHeight: 0,
-    padding: '0 10px 10px',
+    padding: '0 10px 14px',
   },
   section: {
     marginTop: '6px',
@@ -79,8 +68,8 @@ const useStyles = makeStyles({
     display: 'flex',
     alignItems: 'center',
     gap: '6px',
-    padding: '5px 8px',
-    borderRadius: '4px',
+    padding: '8px 9px',
+    borderRadius: '8px',
     cursor: 'pointer',
     width: '100%',
     backgroundColor: 'transparent',
@@ -91,6 +80,7 @@ const useStyles = makeStyles({
   },
   vaultSelectSelected: {
     backgroundColor: tokens.colorBrandBackground2,
+    boxShadow: `inset 3px 0 0 ${tokens.colorBrandForeground1}`,
   },
   vaultIcon: {
     fontSize: '14px',
@@ -163,22 +153,7 @@ export function Sidebar() {
   );
 
   if (sidebarCollapsed) {
-    return (
-      <nav className={mergeClasses(classes.root, classes.collapsed)} aria-label="Pinned vaults">
-        {pinnedVaults.map((v) => (
-          <Tooltip key={v.uri} content={v.name} relationship="label" positioning="after">
-            <Button
-              appearance={v.uri === selectedVaultUri ? 'primary' : 'subtle'}
-              size="small"
-              icon={<Star24Filled />}
-              onClick={() => selectVault(v.name, v.uri)}
-              className={classes.collapsedBtn}
-              aria-label={`Open vault ${v.name}`}
-            />
-          </Tooltip>
-        ))}
-      </nav>
-    );
+    return null;
   }
 
   const renderVaultRow = (name: string, uri: string, key: string) => {
@@ -231,7 +206,7 @@ export function Sidebar() {
     <nav className={classes.root} aria-label="Vaults">
       <div className={classes.header}>
         <Text size={100} className={`azv-title ${classes.headerTitle}`}>
-          Vaults
+          My Vaults
         </Text>
         {keyvaults.length > 0 && (
           <Badge size="small" appearance="outline">

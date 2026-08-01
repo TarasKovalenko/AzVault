@@ -11,9 +11,9 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap");
 
 :root {
-  --azv-radius-sm: 4px;
-  --azv-radius-md: 6px;
-  --azv-radius-lg: 8px;
+  --azv-radius-sm: 6px;
+  --azv-radius-md: 9px;
+  --azv-radius-lg: 12px;
 }
 
 /* ── Typography ── */
@@ -32,13 +32,12 @@ pre,
 
 /* ── Shell layout ── */
 .azv-shell {
-  background: transparent;
+  background: var(--azv-app-bg);
 }
 
 /* ── Pane borders (sidebar, topbar, statusbar) ── */
 .azv-pane {
-  border-radius: var(--azv-radius-sm);
-  border: 1px solid var(--azv-border-subtle);
+  border-radius: 0;
 }
 
 /* ── Section label ("SECRETS", "DATA-PLANE", etc.) ── */

@@ -14,7 +14,7 @@ import { CertificatesList } from './components/certificates/CertificatesList';
 import { CommandPalette } from './components/command-palette/CommandPalette';
 import { EmptyState } from './components/common/EmptyState';
 import { KeysList } from './components/keys/KeysList';
-import { ContentTabs } from './components/layout/ContentTabs';
+import { NavigationRail } from './components/layout/NavigationRail';
 import { Sidebar } from './components/layout/Sidebar';
 import { StatusBar } from './components/layout/StatusBar';
 import { TopBar } from './components/layout/TopBar';
@@ -84,16 +84,13 @@ function MainContent() {
   }
 
   return (
-    <>
-      <ContentTabs />
-      <div className={classes.tabContent}>
-        {activeTab === 'dashboard' && <VaultDashboard />}
-        {activeTab === 'secrets' && <SecretsList />}
-        {activeTab === 'keys' && <KeysList />}
-        {activeTab === 'certificates' && <CertificatesList />}
-        {activeTab === 'logs' && <AuditLog />}
-      </div>
-    </>
+    <div className={classes.tabContent}>
+      {activeTab === 'dashboard' && <VaultDashboard />}
+      {activeTab === 'secrets' && <SecretsList />}
+      {activeTab === 'keys' && <KeysList />}
+      {activeTab === 'certificates' && <CertificatesList />}
+      {activeTab === 'logs' && <AuditLog />}
+    </div>
   );
 }
 
@@ -126,6 +123,7 @@ function AppLayout() {
     <div className={`azv-shell ${classes.shell}`}>
       <TopBar />
       <div className={classes.middle}>
+        <NavigationRail />
         <Sidebar />
         <div className={`azv-pane ${classes.pane}`}>
           <MainContent />

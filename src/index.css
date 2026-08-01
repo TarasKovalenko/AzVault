@@ -22,6 +22,8 @@ body,
 /* ── Light theme tokens ── */
 body,
 body[data-theme="light"] {
+  color-scheme: light;
+  --azv-app-bg: #eef1f5;
   --azv-scroll-thumb: #b0b8c8;
   --azv-scroll-thumb-hover: #8892a6;
   --azv-row-hover: rgba(0, 120, 212, 0.07);
@@ -46,6 +48,8 @@ body[data-theme="light"] {
 
 /* ── Dark theme tokens ── */
 body[data-theme="dark"] {
+  color-scheme: dark;
+  --azv-app-bg: #111419;
   --azv-scroll-thumb: #4a5568;
   --azv-scroll-thumb-hover: #606d80;
   --azv-row-hover: rgba(100, 160, 255, 0.1);
@@ -96,6 +100,10 @@ body[data-theme="dark"] {
 /* ── Table row hover ── */
 .fui-TableRow:hover {
   background: var(--azv-row-hover);
+}
+
+body {
+  background: var(--azv-app-bg);
 }
 
 /* ── Focus ring for accessibility ── */

@@ -31,27 +31,28 @@ import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 const useStyles = makeStyles({
   root: {
     borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
-    backgroundColor: tokens.colorNeutralBackground2,
-    padding: '4px 12px',
+    backgroundColor: tokens.colorNeutralBackground3,
+    padding: '7px 12px',
     display: 'flex',
     alignItems: 'center',
-    minHeight: '44px',
+    minHeight: '52px',
     gap: '8px',
   },
   logo: {
-    color: tokens.colorBrandForeground1,
-    letterSpacing: '0.08em',
+    color: tokens.colorNeutralForeground2,
+    letterSpacing: '0.01em',
     flexShrink: 0,
-    marginRight: '4px',
+    marginRight: '10px',
   },
   paletteBtn: {
     flex: 1,
-    maxWidth: '420px',
-    margin: '0 8px',
-    padding: '5px 12px',
-    borderRadius: '4px',
+    maxWidth: '460px',
+    margin: '0 auto',
+    padding: '7px 12px',
+    borderRadius: '9px',
     border: `1px solid ${tokens.colorNeutralStroke1}`,
-    backgroundColor: tokens.colorNeutralBackground1,
+    backgroundColor: tokens.colorNeutralBackground2,
+    boxShadow: '0 1px 2px rgba(0, 0, 0, .04)',
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
@@ -115,7 +116,7 @@ export function TopBar() {
   return (
     <div className={`azv-pane ${classes.root}`}>
       <Text weight="bold" size={300} className={`azv-mono ${classes.logo}`}>
-        AZVAULT
+        AzVault
       </Text>
 
       <WorkspaceSwitcher />
