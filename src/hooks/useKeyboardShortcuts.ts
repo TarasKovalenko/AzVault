@@ -14,7 +14,6 @@ export function useKeyboardShortcuts() {
   const {
     setCommandPaletteOpen,
     setSettingsOpen,
-    toggleSidebar,
     toggleDetailPanel,
     setActiveTab,
     selectedVaultName,
@@ -24,7 +23,6 @@ export function useKeyboardShortcuts() {
     const shortcuts: Shortcut[] = [
       { key: 'k', meta: true, action: () => setCommandPaletteOpen(true) },
       { key: ',', meta: true, action: () => setSettingsOpen(true) },
-      { key: 'b', meta: true, action: () => toggleSidebar() },
       { key: '\\', meta: true, action: () => toggleDetailPanel() },
       { key: '1', meta: true, action: () => selectedVaultName && setActiveTab('secrets') },
       { key: '2', meta: true, action: () => selectedVaultName && setActiveTab('keys') },
@@ -51,14 +49,7 @@ export function useKeyboardShortcuts() {
 
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [
-    setCommandPaletteOpen,
-    setSettingsOpen,
-    toggleSidebar,
-    toggleDetailPanel,
-    setActiveTab,
-    selectedVaultName,
-  ]);
+  }, [setCommandPaletteOpen, setSettingsOpen, toggleDetailPanel, setActiveTab, selectedVaultName]);
 }
 
 export function formatShortcut(key: string, meta = false, shift = false): string {

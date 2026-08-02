@@ -1,411 +1,155 @@
-import {
-  Badge,
-  Button,
-  Combobox,
-  makeStyles,
-  Option,
-  Spinner,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableRow,
-  Text,
-  Tooltip,
-  tokens,
-} from '@fluentui/react-components';
-import { ArrowDownload24Regular, Checkmark24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { format } from 'date-fns';
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { clearAuditLog, exportAuditLog, getAuditLog } from '../../services/tauri';
 import { useAppStore } from '../../stores/appStore';
 import { DangerConfirmDialog } from '../common/DangerConfirmDialog';
 import { EmptyState } from '../common/EmptyState';
+import { Button, Spinner } from '../ui/Button';
+import { Icon } from '../ui/Icon';
+import { ActivityTable } from './ActivityTable';
+import { ActivityToolbar } from './ActivityToolbar';
 
-const useStyles = makeStyles({
-  root: {
-    display: 'flex',
-    flexDirection: 'column',
-    height: '100%',
-  },
-  toolbar: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '6px 12px',
-    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
-    background: tokens.colorNeutralBackground2,
-    gap: '8px',
-    flexWrap: 'wrap',
-  },
-  toolbarLeft: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-  },
-  countText: {
-    color: tokens.colorNeutralForeground3,
-  },
-  filters: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-  },
-  comboboxAction: {
-    minWidth: '100px',
-  },
-  comboboxResult: {
-    minWidth: '90px',
-  },
-  comboboxType: {
-    minWidth: '100px',
-  },
-  toolbarButtons: {
-    display: 'flex',
-    gap: '4px',
-  },
-  actionError: {
-    padding: '4px 12px',
-    background: tokens.colorPaletteRedBackground1,
-  },
-  actionErrorText: {
-    color: tokens.colorPaletteRedForeground1,
-  },
-  tableContainer: {
-    flex: 1,
-    overflow: 'auto',
-    padding: '0 12px',
-    minHeight: 0,
-  },
-  loadingContainer: {
-    display: 'flex',
-    justifyContent: 'center',
-    padding: '48px',
-  },
-  tableWrap: {
-    marginTop: '8px',
-  },
-  thTime: { width: '17%' },
-  thVault: { width: '12%' },
-  thAction: { width: '14%' },
-  thType: { width: '9%' },
-  thItem: { width: '15%' },
-  thResult: { width: '10%' },
-  thDetails: { width: '23%' },
-  timeText: {
-    fontSize: '10px',
-  },
-  itemNameText: {
-    fontSize: '11px',
-  },
-  resultCell: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '5px',
-  },
-  detailsText: {
-    color: tokens.colorNeutralForeground3,
-    display: 'inline-block',
-    maxWidth: '240px',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-    fontSize: '10px',
-  },
-  loadMoreContainer: {
-    display: 'flex',
-    justifyContent: 'center',
-    padding: '10px',
-  },
-  banner: {
-    padding: '4px 12px',
-    borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
-    background: tokens.colorNeutralBackground3,
-    fontSize: '10px',
-  },
-  bannerText: {
-    color: tokens.colorNeutralForeground3,
-  },
-});
-
-function actionColor(
-  action: string,
-): 'informative' | 'success' | 'warning' | 'danger' | 'important' {
-  if (action.includes('delete') || action.includes('purge')) return 'danger';
-  if (action.includes('set') || action.includes('create')) return 'success';
-  if (action.includes('get_value')) return 'warning';
-  if (action.includes('sign')) return 'important';
-  return 'informative';
-}
-
-const ACTION_OPTIONS = [
-  'All',
-  'list',
-  'get',
-  'get_value',
-  'set',
-  'delete',
-  'recover',
-  'purge',
-] as const;
-const RESULT_OPTIONS = ['All', 'success', 'error'] as const;
-const TYPE_OPTIONS = ['All', 'secret', 'key', 'certificate'] as const;
+const ACTIONS = ['All', 'list', 'get', 'get_value', 'set', 'delete', 'recover', 'purge'];
+const RESULTS = ['All', 'success', 'error'];
+const TYPES = ['All', 'secret', 'key', 'certificate'];
 
 export function AuditLog() {
-  const classes = useStyles();
+  const selectedVaultName = useAppStore((state) => state.selectedVaultName);
+  const refreshInterval = useAppStore((state) => state.auditRefreshInterval);
   const queryClient = useQueryClient();
-  const { auditRefreshInterval } = useAppStore();
   const [copied, setCopied] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
-  const [showClearConfirm, setShowClearConfirm] = useState(false);
-  const [isClearing, setIsClearing] = useState(false);
-  const [actionError, setActionError] = useState<string | null>(null);
-  const [filterAction, setFilterAction] = useState('All');
-  const [filterResult, setFilterResult] = useState('All');
-  const [filterType, setFilterType] = useState('All');
+  const [exporting, setExporting] = useState(false);
+  const [clearOpen, setClearOpen] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [action, setAction] = useState('All');
+  const [result, setResult] = useState('All');
+  const [type, setType] = useState('All');
   const [visibleCount, setVisibleCount] = useState(200);
-
-  const logQuery = useQuery({
-    queryKey: ['auditLog'],
-    queryFn: () => getAuditLog(10000),
-    refetchInterval: auditRefreshInterval,
+  const queryKey = ['auditLog', selectedVaultName] as const;
+  const query = useQuery({
+    queryKey,
+    queryFn: () => getAuditLog(1000, selectedVaultName!),
+    enabled: Boolean(selectedVaultName),
+    refetchInterval: refreshInterval,
   });
-
-  const entries = useMemo(() => {
-    const all = [...(logQuery.data || [])].reverse();
-    return all.filter((e) => {
-      if (filterAction !== 'All' && !e.action.includes(filterAction)) return false;
-      if (filterResult !== 'All' && e.result !== filterResult) return false;
-      if (filterType !== 'All' && e.itemType !== filterType) return false;
-      return true;
-    });
-  }, [logQuery.data, filterAction, filterResult, filterType]);
-
-  const visibleEntries = entries.slice(0, visibleCount);
-
-  const handleExport = async () => {
-    if (isExporting) return;
-    setIsExporting(true);
-    setActionError(null);
+  const entries = useMemo(
+    () =>
+      [...(query.data || [])]
+        .reverse()
+        .filter(
+          (entry) =>
+            (action === 'All' || entry.action.includes(action)) &&
+            (result === 'All' || entry.result === result) &&
+            (type === 'All' || entry.itemType === type),
+        ),
+    [query.data, action, result, type],
+  );
+  useEffect(() => {
+    if (!selectedVaultName) return;
+    setVisibleCount(200);
+    setAction('All');
+    setResult('All');
+    setType('All');
+    setError(null);
+  }, [selectedVaultName]);
+  const exportCurrentVault = useCallback(async () => {
+    if (!selectedVaultName || exporting) return;
+    setExporting(true);
+    setError(null);
     try {
-      const data = await exportAuditLog();
+      const data = await exportAuditLog(selectedVaultName);
       try {
         await navigator.clipboard.writeText(data);
       } catch {
-        const blob = new Blob([data], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `azvault-activity-log-${Date.now()}.json`;
-        a.click();
+        const url = URL.createObjectURL(new Blob([data], { type: 'application/json' }));
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${selectedVaultName}-activity-${Date.now()}.json`;
+        link.click();
         URL.revokeObjectURL(url);
       }
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Failed to export activity log.');
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Failed to export activity.');
     } finally {
-      setIsExporting(false);
+      setExporting(false);
     }
-  };
-
-  const handleClear = async () => {
-    setIsClearing(true);
-    setActionError(null);
+  }, [selectedVaultName, exporting]);
+  const clearCurrentVault = async () => {
+    if (!selectedVaultName) return;
+    setClearing(true);
+    setError(null);
     try {
-      await clearAuditLog();
-      queryClient.setQueryData(['auditLog'], []);
-      queryClient.invalidateQueries({ queryKey: ['auditLog'] });
-      setShowClearConfirm(false);
-    } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Failed to clear activity log.');
+      await clearAuditLog(selectedVaultName);
+      queryClient.setQueryData(queryKey, []);
+      await queryClient.invalidateQueries({ queryKey });
+      setClearOpen(false);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Failed to clear activity.');
     } finally {
-      setIsClearing(false);
+      setClearing(false);
     }
   };
+  useEffect(() => {
+    const handler = () => {
+      void exportCurrentVault();
+    };
+    window.addEventListener('azv:export-audit', handler);
+    return () => window.removeEventListener('azv:export-audit', handler);
+  }, [exportCurrentVault]);
 
+  if (!selectedVaultName)
+    return (
+      <EmptyState
+        icon={<Icon name="activity" />}
+        title="Select a Key Vault"
+        description="Activity is shown for one vault at a time."
+      />
+    );
   return (
-    <div className={classes.root}>
-      {/* Toolbar */}
-      <div className={classes.toolbar}>
-        <div className={classes.toolbarLeft}>
-          <Text weight="semibold" size={300}>
-            Activity Log
-          </Text>
-          <Text size={200} className={`azv-mono ${classes.countText}`}>
-            ({entries.length})
-          </Text>
-        </div>
-
-        {/* Filters */}
-        <div className={classes.filters}>
-          <Combobox
-            value={filterAction}
-            selectedOptions={[filterAction]}
-            onOptionSelect={(_, d) => setFilterAction(d.optionValue || 'All')}
-            placeholder="Action"
-            className={classes.comboboxAction}
-            size="small"
-          >
-            {ACTION_OPTIONS.map((o) => (
-              <Option key={o} value={o}>
-                {o}
-              </Option>
-            ))}
-          </Combobox>
-          <Combobox
-            value={filterResult}
-            selectedOptions={[filterResult]}
-            onOptionSelect={(_, d) => setFilterResult(d.optionValue || 'All')}
-            placeholder="Result"
-            className={classes.comboboxResult}
-            size="small"
-          >
-            {RESULT_OPTIONS.map((o) => (
-              <Option key={o} value={o}>
-                {o}
-              </Option>
-            ))}
-          </Combobox>
-          <Combobox
-            value={filterType}
-            selectedOptions={[filterType]}
-            onOptionSelect={(_, d) => setFilterType(d.optionValue || 'All')}
-            placeholder="Type"
-            className={classes.comboboxType}
-            size="small"
-          >
-            {TYPE_OPTIONS.map((o) => (
-              <Option key={o} value={o}>
-                {o}
-              </Option>
-            ))}
-          </Combobox>
-        </div>
-
-        <div className={classes.toolbarButtons}>
-          <Button
-            appearance="subtle"
-            icon={copied ? <Checkmark24Regular /> : <ArrowDownload24Regular />}
-            size="small"
-            onClick={handleExport}
-            disabled={isExporting}
-          >
-            {isExporting ? 'Exporting...' : copied ? 'Copied' : 'Export'}
-          </Button>
-          <Button
-            appearance="subtle"
-            icon={<Delete24Regular />}
-            size="small"
-            onClick={() => setShowClearConfirm(true)}
-            disabled={isClearing}
-          >
-            Clear
-          </Button>
-        </div>
-      </div>
-
-      {actionError && (
-        <div className={classes.actionError}>
-          <Text size={100} className={classes.actionErrorText}>
-            {actionError}
-          </Text>
+    <div className="flex h-full flex-col">
+      <ActivityToolbar
+        vaultName={selectedVaultName}
+        count={entries.length}
+        action={action}
+        result={result}
+        type={type}
+        actions={ACTIONS}
+        results={RESULTS}
+        types={TYPES}
+        exporting={exporting}
+        copied={copied}
+        clearing={clearing}
+        onAction={setAction}
+        onResult={setResult}
+        onType={setType}
+        onExport={() => void exportCurrentVault()}
+        onClear={() => setClearOpen(true)}
+      />
+      {error && (
+        <div className="border-b border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-[var(--danger)]">
+          {error}
         </div>
       )}
-
-      {/* Table */}
-      <div className={classes.tableContainer}>
-        {logQuery.isLoading ? (
-          <div className={classes.loadingContainer}>
-            <Spinner label="Loading..." />
+      <div className="min-h-0 flex-1 overflow-auto p-3">
+        {query.isLoading ? (
+          <div className="grid place-items-center p-16">
+            <Spinner size="lg" />
           </div>
-        ) : entries.length === 0 ? (
+        ) : !entries.length ? (
           <EmptyState
-            title="No audit entries"
-            description="Actions will be logged here. Secret values are NEVER recorded."
+            icon={<Icon name="activity" />}
+            title="No activity for this vault"
+            description="Actions performed in this Key Vault will appear here. Secret values are never recorded."
           />
         ) : (
           <>
-            <div className={`azv-table-wrap ${classes.tableWrap}`}>
-              <Table size="small">
-                <TableHeader>
-                  <TableRow>
-                    <th className={`azv-th ${classes.thTime}`}>Time</th>
-                    <th className={`azv-th ${classes.thVault}`}>Vault</th>
-                    <th className={`azv-th ${classes.thAction}`}>Action</th>
-                    <th className={`azv-th ${classes.thType}`}>Type</th>
-                    <th className={`azv-th ${classes.thItem}`}>Item</th>
-                    <th className={`azv-th ${classes.thResult}`}>Result</th>
-                    <th className={`azv-th ${classes.thDetails}`}>Details</th>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {visibleEntries.map((entry, i) => (
-                    <TableRow key={`${entry.timestamp}-${entry.action}-${entry.itemName}-${i}`}>
-                      <TableCell>
-                        <Text size={200} className={`azv-mono ${classes.timeText}`}>
-                          {(() => {
-                            try {
-                              return format(new Date(entry.timestamp), 'MMM d HH:mm:ss');
-                            } catch {
-                              return entry.timestamp;
-                            }
-                          })()}
-                        </Text>
-                      </TableCell>
-                      <TableCell>
-                        <Text size={200} className="azv-mono">
-                          {entry.vaultName}
-                        </Text>
-                      </TableCell>
-                      <TableCell>
-                        <Badge size="small" appearance="filled" color={actionColor(entry.action)}>
-                          {entry.action}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Text size={200}>{entry.itemType}</Text>
-                      </TableCell>
-                      <TableCell>
-                        <Text size={200} className={`azv-mono ${classes.itemNameText}`}>
-                          {entry.itemName}
-                        </Text>
-                      </TableCell>
-                      <TableCell>
-                        <div className={classes.resultCell}>
-                          <span
-                            className="azv-status-dot"
-                            style={{
-                              background:
-                                entry.result === 'success'
-                                  ? 'var(--azv-success)'
-                                  : 'var(--azv-danger)',
-                            }}
-                          />
-                          <Text size={200}>{entry.result}</Text>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Tooltip content={entry.details || '—'} relationship="label">
-                          <Text size={200} className={`azv-mono ${classes.detailsText}`}>
-                            {entry.details || '—'}
-                          </Text>
-                        </Tooltip>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-
+            <ActivityTable entries={entries.slice(0, visibleCount)} />
             {entries.length > visibleCount && (
-              <div className={classes.loadMoreContainer}>
-                <Button
-                  onClick={() => setVisibleCount((c) => c + 200)}
-                  appearance="secondary"
-                  size="small"
-                >
+              <div className="flex justify-center p-3">
+                <Button onClick={() => setVisibleCount((count) => count + 200)}>
                   Load more ({entries.length - visibleCount} remaining)
                 </Button>
               </div>
@@ -413,25 +157,24 @@ export function AuditLog() {
           </>
         )}
       </div>
-
-      {/* Redaction guarantee banner */}
-      <div className={classes.banner}>
-        <Text size={100} className={classes.bannerText}>
-          Secret values are NEVER recorded in the audit log. Only operation metadata is logged.
-        </Text>
-      </div>
-
-      {/* Clear confirmation */}
+      <footer className="border-t border-[var(--stroke)] bg-[var(--surface-muted)] px-3 py-1.5 text-[10px] text-[var(--text-tertiary)]">
+        Secret values are never recorded. Only operation metadata for{' '}
+        <span className="mono">{selectedVaultName}</span> is displayed.
+      </footer>
       <DangerConfirmDialog
-        open={showClearConfirm}
-        title="Clear Audit Log"
-        description="Clear all audit log entries? This cannot be undone."
+        open={clearOpen}
+        title="Clear Vault Activity"
+        description={
+          <>
+            Clear all activity entries for <strong className="mono">{selectedVaultName}</strong>?
+            Other vaults are not affected.
+          </>
+        }
         confirmText="clear"
-        confirmLabel="Clear All"
-        dangerLevel="warning"
-        loading={isClearing}
-        onConfirm={handleClear}
-        onCancel={() => setShowClearConfirm(false)}
+        confirmLabel="Clear Activity"
+        loading={clearing}
+        onConfirm={clearCurrentVault}
+        onCancel={() => setClearOpen(false)}
       />
     </div>
   );

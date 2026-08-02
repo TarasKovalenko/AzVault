@@ -135,22 +135,32 @@ export async function purgeSecret(vaultUri: string, name: string): Promise<void>
 
 // ─── Audit ───
 
-export async function getAuditLog(limit?: number): Promise<AuditEntry[]> {
+export async function getAuditLog(limit?: number, vaultName?: string): Promise<AuditEntry[]> {
   if (isMock()) {
     const { mockAuditLog } = await import('../mock/data');
-    return mockAuditLog();
+    return mockAuditLog().filter((entry) => !vaultName || entry.vaultName === vaultName);
   }
-  return invoke<AuditEntry[]>('get_audit_log', { limit: limit ?? null });
+  return invoke<AuditEntry[]>('get_audit_log', {
+    limit: limit ?? null,
+    vaultName: vaultName ?? null,
+  });
 }
 
-export async function exportAuditLog(): Promise<string> {
-  if (isMock()) return '[]';
-  return invoke<string>('export_audit_log');
+export async function exportAuditLog(vaultName?: string): Promise<string> {
+  if (isMock()) {
+    const { mockAuditLog } = await import('../mock/data');
+    return JSON.stringify(
+      mockAuditLog().filter((entry) => !vaultName || entry.vaultName === vaultName),
+      null,
+      2,
+    );
+  }
+  return invoke<string>('export_audit_log', { vaultName: vaultName ?? null });
 }
 
-export async function clearAuditLog(): Promise<void> {
+export async function clearAuditLog(vaultName?: string): Promise<void> {
   if (isMock()) return;
-  return invoke<void>('clear_audit_log');
+  return invoke<void>('clear_audit_log', { vaultName: vaultName ?? null });
 }
 
 // ─── Export ───

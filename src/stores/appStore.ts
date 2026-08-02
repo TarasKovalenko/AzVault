@@ -4,7 +4,6 @@ import type {
   AzureEnvironment,
   ItemTab,
   KeyVaultInfo,
-  PinnedVault,
   Subscription,
   Tenant,
   ThemeMode,
@@ -27,7 +26,6 @@ interface AppStoreState {
   subscriptions: Subscription[];
   keyvaults: KeyVaultInfo[];
   recentVaults: { name: string; uri: string }[];
-  pinnedVaults: PinnedVault[];
 
   // Search
   searchQuery: string;
@@ -41,8 +39,6 @@ interface AppStoreState {
   disableClipboardCopy: boolean;
 
   // Layout
-  sidebarWidth: number;
-  sidebarCollapsed: boolean;
   detailPanelOpen: boolean;
   splitRatio: number;
 
@@ -72,12 +68,8 @@ interface AppStoreState {
   setAutoHideSeconds: (s: number) => void;
   setClipboardClearSeconds: (s: number) => void;
   setDisableClipboardCopy: (v: boolean) => void;
-  setSidebarWidth: (width: number) => void;
-  toggleSidebar: () => void;
   toggleDetailPanel: () => void;
   setSplitRatio: (ratio: number) => void;
-  pinVault: (vault: PinnedVault) => void;
-  unpinVault: (uri: string) => void;
   clearRecentVaults: () => void;
   setCommandPaletteOpen: (open: boolean) => void;
   setSettingsOpen: (open: boolean) => void;
@@ -100,7 +92,6 @@ export const useAppStore = create<AppStoreState>()(
       subscriptions: [],
       keyvaults: [],
       recentVaults: [],
-      pinnedVaults: [],
       searchQuery: '',
       environment: 'azurePublic',
       themeMode: 'light',
@@ -108,8 +99,6 @@ export const useAppStore = create<AppStoreState>()(
       autoHideSeconds: 30,
       clipboardClearSeconds: 30,
       disableClipboardCopy: false,
-      sidebarWidth: 240,
-      sidebarCollapsed: false,
       detailPanelOpen: true,
       splitRatio: 0.6,
       auditMaxEntries: 10000,
@@ -161,22 +150,8 @@ export const useAppStore = create<AppStoreState>()(
       setClipboardClearSeconds: (clipboardClearSeconds) => set({ clipboardClearSeconds }),
       setDisableClipboardCopy: (disableClipboardCopy) => set({ disableClipboardCopy }),
 
-      setSidebarWidth: (sidebarWidth) => set({ sidebarWidth }),
-      toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
       toggleDetailPanel: () => set((s) => ({ detailPanelOpen: !s.detailPanelOpen })),
       setSplitRatio: (splitRatio) => set({ splitRatio }),
-
-      pinVault: (vault) =>
-        set((s) => ({
-          pinnedVaults: s.pinnedVaults.some((v) => v.uri === vault.uri)
-            ? s.pinnedVaults
-            : [...s.pinnedVaults, vault],
-        })),
-
-      unpinVault: (uri) =>
-        set((s) => ({
-          pinnedVaults: s.pinnedVaults.filter((v) => v.uri !== uri),
-        })),
 
       clearRecentVaults: () => set({ recentVaults: [] }),
       setCommandPaletteOpen: (commandPaletteOpen) => set({ commandPaletteOpen }),
@@ -205,15 +180,12 @@ export const useAppStore = create<AppStoreState>()(
         selectedVaultUri: state.selectedVaultUri,
         selectedVaultName: state.selectedVaultName,
         recentVaults: state.recentVaults,
-        pinnedVaults: state.pinnedVaults,
         environment: state.environment,
         themeMode: state.themeMode,
         requireReauthForReveal: state.requireReauthForReveal,
         autoHideSeconds: state.autoHideSeconds,
         clipboardClearSeconds: state.clipboardClearSeconds,
         disableClipboardCopy: state.disableClipboardCopy,
-        sidebarWidth: state.sidebarWidth,
-        sidebarCollapsed: state.sidebarCollapsed,
         detailPanelOpen: state.detailPanelOpen,
         splitRatio: state.splitRatio,
         auditMaxEntries: state.auditMaxEntries,

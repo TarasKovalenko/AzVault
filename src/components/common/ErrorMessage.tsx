@@ -1,6 +1,6 @@
-import { Button, makeStyles, Text, tokens } from '@fluentui/react-components';
-import { DismissCircle24Regular } from '@fluentui/react-icons';
 import type { UserFacingError } from '../../types';
+import { Button } from '../ui/Button';
+import { Icon } from '../ui/Icon';
 
 interface ErrorMessageProps {
   error: UserFacingError | string;
@@ -8,77 +8,30 @@ interface ErrorMessageProps {
   onDismiss?: () => void;
 }
 
-const useStyles = makeStyles({
-  root: {
-    padding: '10px 14px',
-    borderRadius: '4px',
-    backgroundColor: tokens.colorPaletteRedBackground1,
-    display: 'flex',
-    alignItems: 'flex-start',
-    gap: '10px',
-  },
-  icon: {
-    color: tokens.colorPaletteRedForeground1,
-    flexShrink: 0,
-    fontSize: '16px',
-    marginTop: '1px',
-  },
-  body: {
-    flex: 1,
-    minWidth: 0,
-  },
-  text: {
-    color: tokens.colorPaletteRedForeground1,
-  },
-  description: {
-    color: tokens.colorPaletteRedForeground1,
-    marginTop: '2px',
-    lineHeight: 1.4,
-  },
-  action: {
-    color: tokens.colorPaletteRedForeground1,
-    marginTop: '2px',
-    opacity: 0.85,
-  },
-  retryBtn: {
-    marginTop: '8px',
-  },
-  dismissBtn: {
-    flexShrink: 0,
-  },
-});
-
 export function ErrorMessage({ error, onRetry, onDismiss }: ErrorMessageProps) {
   const parsed = typeof error === 'string' ? parseAzureError(error) : error;
-  const classes = useStyles();
-
   return (
-    <div className={classes.root}>
-      <DismissCircle24Regular className={classes.icon} />
-      <div className={classes.body}>
-        <Text size={200} weight="semibold" className={classes.text}>
-          {parsed.title}
-        </Text>
-        <Text size={200} block className={classes.description}>
-          {parsed.description}
-        </Text>
-        <Text size={200} block className={classes.action}>
-          {parsed.action}
-        </Text>
+    <div className="flex items-start gap-3 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-[var(--danger)]">
+      <Icon name="alert" className="mt-0.5" />
+      <div className="min-w-0 flex-1">
+        <p className="font-semibold">{parsed.title}</p>
+        <p className="mt-0.5 text-xs leading-5">{parsed.description}</p>
+        <p className="text-xs leading-5 opacity-75">{parsed.action}</p>
         {parsed.retryable && onRetry && (
-          <Button size="small" appearance="outline" onClick={onRetry} className={classes.retryBtn}>
+          <Button size="xs" className="mt-2" onClick={onRetry}>
             Retry
           </Button>
         )}
       </div>
       {onDismiss && (
-        <Button
-          appearance="subtle"
-          size="small"
-          icon={<DismissCircle24Regular />}
+        <button
+          type="button"
+          aria-label="Dismiss"
           onClick={onDismiss}
-          className={classes.dismissBtn}
-        />
+          className="rounded-md p-1 hover:bg-red-500/10"
+        >
+          <Icon name="close" size={14} />
+        </button>
       )}
     </div>
   );

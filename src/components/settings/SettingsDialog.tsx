@@ -1,21 +1,7 @@
-import {
-  Button,
-  Combobox,
-  Dialog,
-  DialogActions,
-  DialogBody,
-  DialogContent,
-  DialogSurface,
-  DialogTitle,
-  Divider,
-  makeStyles,
-  Option,
-  Switch,
-  Text,
-  tokens,
-} from '@fluentui/react-components';
-import { Dismiss24Regular } from '@fluentui/react-icons';
 import { useAppStore } from '../../stores/appStore';
+import { Button } from '../ui/Button';
+import { Select, Switch } from '../ui/Field';
+import { Modal } from '../ui/Modal';
 
 const AUTO_HIDE_OPTIONS = [
   { value: 15, label: '15 seconds' },
@@ -23,13 +9,11 @@ const AUTO_HIDE_OPTIONS = [
   { value: 60, label: '60 seconds' },
   { value: 120, label: '2 minutes' },
 ];
-
 const CLIPBOARD_OPTIONS = [
   { value: 15, label: '15 seconds' },
   { value: 30, label: '30 seconds' },
   { value: 60, label: '60 seconds' },
 ];
-
 const REFRESH_OPTIONS = [
   { value: 5000, label: '5 seconds' },
   { value: 10000, label: '10 seconds' },
@@ -37,344 +21,209 @@ const REFRESH_OPTIONS = [
   { value: 60000, label: '1 minute' },
 ];
 
-const useStyles = makeStyles({
-  shortcutRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    padding: '3px 0',
-  },
-  dialogSurface: {
-    maxWidth: '520px',
-  },
-  contentWrapper: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '20px',
-    padding: '8px 0',
-  },
-  sectionTitle: {
-    marginBottom: '8px',
-  },
-  rowBetween: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  columnGap12: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '12px',
-  },
-  comboboxMinWidth120: {
-    minWidth: '120px',
-  },
-  comboboxMinWidth130: {
-    minWidth: '130px',
-  },
-  comboboxMinWidth150: {
-    minWidth: '150px',
-  },
-  descriptionText: {
-    color: tokens.colorNeutralForeground3,
-  },
-  shortcutsList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '2px',
-  },
-  aboutTitle: {
-    marginBottom: '4px',
-  },
-  aboutBody: {
-    color: tokens.colorNeutralForeground3,
-  },
-  aboutBodyWithMargin: {
-    color: tokens.colorNeutralForeground3,
-    marginTop: '4px',
-  },
-});
-
-interface ShortcutRowProps {
-  label: string;
-  keys: string;
-  className?: string;
+function SettingRow({
+  title,
+  description,
+  control,
+}: {
+  title: string;
+  description?: string;
+  control: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-5 py-2">
+      <div>
+        <p className="text-[13px]">{title}</p>
+        {description && (
+          <p className="mt-0.5 max-w-xs text-[11px] leading-4 text-[var(--text-tertiary)]">
+            {description}
+          </p>
+        )}
+      </div>
+      <div className="shrink-0">{control}</div>
+    </div>
+  );
 }
 
-function ShortcutRow({ label, keys, className }: ShortcutRowProps) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className={className}>
-      <Text size={200}>{label}</Text>
-      <span className="azv-kbd">{keys}</span>
+    <section>
+      <h3 className="mb-1 text-[11px] font-semibold uppercase tracking-[.08em] text-[var(--text-tertiary)]">
+        {title}
+      </h3>
+      <div className="rounded-xl border border-[var(--stroke)] bg-[var(--surface-muted)] px-3 divide-y divide-[var(--stroke)]">
+        {children}
+      </div>
+    </section>
+  );
+}
+
+function Shortcut({ label, keys }: { label: string; keys: string }) {
+  return (
+    <div className="flex items-center justify-between py-1.5 text-xs">
+      <span>{label}</span>
+      <kbd className="rounded-md border border-[var(--stroke)] bg-[var(--surface-raised)] px-1.5 py-0.5 text-[10px] text-[var(--text-secondary)] shadow-sm">
+        {keys}
+      </kbd>
     </div>
   );
 }
 
 export function SettingsDialog() {
-  const classes = useStyles();
-  const {
-    settingsOpen,
-    setSettingsOpen,
-    themeMode,
-    setThemeMode,
-    requireReauthForReveal,
-    setRequireReauthForReveal,
-    autoHideSeconds,
-    setAutoHideSeconds,
-    clipboardClearSeconds,
-    setClipboardClearSeconds,
-    disableClipboardCopy,
-    setDisableClipboardCopy,
-    auditRefreshInterval,
-    setAuditRefreshInterval,
-    environment,
-    setEnvironment,
-  } = useAppStore();
-
-  const isMac = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform);
-  const mod = isMac ? '⌘' : 'Ctrl+';
+  const settingsOpen = useAppStore((state) => state.settingsOpen);
+  const setSettingsOpen = useAppStore((state) => state.setSettingsOpen);
+  const themeMode = useAppStore((state) => state.themeMode);
+  const setThemeMode = useAppStore((state) => state.setThemeMode);
+  const requireReauthForReveal = useAppStore((state) => state.requireReauthForReveal);
+  const setRequireReauthForReveal = useAppStore((state) => state.setRequireReauthForReveal);
+  const autoHideSeconds = useAppStore((state) => state.autoHideSeconds);
+  const setAutoHideSeconds = useAppStore((state) => state.setAutoHideSeconds);
+  const clipboardClearSeconds = useAppStore((state) => state.clipboardClearSeconds);
+  const setClipboardClearSeconds = useAppStore((state) => state.setClipboardClearSeconds);
+  const disableClipboardCopy = useAppStore((state) => state.disableClipboardCopy);
+  const setDisableClipboardCopy = useAppStore((state) => state.setDisableClipboardCopy);
+  const auditRefreshInterval = useAppStore((state) => state.auditRefreshInterval);
+  const setAuditRefreshInterval = useAppStore((state) => state.setAuditRefreshInterval);
+  const environment = useAppStore((state) => state.environment);
+  const setEnvironment = useAppStore((state) => state.setEnvironment);
+  const mod = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform) ? '⌘' : 'Ctrl+';
 
   return (
-    <Dialog open={settingsOpen} onOpenChange={(_, d) => setSettingsOpen(d.open)}>
-      <DialogSurface className={classes.dialogSurface}>
-        <DialogBody>
-          <DialogTitle
-            action={
-              <Button
-                appearance="subtle"
-                icon={<Dismiss24Regular />}
-                onClick={() => setSettingsOpen(false)}
+    <Modal
+      open={settingsOpen}
+      onClose={() => setSettingsOpen(false)}
+      title="Settings"
+      size="lg"
+      footer={
+        <Button variant="primary" onClick={() => setSettingsOpen(false)}>
+          Done
+        </Button>
+      }
+    >
+      <div className="grid gap-5">
+        <Section title="Appearance">
+          <SettingRow
+            title="Appearance"
+            control={
+              <Select
+                value={themeMode}
+                onChange={(event) => setThemeMode(event.target.value as 'light' | 'dark')}
+                className="w-32"
+              >
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+              </Select>
+            }
+          />
+        </Section>
+        <Section title="Security">
+          <SettingRow
+            title="Confirm before fetching values"
+            description="Adds an in-app confirmation before retrieving a secret value."
+            control={
+              <Switch
+                checked={requireReauthForReveal}
+                onChange={setRequireReauthForReveal}
+                label="Confirm before fetching values"
               />
             }
-          >
-            Settings
-          </DialogTitle>
-          <DialogContent>
-            <div className={classes.contentWrapper}>
-              {/* Appearance */}
-              <section>
-                <Text weight="semibold" size={300} block className={classes.sectionTitle}>
-                  Appearance
-                </Text>
-                <div className={classes.rowBetween}>
-                  <Text size={200}>Theme</Text>
-                  <Combobox
-                    value={themeMode === 'dark' ? 'Dark' : 'Light'}
-                    selectedOptions={[themeMode]}
-                    onOptionSelect={(_, d) => setThemeMode(d.optionValue as 'light' | 'dark')}
-                    className={classes.comboboxMinWidth120}
-                  >
-                    <Option value="light">Light</Option>
-                    <Option value="dark">Dark</Option>
-                  </Combobox>
-                </div>
-              </section>
-
-              <Divider />
-
-              {/* Security */}
-              <section>
-                <Text weight="semibold" size={300} block className={classes.sectionTitle}>
-                  Security
-                </Text>
-
-                <div className={classes.columnGap12}>
-                  <div>
-                    <div className={classes.rowBetween}>
-                      <Text size={200}>Require confirmation before fetching values</Text>
-                      <Switch
-                        checked={requireReauthForReveal}
-                        onChange={(_, d) => setRequireReauthForReveal(d.checked)}
-                      />
-                    </div>
-                    <Text size={100} className={classes.descriptionText}>
-                      Adds an in-app confirmation step before retrieving any secret value.
-                    </Text>
-                  </div>
-
-                  <div>
-                    <div className={classes.rowBetween}>
-                      <Text size={200}>Auto-hide secret values after</Text>
-                      <Combobox
-                        value={
-                          AUTO_HIDE_OPTIONS.find((o) => o.value === autoHideSeconds)?.label ||
-                          `${autoHideSeconds}s`
-                        }
-                        selectedOptions={[String(autoHideSeconds)]}
-                        onOptionSelect={(_, d) => setAutoHideSeconds(Number(d.optionValue))}
-                        className={classes.comboboxMinWidth130}
-                      >
-                        {AUTO_HIDE_OPTIONS.map((o) => (
-                          <Option key={o.value} value={String(o.value)}>
-                            {o.label}
-                          </Option>
-                        ))}
-                      </Combobox>
-                    </div>
-                    <Text size={100} className={classes.descriptionText}>
-                      Revealed values revert to masked after this duration.
-                    </Text>
-                  </div>
-
-                  <div>
-                    <div className={classes.rowBetween}>
-                      <Text size={200}>Clipboard auto-clear after copy</Text>
-                      <Combobox
-                        value={
-                          CLIPBOARD_OPTIONS.find((o) => o.value === clipboardClearSeconds)?.label ||
-                          `${clipboardClearSeconds}s`
-                        }
-                        selectedOptions={[String(clipboardClearSeconds)]}
-                        onOptionSelect={(_, d) => setClipboardClearSeconds(Number(d.optionValue))}
-                        className={classes.comboboxMinWidth130}
-                      >
-                        {CLIPBOARD_OPTIONS.map((o) => (
-                          <Option key={o.value} value={String(o.value)}>
-                            {o.label}
-                          </Option>
-                        ))}
-                      </Combobox>
-                    </div>
-                    <Text size={100} className={classes.descriptionText}>
-                      Copied secret values are cleared from clipboard automatically.
-                    </Text>
-                  </div>
-
-                  <div>
-                    <div className={classes.rowBetween}>
-                      <Text size={200}>Disable clipboard copy for values</Text>
-                      <Switch
-                        checked={disableClipboardCopy}
-                        onChange={(_, d) => setDisableClipboardCopy(d.checked)}
-                      />
-                    </div>
-                    <Text size={100} className={classes.descriptionText}>
-                      Removes the Copy button. Values can only be viewed, not copied.
-                    </Text>
-                  </div>
-                </div>
-              </section>
-
-              <Divider />
-
-              {/* Keyboard Shortcuts */}
-              <section>
-                <Text weight="semibold" size={300} block className={classes.sectionTitle}>
-                  Keyboard Shortcuts
-                </Text>
-                <div className={classes.shortcutsList}>
-                  <ShortcutRow
-                    label="Command palette"
-                    keys={`${mod}K`}
-                    className={classes.shortcutRow}
-                  />
-                  <ShortcutRow label="Settings" keys={`${mod},`} className={classes.shortcutRow} />
-                  <ShortcutRow
-                    label="Toggle sidebar"
-                    keys={`${mod}B`}
-                    className={classes.shortcutRow}
-                  />
-                  <ShortcutRow
-                    label="Toggle detail panel"
-                    keys={`${mod}\\`}
-                    className={classes.shortcutRow}
-                  />
-                  <ShortcutRow
-                    label="Secrets tab"
-                    keys={`${mod}1`}
-                    className={classes.shortcutRow}
-                  />
-                  <ShortcutRow label="Keys tab" keys={`${mod}2`} className={classes.shortcutRow} />
-                  <ShortcutRow
-                    label="Certificates tab"
-                    keys={`${mod}3`}
-                    className={classes.shortcutRow}
-                  />
-                  <ShortcutRow label="Dashboard" keys={`${mod}4`} className={classes.shortcutRow} />
-                  <ShortcutRow label="Audit Log" keys={`${mod}5`} className={classes.shortcutRow} />
-                </div>
-              </section>
-
-              <Divider />
-
-              {/* Audit Log */}
-              <section>
-                <Text weight="semibold" size={300} block className={classes.sectionTitle}>
-                  Audit Log
-                </Text>
-                <div className={classes.rowBetween}>
-                  <Text size={200}>Auto-refresh interval</Text>
-                  <Combobox
-                    value={
-                      REFRESH_OPTIONS.find((o) => o.value === auditRefreshInterval)?.label ||
-                      `${auditRefreshInterval}ms`
-                    }
-                    selectedOptions={[String(auditRefreshInterval)]}
-                    onOptionSelect={(_, d) => setAuditRefreshInterval(Number(d.optionValue))}
-                    className={classes.comboboxMinWidth130}
-                  >
-                    {REFRESH_OPTIONS.map((o) => (
-                      <Option key={o.value} value={String(o.value)}>
-                        {o.label}
-                      </Option>
-                    ))}
-                  </Combobox>
-                </div>
-              </section>
-
-              <Divider />
-
-              {/* Advanced */}
-              <section>
-                <Text weight="semibold" size={300} block className={classes.sectionTitle}>
-                  Advanced
-                </Text>
-                <div className={classes.rowBetween}>
-                  <Text size={200}>Azure environment</Text>
-                  <Combobox
-                    value={
-                      environment === 'azurePublic'
-                        ? 'Azure Public'
-                        : environment === 'azureUsGovernment'
-                          ? 'US Government'
-                          : 'China'
-                    }
-                    selectedOptions={[environment]}
-                    onOptionSelect={(_, d) => setEnvironment(d.optionValue as typeof environment)}
-                    className={classes.comboboxMinWidth150}
-                  >
-                    <Option value="azurePublic">Azure Public</Option>
-                    <Option value="azureUsGovernment">US Government</Option>
-                    <Option value="azureChina">Azure China</Option>
-                  </Combobox>
-                </div>
-              </section>
-
-              <Divider />
-
-              {/* About */}
-              <section>
-                <Text weight="semibold" size={300} block className={classes.aboutTitle}>
-                  About
-                </Text>
-                <Text size={200} block className="azv-mono">
-                  AzVault v1.0.0
-                </Text>
-                <Text size={100} className={classes.aboutBody}>
-                  Tauri v2 · React · Fluent UI
-                </Text>
-                <Text size={100} block className={classes.aboutBodyWithMargin}>
-                  No telemetry. No data leaves your machine except Azure API calls.
-                </Text>
-              </section>
-            </div>
-          </DialogContent>
-          <DialogActions>
-            <Button appearance="primary" onClick={() => setSettingsOpen(false)}>
-              Done
-            </Button>
-          </DialogActions>
-        </DialogBody>
-      </DialogSurface>
-    </Dialog>
+          />
+          <SettingRow
+            title="Auto-hide secret values"
+            description="Revealed values return to masked after this duration."
+            control={
+              <Select
+                value={autoHideSeconds}
+                onChange={(event) => setAutoHideSeconds(Number(event.target.value))}
+                className="w-32"
+              >
+                {AUTO_HIDE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </Select>
+            }
+          />
+          <SettingRow
+            title="Clear clipboard after copy"
+            description="Copied secret values are removed automatically."
+            control={
+              <Select
+                value={clipboardClearSeconds}
+                onChange={(event) => setClipboardClearSeconds(Number(event.target.value))}
+                className="w-32"
+              >
+                {CLIPBOARD_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </Select>
+            }
+          />
+          <SettingRow
+            title="Disable clipboard copy"
+            description="Values may be viewed but not copied."
+            control={
+              <Switch
+                checked={disableClipboardCopy}
+                onChange={setDisableClipboardCopy}
+                label="Disable clipboard copy"
+              />
+            }
+          />
+        </Section>
+        <Section title="Activity">
+          <SettingRow
+            title="Refresh interval"
+            control={
+              <Select
+                value={auditRefreshInterval}
+                onChange={(event) => setAuditRefreshInterval(Number(event.target.value))}
+                className="w-32"
+              >
+                {REFRESH_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </Select>
+            }
+          />
+        </Section>
+        <Section title="Azure">
+          <SettingRow
+            title="Environment"
+            control={
+              <Select
+                value={environment}
+                onChange={(event) => setEnvironment(event.target.value as typeof environment)}
+                className="w-40"
+              >
+                <option value="azurePublic">Azure Public</option>
+                <option value="azureUsGovernment">US Government</option>
+                <option value="azureChina">Azure China</option>
+              </Select>
+            }
+          />
+        </Section>
+        <Section title="Keyboard Shortcuts">
+          <Shortcut label="Command palette" keys={`${mod}K`} />
+          <Shortcut label="Settings" keys={`${mod},`} />
+          <Shortcut label="Toggle detail panel" keys={`${mod}\\`} />
+          <Shortcut label="Secrets / Keys / Certificates" keys={`${mod}1 / 2 / 3`} />
+          <Shortcut label="Overview / Activity" keys={`${mod}4 / 5`} />
+        </Section>
+        <Section title="About">
+          <div className="py-2">
+            <p className="mono text-xs font-medium">AzVault v1.0.1</p>
+            <p className="mt-1 text-[11px] text-[var(--text-tertiary)]">
+              Tauri v2 · React · Tailwind CSS · No telemetry
+            </p>
+          </div>
+        </Section>
+      </div>
+    </Modal>
   );
 }

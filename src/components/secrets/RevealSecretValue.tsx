@@ -1,319 +1,186 @@
-import {
-  Button,
-  Dialog,
-  DialogActions,
-  DialogBody,
-  DialogContent,
-  DialogSurface,
-  DialogTitle,
-  Input,
-  makeStyles,
-  Spinner,
-  Text,
-  Tooltip,
-  tokens,
-} from '@fluentui/react-components';
-import {
-  Checkmark24Regular,
-  Copy24Regular,
-  Eye24Regular,
-  EyeOff24Regular,
-  Timer24Regular,
-  Warning24Regular,
-} from '@fluentui/react-icons';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAutoHide } from '../../hooks/useAutoHide';
 import { getSecretValue } from '../../services/tauri';
 import { useAppStore } from '../../stores/appStore';
 import type { SecretValue } from '../../types';
+import { Button } from '../ui/Button';
+import { Input } from '../ui/Field';
+import { Icon } from '../ui/Icon';
+import { Modal } from '../ui/Modal';
 
-const useStyles = makeStyles({
-  sectionTitle: {
-    marginBottom: '8px',
-  },
-  box: {
-    padding: '12px 14px',
-    borderRadius: '6px',
-    border: `1px solid ${tokens.colorNeutralStroke2}`,
-    background: tokens.colorNeutralBackground3,
-  },
-  hintText: {
-    color: tokens.colorNeutralForeground3,
-    marginBottom: '8px',
-    lineHeight: 1.5,
-  },
-  row: {
-    display: 'flex',
-    gap: '4px',
-    alignItems: 'center',
-  },
-  input: {
-    flex: 1,
-    fontFamily: "'IBM Plex Mono', monospace",
-    fontSize: '12px',
-  },
-  clearButton: {
-    fontSize: '11px',
-  },
-  autoHideRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    marginTop: '6px',
-    fontSize: '11px',
-  },
-  timerIcon: {
-    fontSize: '13px',
-    opacity: 0.6,
-  },
-  autoHideText: {
-    color: tokens.colorNeutralForeground3,
-  },
-  clipboardWarning: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    marginTop: '6px',
-    padding: '4px 8px',
-    background: tokens.colorPaletteYellowBackground1,
-    borderRadius: '4px',
-    fontSize: '11px',
-  },
-  warningIcon: {
-    fontSize: '13px',
-    color: tokens.colorPaletteYellowForeground1,
-  },
-  warningText: {
-    color: tokens.colorPaletteYellowForeground1,
-  },
-  fetchError: {
-    marginTop: '8px',
-    padding: '8px 12px',
-    background: tokens.colorPaletteRedBackground1,
-    borderRadius: '4px',
-  },
-  fetchErrorText: {
-    color: tokens.colorPaletteRedForeground1,
-  },
-  dialogContent: {
-    lineHeight: 1.5,
-  },
-  reauthSection: {
-    marginTop: '10px',
-  },
-});
-
-interface RevealSecretValueProps {
+export function RevealSecretValue({
+  secretName,
+  vaultUri,
+}: {
   secretName: string;
   vaultUri: string;
-}
-
-export function RevealSecretValue({ secretName, vaultUri }: RevealSecretValueProps) {
-  const styles = useStyles();
-  const { requireReauthForReveal, autoHideSeconds, clipboardClearSeconds, disableClipboardCopy } =
-    useAppStore();
-
+}) {
+  const requireConfirmation = useAppStore((state) => state.requireReauthForReveal);
+  const autoHideSeconds = useAppStore((state) => state.autoHideSeconds);
+  const clipboardClearSeconds = useAppStore((state) => state.clipboardClearSeconds);
+  const disableClipboardCopy = useAppStore((state) => state.disableClipboardCopy);
   const [secretValue, setSecretValue] = useState<SecretValue | null>(null);
   const [fetching, setFetching] = useState(false);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-  const [showFetchConfirm, setShowFetchConfirm] = useState(false);
-  const [reauthConfirmed, setReauthConfirmed] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
   const [copied, setCopied] = useState(false);
   const [clipboardWarning, setClipboardWarning] = useState(false);
-  const fetchRequestIdRef = useRef(0);
-
+  const requestRef = useRef(0);
   const { isRevealed, secondsLeft, reveal, hide } = useAutoHide({
     timeoutSeconds: autoHideSeconds,
     onHide: () => setSecretValue(null),
   });
-
-  const handleFetchValue = useCallback(async () => {
-    const requestId = ++fetchRequestIdRef.current;
+  const fetchValue = useCallback(async () => {
+    const request = ++requestRef.current;
     setFetching(true);
-    setFetchError(null);
+    setError(null);
     try {
-      const val = await getSecretValue(vaultUri, secretName);
-      if (requestId !== fetchRequestIdRef.current) return;
-      setSecretValue(val);
-    } catch (e) {
-      if (requestId !== fetchRequestIdRef.current) return;
-      setFetchError(String(e));
+      const result = await getSecretValue(vaultUri, secretName);
+      if (request === requestRef.current) setSecretValue(result);
+    } catch (caught) {
+      if (request === requestRef.current) setError(String(caught));
     } finally {
-      if (requestId === fetchRequestIdRef.current) {
-        setFetching(false);
-      }
+      if (request === requestRef.current) setFetching(false);
     }
   }, [secretName, vaultUri]);
-
   useEffect(() => {
-    // Switching selected secret should always clear prior sensitive UI state
-    fetchRequestIdRef.current += 1;
+    requestRef.current += 1;
     setSecretValue(null);
     setFetching(false);
-    setFetchError(null);
-    setShowFetchConfirm(false);
-    setReauthConfirmed(false);
+    setError(null);
+    setConfirmOpen(false);
+    setConfirmed(false);
     setCopied(false);
     setClipboardWarning(false);
     hide();
   }, [hide]);
-
-  const confirmAndFetch = useCallback(async () => {
-    if (requireReauthForReveal && !reauthConfirmed) {
-      setFetchError('Confirmation required before fetching secret value.');
-      return;
-    }
-    setShowFetchConfirm(false);
-    await handleFetchValue();
-  }, [handleFetchValue, requireReauthForReveal, reauthConfirmed]);
-
-  const handleCopy = useCallback(() => {
+  const confirmFetch = async () => {
+    if (requireConfirmation && !confirmed)
+      return setError('Confirmation required before fetching secret value.');
+    setConfirmOpen(false);
+    await fetchValue();
+  };
+  const copy = () => {
     if (!secretValue?.value || disableClipboardCopy) return;
-    navigator.clipboard.writeText(secretValue.value);
+    void navigator.clipboard.writeText(secretValue.value);
     setCopied(true);
     setClipboardWarning(true);
-    setTimeout(() => setCopied(false), 2000);
-    setTimeout(() => {
-      navigator.clipboard.writeText('').catch(() => {});
+    window.setTimeout(() => setCopied(false), 2000);
+    window.setTimeout(() => {
+      void navigator.clipboard.writeText('').catch(() => undefined);
       setClipboardWarning(false);
     }, clipboardClearSeconds * 1000);
-  }, [secretValue, clipboardClearSeconds, disableClipboardCopy]);
-
-  const handleRevealToggle = useCallback(() => {
-    if (!isRevealed) reveal();
-    else hide();
-  }, [isRevealed, reveal, hide]);
-
-  const clearValue = useCallback(() => {
+  };
+  const clear = () => {
     setSecretValue(null);
     hide();
-    setFetchError(null);
+    setError(null);
     setCopied(false);
     setClipboardWarning(false);
-    setReauthConfirmed(false);
-  }, [hide]);
-
+    setConfirmed(false);
+  };
   return (
-    <div>
-      <Text weight="semibold" size={300} block className={styles.sectionTitle}>
+    <section>
+      <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
         Secret Value
-      </Text>
-
-      {!secretValue ? (
-        <div className={styles.box}>
-          <Text block size={200} className={styles.hintText}>
-            Values are never loaded automatically. Fetching will retrieve the value from Azure Key
-            Vault and hold it in memory only.
-          </Text>
-          <Button
-            appearance="primary"
-            size="small"
-            icon={fetching ? <Spinner size="tiny" /> : <Eye24Regular />}
-            onClick={() => setShowFetchConfirm(true)}
-            disabled={fetching}
-          >
-            {fetching ? 'Fetching...' : 'Fetch Value'}
-          </Button>
-        </div>
-      ) : (
-        <div className={styles.box}>
-          <div className={styles.row}>
-            <Input
-              type={isRevealed ? 'text' : 'password'}
-              value={secretValue.value}
-              readOnly
-              className={styles.input}
-            />
-            <Tooltip content={isRevealed ? 'Hide' : 'Reveal'} relationship="label">
-              <Button
-                icon={isRevealed ? <EyeOff24Regular /> : <Eye24Regular />}
-                appearance="subtle"
-                size="small"
-                onClick={handleRevealToggle}
-              />
-            </Tooltip>
-            {!disableClipboardCopy && (
-              <Tooltip content={copied ? 'Copied!' : 'Copy'} relationship="label">
-                <Button
-                  icon={copied ? <Checkmark24Regular /> : <Copy24Regular />}
-                  appearance="subtle"
-                  size="small"
-                  onClick={handleCopy}
-                />
-              </Tooltip>
-            )}
+      </h3>
+      <div className="rounded-xl border border-[var(--stroke)] bg-[var(--surface-muted)] p-3">
+        {!secretValue ? (
+          <>
+            <p className="mb-3 text-xs leading-5 text-[var(--text-secondary)]">
+              Values are only fetched on demand and held in memory.
+            </p>
             <Button
-              appearance="subtle"
-              size="small"
-              onClick={clearValue}
-              className={styles.clearButton}
+              variant="primary"
+              size="xs"
+              loading={fetching}
+              icon={<Icon name="eye" />}
+              onClick={() => setConfirmOpen(true)}
             >
-              Clear
+              Fetch Value
             </Button>
-          </div>
-
-          {isRevealed && secondsLeft > 0 && (
-            <div className={styles.autoHideRow}>
-              <Timer24Regular className={styles.timerIcon} />
-              <Text size={100} className={styles.autoHideText}>
-                Auto-hide in {secondsLeft}s
-              </Text>
-            </div>
-          )}
-
-          {clipboardWarning && (
-            <div className={styles.clipboardWarning}>
-              <Warning24Regular className={styles.warningIcon} />
-              <Text size={100} className={styles.warningText}>
-                Clipboard will be cleared in {clipboardClearSeconds}s
-              </Text>
-            </div>
-          )}
-        </div>
-      )}
-
-      {fetchError && (
-        <div className={styles.fetchError}>
-          <Text size={200} className={styles.fetchErrorText}>
-            {fetchError}
-          </Text>
-        </div>
-      )}
-
-      {/* Fetch confirmation dialog */}
-      <Dialog open={showFetchConfirm} onOpenChange={(_, d) => setShowFetchConfirm(d.open)}>
-        <DialogSurface>
-          <DialogBody>
-            <DialogTitle>Confirm Secret Fetch</DialogTitle>
-            <DialogContent>
-              <Text size={200} className={styles.dialogContent}>
-                Fetching will retrieve the current value from Azure Key Vault. The value is held in
-                memory only and is never written to disk or logs. It will be cleared when you close
-                this panel or after {autoHideSeconds} seconds.
-              </Text>
-              {requireReauthForReveal && (
-                <div className={styles.reauthSection}>
-                  <Button
-                    appearance={reauthConfirmed ? 'primary' : 'secondary'}
-                    onClick={() => setReauthConfirmed((v) => !v)}
-                    size="small"
-                  >
-                    {reauthConfirmed ? 'Confirmation complete' : 'Confirm fetch intent'}
-                  </Button>
-                </div>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center gap-1.5">
+              <Input
+                className="mono min-w-0 flex-1"
+                type={isRevealed ? 'text' : 'password'}
+                value={secretValue.value}
+                readOnly
+              />
+              <button
+                type="button"
+                title={isRevealed ? 'Hide' : 'Reveal'}
+                onClick={() => (isRevealed ? hide() : reveal())}
+                className="grid size-8 place-items-center rounded-lg hover:bg-[var(--surface-hover)]"
+              >
+                <Icon name={isRevealed ? 'eye-off' : 'eye'} size={15} />
+              </button>
+              {!disableClipboardCopy && (
+                <button
+                  type="button"
+                  title={copied ? 'Copied' : 'Copy'}
+                  onClick={copy}
+                  className="grid size-8 place-items-center rounded-lg hover:bg-[var(--surface-hover)]"
+                >
+                  <Icon name={copied ? 'check' : 'copy'} size={15} />
+                </button>
               )}
-            </DialogContent>
-            <DialogActions>
-              <Button appearance="secondary" onClick={() => setShowFetchConfirm(false)}>
-                Cancel
+              <Button size="xs" variant="ghost" onClick={clear}>
+                Clear
               </Button>
-              <Button appearance="primary" onClick={confirmAndFetch} disabled={fetching}>
-                Fetch
-              </Button>
-            </DialogActions>
-          </DialogBody>
-        </DialogSurface>
-      </Dialog>
-    </div>
+            </div>
+            {isRevealed && secondsLeft > 0 && (
+              <p className="mt-2 flex items-center gap-1.5 text-[10px] text-[var(--text-tertiary)]">
+                <Icon name="timer" size={12} />
+                Auto-hide in {secondsLeft}s
+              </p>
+            )}
+            {clipboardWarning && (
+              <p className="mt-2 flex items-center gap-1.5 rounded-lg bg-orange-500/10 px-2 py-1.5 text-[10px] text-[var(--warning)]">
+                <Icon name="warning" size={12} />
+                Clipboard clears in {clipboardClearSeconds}s
+              </p>
+            )}
+          </>
+        )}
+      </div>
+      {error && (
+        <div className="mt-2 rounded-lg bg-red-500/10 p-2 text-xs text-[var(--danger)]">
+          {error}
+        </div>
+      )}
+      <Modal
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        title="Fetch Secret Value"
+        description={`The value stays in memory and is cleared after ${autoHideSeconds} seconds.`}
+        footer={
+          <>
+            <Button onClick={() => setConfirmOpen(false)}>Cancel</Button>
+            <Button variant="primary" loading={fetching} onClick={confirmFetch}>
+              Fetch
+            </Button>
+          </>
+        }
+      >
+        {requireConfirmation && (
+          <button
+            type="button"
+            onClick={() => setConfirmed((value) => !value)}
+            className={`w-full rounded-xl border p-3 text-left text-xs ${confirmed ? 'border-[var(--accent)] bg-[var(--accent-soft)]' : 'border-[var(--stroke)]'}`}
+          >
+            <span className="flex items-center gap-2">
+              <Icon name={confirmed ? 'check' : 'shield'} />
+              {confirmed
+                ? 'Fetch intent confirmed'
+                : 'Confirm that you intend to fetch this sensitive value'}
+            </span>
+          </button>
+        )}
+      </Modal>
+    </section>
   );
 }

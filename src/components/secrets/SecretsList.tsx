@@ -1,29 +1,3 @@
-import {
-  Button,
-  Dialog,
-  DialogActions,
-  DialogBody,
-  DialogContent,
-  DialogSurface,
-  DialogTitle,
-  Input,
-  Menu,
-  MenuItem,
-  MenuList,
-  MenuPopover,
-  MenuTrigger,
-  makeStyles,
-  mergeClasses,
-  Spinner,
-  Text,
-  tokens,
-} from '@fluentui/react-components';
-import {
-  Add24Regular,
-  ArrowDownload24Regular,
-  Delete24Regular,
-  Search24Regular,
-} from '@fluentui/react-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useAppToast } from '../../lib/toast';
@@ -37,9 +11,12 @@ import type { Column } from '../common/ItemTable';
 import { ItemTable, renderDate, renderEnabled, renderTags } from '../common/ItemTable';
 import { LoadingSkeleton } from '../common/LoadingSkeleton';
 import { SplitPane } from '../common/SplitPane';
+import { Button } from '../ui/Button';
 import { CreateSecretDialog } from './CreateSecretDialog';
 import { DeleteByPrefixDialog } from './DeleteByPrefixDialog';
+import { ImportSecretsDialog, type PendingImport } from './ImportSecretsDialog';
 import { SecretDetails } from './SecretDetails';
+import { SecretsToolbar } from './SecretsToolbar';
 import {
   filterOutDeletedSecrets,
   getSelectedSecrets,
@@ -52,261 +29,123 @@ import {
 import { type ExportFormat, exportSecretMetadata } from './secretsExport';
 import { parseSecretsImportJson } from './secretsImport';
 
-const useStyles = makeStyles({
-  listRoot: {
-    display: 'flex',
-    flexDirection: 'column',
-    height: '100%',
+const columns: Column<SecretItem>[] = [
+  {
+    key: 'name',
+    label: 'Name',
+    width: '30%',
+    render: (item) => <span className="mono font-semibold">{item.name}</span>,
   },
-  toolbar: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '6px 12px',
-    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
-    background: tokens.colorNeutralBackground2,
-    gap: '8px',
+  { key: 'enabled', label: 'Status', width: '10%', render: (item) => renderEnabled(item.enabled) },
+  {
+    key: 'contentType',
+    label: 'Type',
+    width: '15%',
+    render: (item) => (
+      <span className={`mono ${item.contentType ? '' : 'text-[var(--text-tertiary)]'}`}>
+        {item.contentType || '—'}
+      </span>
+    ),
   },
-  toolbarLeft: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    flex: 1,
+  { key: 'updated', label: 'Updated', width: '20%', render: (item) => renderDate(item.updated) },
+  {
+    key: 'expires',
+    label: 'Expires',
+    width: '15%',
+    render: (item) =>
+      !item.expires ? (
+        <span className="mono text-[var(--text-tertiary)]">Never</span>
+      ) : (
+        <span className={new Date(item.expires) < new Date() ? 'text-[var(--danger)]' : undefined}>
+          {renderDate(item.expires)}
+        </span>
+      ),
   },
-  countText: {
-    color: tokens.colorNeutralForeground3,
-  },
-  selectedText: {
-    color: tokens.colorBrandForeground1,
-  },
-  searchInput: {
-    marginLeft: 'auto',
-    maxWidth: '180px',
-    fontSize: '12px',
-  },
-  toolbarButtons: {
-    display: 'flex',
-    gap: '4px',
-  },
-  tableWrap: {
-    flex: 1,
-    overflow: 'auto',
-    padding: '0 12px',
-    minHeight: 0,
-  },
-  errorWrap: {
-    padding: '16px',
-  },
-  loadMoreWrap: {
-    display: 'flex',
-    justifyContent: 'center',
-    padding: '10px',
-  },
-  bulkDeleteDetails: {
-    marginTop: '12px',
-    border: `1px solid ${tokens.colorNeutralStroke2}`,
-    borderRadius: '6px',
-    padding: '8px 10px',
-  },
-  bulkDeleteSummary: {
-    cursor: 'pointer',
-    fontSize: '12px',
-  },
-  bulkDeleteList: {
-    marginTop: '8px',
-    maxHeight: '200px',
-    overflow: 'auto',
-  },
-  bulkDeleteItem: {
-    padding: '2px 0',
-  },
-  bulkDeleteProgress: {
-    marginTop: '10px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-  },
-  bulkDeleteError: {
-    marginTop: '10px',
-    padding: '8px',
-    borderRadius: '4px',
-    background: tokens.colorPaletteRedBackground1,
-    color: tokens.colorPaletteRedForeground1,
-    fontSize: '12px',
-  },
-  textDim: {
-    opacity: 0.4,
-  },
-  textExpires: {
-    fontSize: '11px',
-  },
-  importConfirmMeta: {
-    display: 'grid',
-    gridTemplateColumns: '160px 1fr',
-    gap: '6px 10px',
-    marginTop: '8px',
-    marginBottom: '10px',
-    fontSize: '12px',
-  },
-  importConfirmLabel: {
-    color: tokens.colorNeutralForeground3,
-  },
-  importConfirmValue: {
-    fontFamily: "'IBM Plex Mono', monospace",
-    wordBreak: 'break-word',
-  },
-  importConfirmWarning: {
-    marginTop: '8px',
-    marginBottom: '8px',
-    padding: '8px 10px',
-    borderRadius: '6px',
-    background: tokens.colorPaletteYellowBackground1,
-    color: tokens.colorPaletteYellowForeground1,
-    fontSize: '12px',
-  },
-  importConfirmListWrap: {
-    border: `1px solid ${tokens.colorNeutralStroke2}`,
-    borderRadius: '6px',
-    padding: '8px 10px',
-    marginTop: '10px',
-  },
-  importConfirmList: {
-    marginTop: '6px',
-    maxHeight: '180px',
-    overflow: 'auto',
-  },
-  importConfirmItem: {
-    padding: '2px 0',
-  },
-});
+  { key: 'tags', label: 'Tags', width: '10%', render: (item) => renderTags(item.tags) },
+];
 
-interface PendingImport {
-  fileName: string;
-  fileSizeBytes: number;
-  requests: ReturnType<typeof parseSecretsImportJson>['requests'];
-  duplicateNamesInFile: string[];
-  existingSecretNames: string[];
+function prepareImport(file: File, content: string, existingSecrets: SecretItem[]): PendingImport {
+  const { requests } = parseSecretsImportJson(content);
+  const existing = new Map(
+    existingSecrets.map((secret) => [secret.name.toLowerCase(), secret.name]),
+  );
+  const counts = new Map<string, number>();
+  const canonical = new Map<string, string>();
+  for (const request of requests) {
+    const key = request.name.toLowerCase();
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+    if (!canonical.has(key)) canonical.set(key, request.name);
+  }
+  const duplicateNamesInFile = Array.from(counts)
+    .filter(([, count]) => count > 1)
+    .map(([name]) => canonical.get(name) ?? name)
+    .sort((a, b) => a.localeCompare(b));
+  const existingSecretNames = Array.from(
+    new Set(
+      requests
+        .filter((request) => existing.has(request.name.toLowerCase()))
+        .map((request) => existing.get(request.name.toLowerCase()) ?? request.name),
+    ),
+  ).sort((a, b) => a.localeCompare(b));
+  return {
+    fileName: file.name,
+    fileSizeBytes: file.size,
+    requests,
+    duplicateNamesInFile,
+    existingSecretNames,
+  };
 }
 
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+function download(content: string, format: ExportFormat) {
+  const url = URL.createObjectURL(
+    new Blob([content], {
+      type: format === 'json' ? 'application/json' : 'text/csv;charset=utf-8',
+    }),
+  );
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `azvault-secrets-${Date.now()}.${format}`;
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 export function SecretsList() {
-  const classes = useStyles();
-  const { selectedVaultUri, detailPanelOpen, splitRatio, setSplitRatio } = useAppStore();
+  const selectedVaultUri = useAppStore((state) => state.selectedVaultUri);
+  const detailPanelOpen = useAppStore((state) => state.detailPanelOpen);
+  const splitRatio = useAppStore((state) => state.splitRatio);
+  const setSplitRatio = useAppStore((state) => state.setSplitRatio);
   const queryClient = useQueryClient();
   const toast = useAppToast();
+  const importInputRef = useRef<HTMLInputElement>(null);
   const [selectedSecret, setSelectedSecret] = useState<SecretItem | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(50);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
-  const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
-  const [bulkDeleteError, setBulkDeleteError] = useState<string | null>(null);
-  const [bulkDeleteProgress, setBulkDeleteProgress] = useState({
-    total: 0,
-    completed: 0,
-    failed: 0,
-  });
-  const [localFilter, setLocalFilter] = useState('');
-  const [showPrefixDeleteDialog, setShowPrefixDeleteDialog] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkError, setBulkError] = useState<string | null>(null);
+  const [bulkProgress, setBulkProgress] = useState({ total: 0, completed: 0, failed: 0 });
+  const [filter, setFilter] = useState('');
+  const [prefixOpen, setPrefixOpen] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
-  const [showImportConfirm, setShowImportConfirm] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(null);
-  const importInputRef = useRef<HTMLInputElement>(null);
-
-  const columns: Column<SecretItem>[] = useMemo(
-    () => [
-      {
-        key: 'name',
-        label: 'Name',
-        width: '30%',
-        render: (item) => (
-          <Text weight="semibold" size={200} className="azv-mono">
-            {item.name}
-          </Text>
-        ),
-      },
-      {
-        key: 'enabled',
-        label: 'Status',
-        width: '10%',
-        render: (item) => renderEnabled(item.enabled),
-      },
-      {
-        key: 'contentType',
-        label: 'Type',
-        width: '15%',
-        render: (item) => (
-          <Text size={200} className="azv-mono" style={{ opacity: item.contentType ? 1 : 0.4 }}>
-            {item.contentType || '—'}
-          </Text>
-        ),
-      },
-      {
-        key: 'updated',
-        label: 'Updated',
-        width: '20%',
-        render: (item) => renderDate(item.updated),
-      },
-      {
-        key: 'expires',
-        label: 'Expires',
-        width: '15%',
-        render: (item) => {
-          if (!item.expires)
-            return (
-              <Text size={200} className={mergeClasses('azv-mono', classes.textDim)}>
-                Never
-              </Text>
-            );
-          const expired = new Date(item.expires) < new Date();
-          return (
-            <Text
-              size={200}
-              className={mergeClasses('azv-mono', classes.textExpires)}
-              style={expired ? { color: 'var(--azv-danger)' } : undefined}
-            >
-              {renderDate(item.expires)}
-            </Text>
-          );
-        },
-      },
-      {
-        key: 'tags',
-        label: 'Tags',
-        width: '10%',
-        render: (item) => renderTags(item.tags),
-      },
-    ],
-    [classes.textDim, classes.textExpires],
-  );
-
-  const secretsQuery = useQuery({
+  const query = useQuery({
     queryKey: ['secrets', selectedVaultUri],
     queryFn: () => listSecrets(selectedVaultUri!),
-    enabled: !!selectedVaultUri,
+    enabled: Boolean(selectedVaultUri),
   });
-
-  const allSecrets = useMemo(() => secretsQuery.data ?? [], [secretsQuery.data]);
-  const filterText = localFilter;
-  const filteredSecrets = allSecrets.filter((s) =>
-    s.name.toLowerCase().includes(filterText.toLowerCase()),
+  const allSecrets = useMemo(() => query.data ?? [], [query.data]);
+  const filtered = allSecrets.filter((secret) =>
+    secret.name.toLowerCase().includes(filter.toLowerCase()),
   );
-  const visibleSecrets = filteredSecrets.slice(0, visibleCount);
+  const visible = filtered.slice(0, visibleCount);
   const selectedSecrets = useMemo(
     () => getSelectedSecrets(allSecrets, selectedIds),
     [allSecrets, selectedIds],
   );
-
-  const visibleIds = useMemo(() => visibleSecrets.map((s) => s.id), [visibleSecrets]);
-  const selectedVisibleCount = useMemo(
-    () => visibleIds.filter((id) => selectedIds.has(id)).length,
-    [visibleIds, selectedIds],
-  );
+  const visibleIds = useMemo(() => visible.map((secret) => secret.id), [visible]);
+  const selectedVisibleCount = visibleIds.filter((id) => selectedIds.has(id)).length;
   const selectAllState: boolean | 'mixed' =
     selectedVisibleCount === 0
       ? false
@@ -315,566 +154,291 @@ export function SecretsList() {
         : 'mixed';
 
   useEffect(() => {
-    const existingIds = new Set(allSecrets.map((s) => s.id));
-    setSelectedIds((prev) => {
-      const next = pruneSelectedIds(prev, existingIds);
-      return next.size === prev.size ? prev : next;
+    const existing = new Set(allSecrets.map((secret) => secret.id));
+    setSelectedIds((current) => {
+      const next = pruneSelectedIds(current, existing);
+      return next.size === current.size ? current : next;
     });
   }, [allSecrets]);
-
   useEffect(() => {
-    if (!selectedSecret) return;
-    const stillExists = allSecrets.some((s) => s.id === selectedSecret.id);
-    if (!stillExists) setSelectedSecret(null);
+    if (selectedSecret && !allSecrets.some((secret) => secret.id === selectedSecret.id))
+      setSelectedSecret(null);
   }, [selectedSecret, allSecrets]);
-
   useEffect(() => {
-    if (!showBulkDeleteConfirm) {
-      setBulkDeleteError(null);
-      setBulkDeleteProgress({ total: 0, completed: 0, failed: 0 });
+    if (!bulkOpen) {
+      setBulkError(null);
+      setBulkProgress({ total: 0, completed: 0, failed: 0 });
     }
-  }, [showBulkDeleteConfirm]);
-
-  // Listen for custom events from command palette
+  }, [bulkOpen]);
   useEffect(() => {
-    const onNewSecret = () => setCreateOpen(true);
-    const onFocusSearch = () => {
-      const input = document.querySelector<HTMLInputElement>('[data-azv-list-search]');
-      input?.focus();
+    const create = () => setCreateOpen(true);
+    const focus = () => document.querySelector<HTMLInputElement>('[data-azv-list-search]')?.focus();
+    const prefix = () => setPrefixOpen(true);
+    const importFile = () => {
+      if (importInputRef.current) {
+        importInputRef.current.value = '';
+        importInputRef.current.click();
+      }
     };
-    const onDeleteByPrefix = () => setShowPrefixDeleteDialog(true);
-    const onImportSecrets = () => {
-      if (!importInputRef.current) return;
-      importInputRef.current.value = '';
-      importInputRef.current.click();
-    };
-    window.addEventListener('azv:new-secret', onNewSecret);
-    window.addEventListener('azv:focus-search', onFocusSearch);
-    window.addEventListener('azv:delete-by-prefix', onDeleteByPrefix);
-    window.addEventListener('azv:import-secrets', onImportSecrets);
+    window.addEventListener('azv:new-secret', create);
+    window.addEventListener('azv:focus-search', focus);
+    window.addEventListener('azv:delete-by-prefix', prefix);
+    window.addEventListener('azv:import-secrets', importFile);
     return () => {
-      window.removeEventListener('azv:new-secret', onNewSecret);
-      window.removeEventListener('azv:focus-search', onFocusSearch);
-      window.removeEventListener('azv:delete-by-prefix', onDeleteByPrefix);
-      window.removeEventListener('azv:import-secrets', onImportSecrets);
+      window.removeEventListener('azv:new-secret', create);
+      window.removeEventListener('azv:focus-search', focus);
+      window.removeEventListener('azv:delete-by-prefix', prefix);
+      window.removeEventListener('azv:import-secrets', importFile);
     };
   }, []);
 
-  const handleImportButtonClick = () => {
-    const input = importInputRef.current;
-    if (!input) return;
-    input.value = '';
-    input.click();
+  const chooseImport = () => {
+    if (importInputRef.current) {
+      importInputRef.current.value = '';
+      importInputRef.current.click();
+    }
   };
-
-  const handleImportFromFile = async (event: ChangeEvent<HTMLInputElement>) => {
+  const readImport = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !selectedVaultUri) return;
-
     setImportLoading(true);
-
     try {
-      const content = await file.text();
-      const { requests } = parseSecretsImportJson(content);
-      const existingLower = new Map(allSecrets.map((s) => [s.name.toLowerCase(), s.name]));
-      const importNameCounts = new Map<string, number>();
-      const importNameCanonical = new Map<string, string>();
-      for (const request of requests) {
-        const key = request.name.toLowerCase();
-        importNameCounts.set(key, (importNameCounts.get(key) ?? 0) + 1);
-        if (!importNameCanonical.has(key)) {
-          importNameCanonical.set(key, request.name);
-        }
-      }
-      const duplicateNamesInFile = Array.from(importNameCounts.entries())
-        .filter(([, count]) => count > 1)
-        .map(([name]) => importNameCanonical.get(name) ?? name)
-        .sort((a, b) => a.localeCompare(b));
-      const existingSecretNames = requests
-        .filter((request) => existingLower.has(request.name.toLowerCase()))
-        .map((request) => existingLower.get(request.name.toLowerCase()) ?? request.name);
-      const existingUnique = Array.from(new Set(existingSecretNames)).sort((a, b) =>
-        a.localeCompare(b),
-      );
-
-      setPendingImport({
-        fileName: file.name,
-        fileSizeBytes: file.size,
-        requests,
-        duplicateNamesInFile,
-        existingSecretNames: existingUnique,
-      });
-      setShowImportConfirm(true);
-    } catch (e) {
-      toast.error('Import failed', String(e));
+      setPendingImport(prepareImport(file, await file.text(), allSecrets));
+      setImportOpen(true);
+    } catch (caught) {
+      toast.error('Import failed', String(caught));
     } finally {
       setImportLoading(false);
     }
   };
-
-  const handleConfirmImport = async () => {
+  const confirmImport = async () => {
     if (!pendingImport || !selectedVaultUri) return;
-    const { requests, fileName } = pendingImport;
-
     setImportLoading(true);
-
+    const failures: string[] = [];
+    let successes = 0;
     try {
-      let successCount = 0;
-      const failures: string[] = [];
-
-      for (const request of requests) {
+      for (const request of pendingImport.requests) {
         try {
           await setSecret(selectedVaultUri, request);
-          successCount += 1;
-        } catch (e) {
-          failures.push(`${request.name}: ${String(e)}`);
+          successes += 1;
+        } catch (caught) {
+          failures.push(`${request.name}: ${String(caught)}`);
         }
       }
-
-      await secretsQuery.refetch();
-
-      if (failures.length === 0) {
-        toast.success('Import complete', `Imported ${successCount} secret(s) from ${fileName}.`);
-      } else {
-        const failedNamesPreview = failures
-          .slice(0, 3)
-          .map((entry) => entry.split(':', 1)[0])
-          .join(', ');
-        const remaining = failures.length - 3;
-        const previewSuffix = remaining > 0 ? ` (+${remaining} more)` : '';
-        toast.error(
-          `Imported ${successCount}/${requests.length} from ${fileName}`,
-          `Failed ${failures.length}: ${failedNamesPreview}${previewSuffix}. First error: ${failures[0]}`,
+      await query.refetch();
+      if (!failures.length)
+        toast.success(
+          'Import complete',
+          `Imported ${successes} secret(s) from ${pendingImport.fileName}.`,
         );
-      }
+      else
+        toast.error(
+          `Imported ${successes}/${pendingImport.requests.length}`,
+          `${failures.length} failed. First error: ${failures[0]}`,
+        );
     } finally {
       setImportLoading(false);
-      setShowImportConfirm(false);
+      setImportOpen(false);
       setPendingImport(null);
     }
   };
-
-  const downloadExport = (content: string, format: ExportFormat) => {
-    const mimeType = format === 'json' ? 'application/json' : 'text/csv;charset=utf-8';
-    const blob = new Blob([content], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `azvault-secrets-${Date.now()}.${format}`;
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleExport = async (format: ExportFormat) => {
-    await exportSecretMetadata(filteredSecrets, format, {
+  const exportData = async (format: ExportFormat) => {
+    await exportSecretMetadata(filtered, format, {
       exportItems,
-      download: downloadExport,
+      download,
       writeClipboard: navigator.clipboard?.writeText
         ? (content) => navigator.clipboard.writeText(content)
         : undefined,
-      onError: () => {
-        toast.error('Export failed');
-      },
-      onSuccess: (mode) => {
+      onError: () => toast.error('Export failed'),
+      onSuccess: (mode) =>
         toast.success(
           mode === 'download'
             ? `${format.toUpperCase()} downloaded`
-            : `${format.toUpperCase()} copied to clipboard`,
-        );
-      },
+            : `${format.toUpperCase()} copied`,
+        ),
     });
   };
-
-  const handleBulkDelete = async () => {
-    if (!selectedVaultUri) return;
-    const items = selectedSecrets;
-    if (items.length === 0) return;
-
-    setBulkDeleteLoading(true);
-    setBulkDeleteError(null);
-    setBulkDeleteProgress({ total: items.length, completed: 0, failed: 0 });
-
-    const succeededIds: string[] = [];
+  const bulkDelete = async () => {
+    if (!selectedVaultUri || !selectedSecrets.length) return;
+    setBulkLoading(true);
+    setBulkError(null);
+    setBulkProgress({ total: selectedSecrets.length, completed: 0, failed: 0 });
+    const succeeded: string[] = [];
     let failed = 0;
-
-    // Cap parallelism so large selections don't hammer Key Vault into throttling (429s).
-    const CONCURRENCY = 5;
-
     try {
-      for (let i = 0; i < items.length; i += CONCURRENCY) {
-        const batch = items.slice(i, i + CONCURRENCY);
+      for (let index = 0; index < selectedSecrets.length; index += 5) {
         await Promise.all(
-          batch.map(async (item) => {
+          selectedSecrets.slice(index, index + 5).map(async (secret) => {
             try {
-              await deleteSecret(selectedVaultUri, item.name);
-              succeededIds.push(item.id);
+              await deleteSecret(selectedVaultUri, secret.name);
+              succeeded.push(secret.id);
             } catch {
               failed += 1;
             } finally {
-              setBulkDeleteProgress((prev) => nextDeleteProgress(prev, failed));
+              setBulkProgress((current) => nextDeleteProgress(current, failed));
             }
           }),
         );
       }
-
-      setSelectedIds((prev) => removeSucceededSelection(prev, succeededIds));
-
-      if (selectedVaultUri && succeededIds.length > 0) {
-        queryClient.setQueryData<SecretItem[]>(['secrets', selectedVaultUri], (current) =>
-          filterOutDeletedSecrets(current, succeededIds),
-        );
-      }
-
-      if (failed > 0) {
-        setBulkDeleteError(`${failed} secret(s) failed to delete. Check permissions.`);
-      } else {
-        setShowBulkDeleteConfirm(false);
-      }
-
-      await secretsQuery.refetch();
-    } catch (e) {
-      setBulkDeleteError(String(e));
+      setSelectedIds((current) => removeSucceededSelection(current, succeeded));
+      queryClient.setQueryData<SecretItem[]>(['secrets', selectedVaultUri], (current) =>
+        filterOutDeletedSecrets(current, succeeded),
+      );
+      if (failed) setBulkError(`${failed} secret(s) failed to delete.`);
+      else setBulkOpen(false);
+      await query.refetch();
+    } catch (caught) {
+      setBulkError(String(caught));
     } finally {
-      setBulkDeleteLoading(false);
+      setBulkLoading(false);
     }
   };
 
-  const listPane = (
-    <div className={classes.listRoot}>
-      {/* Toolbar */}
-      <div className={classes.toolbar}>
-        <div className={classes.toolbarLeft}>
-          <Text weight="semibold" size={300}>
-            Secrets
-          </Text>
-          {secretsQuery.data && (
-            <Text size={200} className={mergeClasses('azv-mono', classes.countText)}>
-              ({filteredSecrets.length}
-              {filterText ? ` / ${allSecrets.length}` : ''})
-            </Text>
-          )}
-          {selectedIds.size > 0 && (
-            <Text size={200} className={mergeClasses('azv-mono', classes.selectedText)}>
-              {selectedIds.size} selected
-            </Text>
-          )}
-          <Input
-            data-azv-list-search
-            placeholder="Filter..."
-            contentBefore={<Search24Regular style={{ fontSize: 14 }} />}
-            size="small"
-            value={localFilter}
-            onChange={(_, d) => setLocalFilter(d.value)}
-            className={classes.searchInput}
-          />
-        </div>
-        <div className={classes.toolbarButtons}>
-          <input
-            ref={importInputRef}
-            type="file"
-            accept="application/json,.json"
-            onChange={handleImportFromFile}
-            style={{ display: 'none' }}
-          />
-          <Menu>
-            <MenuTrigger disableButtonEnhancement>
-              <Button appearance="subtle" icon={<ArrowDownload24Regular />} size="small">
-                Export
-              </Button>
-            </MenuTrigger>
-            <MenuPopover>
-              <MenuList>
-                <MenuItem onClick={() => handleExport('json')}>Export as JSON</MenuItem>
-                <MenuItem onClick={() => handleExport('csv')}>Export as CSV</MenuItem>
-              </MenuList>
-            </MenuPopover>
-          </Menu>
-          <Button
-            appearance="secondary"
-            size="small"
-            onClick={handleImportButtonClick}
-            disabled={!selectedVaultUri || importLoading}
-          >
-            {importLoading ? 'Importing...' : 'Import JSON'}
-          </Button>
-          <Button
-            appearance="primary"
-            icon={<Add24Regular />}
-            size="small"
-            onClick={() => setCreateOpen(true)}
-            disabled={importLoading}
-          >
-            New
-          </Button>
-          <Menu>
-            <MenuTrigger disableButtonEnhancement>
-              <Button
-                appearance="secondary"
-                icon={<Delete24Regular />}
-                size="small"
-                disabled={bulkDeleteLoading}
-              >
-                Delete
-              </Button>
-            </MenuTrigger>
-            <MenuPopover>
-              <MenuList>
-                <MenuItem
-                  disabled={selectedIds.size === 0}
-                  onClick={() => setShowBulkDeleteConfirm(true)}
-                >
-                  Delete Selected{selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}
-                </MenuItem>
-                <MenuItem
-                  disabled={!selectedVaultUri}
-                  onClick={() => setShowPrefixDeleteDialog(true)}
-                >
-                  Delete by Prefix
-                </MenuItem>
-              </MenuList>
-            </MenuPopover>
-          </Menu>
-        </div>
-      </div>
-
-      {/* Table */}
-      <div className={classes.tableWrap}>
-        {secretsQuery.isLoading ? (
-          <LoadingSkeleton rows={8} columns={[30, 10, 15, 20, 15, 10]} />
-        ) : secretsQuery.isError ? (
-          <div className={classes.errorWrap}>
-            <ErrorMessage
-              error={String(secretsQuery.error)}
-              onRetry={() => secretsQuery.refetch()}
-            />
-          </div>
-        ) : allSecrets.length === 0 ? (
+  const list = (
+    <div className="flex h-full flex-col">
+      <SecretsToolbar
+        count={query.data ? filtered.length : undefined}
+        total={allSecrets.length}
+        filter={filter}
+        selectedCount={selectedIds.size}
+        importing={importLoading}
+        deleting={bulkLoading}
+        inputRef={importInputRef}
+        onFilter={setFilter}
+        onFile={readImport}
+        onImport={chooseImport}
+        onExport={exportData}
+        onCreate={() => setCreateOpen(true)}
+        onDeleteSelected={() => setBulkOpen(true)}
+        onDeletePrefix={() => setPrefixOpen(true)}
+      />
+      <div className="min-h-0 flex-1 overflow-auto p-3">
+        {query.isLoading ? (
+          <LoadingSkeleton />
+        ) : query.isError ? (
+          <ErrorMessage error={String(query.error)} onRetry={() => query.refetch()} />
+        ) : !allSecrets.length ? (
           <EmptyState
             title="No secrets yet"
-            description="This vault doesn't contain any secrets. Create one to get started."
-            action={{ label: '+ New Secret', onClick: () => setCreateOpen(true) }}
+            description="This vault doesn't contain any secrets."
+            action={{ label: 'New Secret', onClick: () => setCreateOpen(true) }}
           />
-        ) : filteredSecrets.length === 0 ? (
+        ) : !filtered.length ? (
           <EmptyState
             title="No matches"
-            description={`No secrets match '${filterText}'. Try a different search term.`}
-            action={{ label: 'Clear Filter', onClick: () => setLocalFilter('') }}
+            description={`No secrets match '${filter}'.`}
+            action={{ label: 'Clear Filter', onClick: () => setFilter('') }}
           />
         ) : (
           <>
             <ItemTable
-              items={visibleSecrets}
+              items={visible}
               columns={columns}
-              loading={false}
               selectedId={selectedSecret?.id}
-              onSelect={(item) => setSelectedSecret(item)}
-              getItemId={(s) => s.id}
+              onSelect={setSelectedSecret}
+              getItemId={(secret) => secret.id}
               selectable
               selectedIds={selectedIds}
               selectAllState={selectAllState}
               onToggleSelect={(id, checked) =>
-                setSelectedIds((prev) => toggleSelection(prev, id, checked, bulkDeleteLoading))
+                setSelectedIds((current) => toggleSelection(current, id, checked, bulkLoading))
               }
               onToggleSelectAll={(checked) =>
-                setSelectedIds((prev) =>
-                  toggleSelectionAll(prev, visibleIds, checked, bulkDeleteLoading),
+                setSelectedIds((current) =>
+                  toggleSelectionAll(current, visibleIds, checked, bulkLoading),
                 )
               }
             />
-            {filteredSecrets.length > visibleCount && (
-              <div className={classes.loadMoreWrap}>
-                <Button
-                  onClick={() => setVisibleCount((c) => c + 50)}
-                  appearance="secondary"
-                  size="small"
-                >
-                  Load 50 more ({filteredSecrets.length - visibleCount} remaining)
+            {filtered.length > visibleCount && (
+              <div className="flex justify-center p-3">
+                <Button onClick={() => setVisibleCount((count) => count + 50)}>
+                  Load 50 more ({filtered.length - visibleCount} remaining)
                 </Button>
               </div>
             )}
           </>
         )}
       </div>
-
-      {/* Create dialog */}
       <CreateSecretDialog
         open={createOpen}
         vaultUri={selectedVaultUri!}
         onClose={() => setCreateOpen(false)}
-        onCreated={() => secretsQuery.refetch()}
+        onCreated={() => query.refetch()}
       />
-
-      {/* Bulk delete */}
       <DangerConfirmDialog
-        open={showBulkDeleteConfirm}
-        title={`Delete ${selectedSecrets.length} Secret${selectedSecrets.length !== 1 ? 's' : ''}`}
-        description={
-          <>
-            Delete <strong>{selectedSecrets.length}</strong> secret(s) from this vault? Recoverable
-            only if soft-delete is enabled.
-          </>
-        }
+        open={bulkOpen}
+        title={`Delete ${selectedSecrets.length} Secrets`}
+        description="Delete the selected secrets from this vault?"
         confirmText="delete"
-        confirmLabel="Delete All Selected"
-        dangerLevel="warning"
-        loading={bulkDeleteLoading}
-        onConfirm={handleBulkDelete}
+        confirmLabel="Delete Selected"
+        loading={bulkLoading}
+        onConfirm={bulkDelete}
         onCancel={() => {
-          if (!bulkDeleteLoading) setShowBulkDeleteConfirm(false);
+          if (!bulkLoading) setBulkOpen(false);
         }}
       >
-        <details className={classes.bulkDeleteDetails}>
-          <summary className={classes.bulkDeleteSummary}>
-            Selected items ({selectedSecrets.length})
-          </summary>
-          <div className={classes.bulkDeleteList}>
-            {selectedSecrets.map((item) => (
-              <div key={item.id} className={classes.bulkDeleteItem}>
-                <Text size={200} className="azv-mono">
-                  {item.name}
-                </Text>
+        <details className="mt-3 rounded-xl border border-[var(--stroke)] p-2 text-xs">
+          <summary>Selected items ({selectedSecrets.length})</summary>
+          <div className="mono mt-2 max-h-40 overflow-auto">
+            {selectedSecrets.map((secret) => (
+              <div key={secret.id} className="px-1 py-0.5">
+                {secret.name}
               </div>
             ))}
           </div>
         </details>
-        {bulkDeleteLoading && (
-          <div className={classes.bulkDeleteProgress}>
-            <Text size={200}>
-              Deleting {bulkDeleteProgress.completed} / {bulkDeleteProgress.total} (failed:{' '}
-              {bulkDeleteProgress.failed})
-            </Text>
-          </div>
+        {bulkLoading && (
+          <p className="mt-2 text-xs">
+            Deleting {bulkProgress.completed} / {bulkProgress.total} ({bulkProgress.failed} failed)
+          </p>
         )}
-        {bulkDeleteError && <div className={classes.bulkDeleteError}>{bulkDeleteError}</div>}
+        {bulkError && (
+          <p className="mt-2 rounded-lg bg-red-500/10 p-2 text-xs text-[var(--danger)]">
+            {bulkError}
+          </p>
+        )}
       </DangerConfirmDialog>
-
-      {/* Delete by prefix */}
       <DeleteByPrefixDialog
-        open={showPrefixDeleteDialog}
+        open={prefixOpen}
         allSecrets={allSecrets}
         vaultUri={selectedVaultUri!}
         onDelete={(name) => deleteSecret(selectedVaultUri!, name)}
-        onClose={() => setShowPrefixDeleteDialog(false)}
+        onClose={() => setPrefixOpen(false)}
         onCompleted={(deletedIds) => {
-          if (selectedVaultUri && deletedIds.length > 0) {
+          if (selectedVaultUri)
             queryClient.setQueryData<SecretItem[]>(['secrets', selectedVaultUri], (current) =>
               filterOutDeletedSecrets(current, deletedIds),
             );
-          }
-          secretsQuery.refetch();
+          void query.refetch();
         }}
       />
-
-      <Dialog
-        open={showImportConfirm}
-        onOpenChange={(_, data) => {
-          if (!data.open && !importLoading) {
-            setShowImportConfirm(false);
+      <ImportSecretsDialog
+        pending={pendingImport}
+        open={importOpen}
+        loading={importLoading}
+        onCancel={() => {
+          if (!importLoading) {
+            setImportOpen(false);
             setPendingImport(null);
           }
         }}
-      >
-        <DialogSurface>
-          <DialogBody>
-            <DialogTitle>Confirm Secret Import</DialogTitle>
-            <DialogContent>
-              <Text size={200}>
-                Review file contents before importing. This operation creates new secrets or new
-                versions for existing names.
-              </Text>
-
-              {pendingImport && (
-                <>
-                  <div className={classes.importConfirmMeta}>
-                    <Text className={classes.importConfirmLabel}>File</Text>
-                    <Text className={classes.importConfirmValue}>{pendingImport.fileName}</Text>
-                    <Text className={classes.importConfirmLabel}>Size</Text>
-                    <Text className={classes.importConfirmValue}>
-                      {formatFileSize(pendingImport.fileSizeBytes)}
-                    </Text>
-                    <Text className={classes.importConfirmLabel}>Secrets in file</Text>
-                    <Text className={classes.importConfirmValue}>
-                      {pendingImport.requests.length}
-                    </Text>
-                    <Text className={classes.importConfirmLabel}>Will update existing</Text>
-                    <Text className={classes.importConfirmValue}>
-                      {pendingImport.existingSecretNames.length}
-                    </Text>
-                  </div>
-
-                  {pendingImport.duplicateNamesInFile.length > 0 && (
-                    <div className={classes.importConfirmWarning}>
-                      File contains duplicate names: {pendingImport.duplicateNamesInFile.join(', ')}
-                    </div>
-                  )}
-
-                  {pendingImport.existingSecretNames.length > 0 && (
-                    <div className={classes.importConfirmWarning}>
-                      Existing secrets matched (new versions will be created):{' '}
-                      {pendingImport.existingSecretNames.slice(0, 5).join(', ')}
-                      {pendingImport.existingSecretNames.length > 5
-                        ? ` (+${pendingImport.existingSecretNames.length - 5} more)`
-                        : ''}
-                    </div>
-                  )}
-
-                  <div className={classes.importConfirmListWrap}>
-                    <Text size={200}>Secrets to import</Text>
-                    <div className={classes.importConfirmList}>
-                      {pendingImport.requests.slice(0, 30).map((request, index) => (
-                        <div key={`${request.name}-${index}`} className={classes.importConfirmItem}>
-                          <Text size={200} className="azv-mono">
-                            {request.name}
-                          </Text>
-                        </div>
-                      ))}
-                      {pendingImport.requests.length > 30 && (
-                        <Text size={100}>
-                          +{pendingImport.requests.length - 30} more
-                        </Text>
-                      )}
-                    </div>
-                  </div>
-                </>
-              )}
-            </DialogContent>
-            <DialogActions>
-              <Button
-                appearance="secondary"
-                onClick={() => {
-                  setShowImportConfirm(false);
-                  setPendingImport(null);
-                }}
-                disabled={importLoading}
-              >
-                Cancel
-              </Button>
-              <Button appearance="primary" onClick={handleConfirmImport} disabled={importLoading}>
-                {importLoading ? <Spinner size="tiny" /> : 'Import Secrets'}
-              </Button>
-            </DialogActions>
-          </DialogBody>
-        </DialogSurface>
-      </Dialog>
+        onConfirm={confirmImport}
+      />
     </div>
   );
-
-  const detailPane = (
-    <SecretDetails
-      item={selectedSecret}
-      vaultUri={selectedVaultUri!}
-      onClose={() => setSelectedSecret(null)}
-      onRefresh={() => secretsQuery.refetch()}
-    />
-  );
-
   return (
     <SplitPane
-      left={listPane}
-      right={detailPane}
+      left={list}
+      right={
+        <SecretDetails
+          item={selectedSecret}
+          vaultUri={selectedVaultUri!}
+          onClose={() => setSelectedSecret(null)}
+          onRefresh={() => {
+            void query.refetch();
+          }}
+        />
+      }
       rightVisible={detailPanelOpen}
       defaultRatio={splitRatio}
       minLeft={320}

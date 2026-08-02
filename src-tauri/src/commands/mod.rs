@@ -409,8 +409,9 @@ pub async fn purge_secret(
 pub async fn get_audit_log(
     state: State<'_, AppState>,
     limit: Option<usize>,
+    vault_name: Option<String>,
 ) -> Result<Vec<AuditEntry>, String> {
-    Ok(state.audit.get_entries(limit).await)
+    Ok(state.audit.get_entries(limit, vault_name.as_deref()).await)
 }
 
 /// Alias for `get_audit_log` (backwards compatibility).
@@ -418,8 +419,9 @@ pub async fn get_audit_log(
 pub async fn read_audit_log(
     state: State<'_, AppState>,
     limit: Option<usize>,
+    vault_name: Option<String>,
 ) -> Result<Vec<AuditEntry>, String> {
-    get_audit_log(state, limit).await
+    get_audit_log(state, limit, vault_name).await
 }
 
 /// Writes a custom audit log entry (all fields are truncated for safety).
@@ -456,14 +458,23 @@ pub async fn write_audit_log(
 
 /// Returns the full audit log as sanitised JSON (suitable for export/clipboard).
 #[tauri::command]
-pub async fn export_audit_log(state: State<'_, AppState>) -> Result<String, String> {
-    Ok(state.audit.get_sanitized_export().await)
+pub async fn export_audit_log(
+    state: State<'_, AppState>,
+    vault_name: Option<String>,
+) -> Result<String, String> {
+    Ok(state
+        .audit
+        .get_sanitized_export(vault_name.as_deref())
+        .await)
 }
 
 /// Clears all audit log entries from memory and disk.
 #[tauri::command]
-pub async fn clear_audit_log(state: State<'_, AppState>) -> Result<(), String> {
-    state.audit.clear().await;
+pub async fn clear_audit_log(
+    state: State<'_, AppState>,
+    vault_name: Option<String>,
+) -> Result<(), String> {
+    state.audit.clear(vault_name.as_deref()).await;
     Ok(())
 }
 

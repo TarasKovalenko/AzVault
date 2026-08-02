@@ -1,243 +1,117 @@
-import {
-  Badge,
-  Button,
-  Field,
-  makeStyles,
-  mergeClasses,
-  Text,
-  tokens,
-} from '@fluentui/react-components';
-import { Certificate24Regular, Copy24Regular, Dismiss24Regular } from '@fluentui/react-icons';
 import { differenceInDays, format } from 'date-fns';
 import { useState } from 'react';
 import type { CertificateItem } from '../../types';
+import { DetailField } from '../common/DetailField';
+import { EmptyState } from '../common/EmptyState';
+import { Badge } from '../ui/Badge';
+import { Icon } from '../ui/Icon';
 
-const useStyles = makeStyles({
-  root: {
-    height: '100%',
-    overflow: 'auto',
-    padding: '16px 20px',
-  },
-  emptyRoot: {
-    height: '100%',
-  },
-  emptyIcon: {
-    fontSize: '36px',
-    opacity: 0.3,
-  },
-  emptyTitle: {
-    color: tokens.colorNeutralForeground3,
-  },
-  emptySubtitle: {
-    color: tokens.colorNeutralForeground3,
-    maxWidth: '240px',
-    textAlign: 'center',
-    lineHeight: 1.5,
-  },
-  header: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: '12px',
-  },
-  statusBadges: {
-    display: 'flex',
-    gap: '6px',
-    marginBottom: '16px',
-    flexWrap: 'wrap',
-  },
-  statusRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-  },
-  warningBox: {
-    padding: '8px 12px',
-    borderRadius: '4px',
-    background: tokens.colorPaletteYellowBackground1,
-    marginBottom: '12px',
-  },
-  warningText: {
-    color: tokens.colorPaletteYellowForeground1,
-  },
-  metaSection: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-  },
-  thumbprintRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '4px',
-  },
-  thumbprintText: {
-    wordBreak: 'break-all',
-    fontSize: '11px',
-  },
-  copyButton: {
-    flexShrink: 0,
-  },
-  tagsRow: {
-    display: 'flex',
-    gap: '4px',
-    flexWrap: 'wrap',
-    marginTop: '4px',
-  },
-  metaValue: {
-    wordBreak: 'break-all',
-    fontSize: '12px',
-  },
-});
-
-interface CertificateDetailsProps {
+export function CertificateDetails({
+  item,
+  onClose,
+}: {
   item: CertificateItem | null;
   onClose: () => void;
-}
-
-export function CertificateDetails({ item, onClose }: CertificateDetailsProps) {
-  const classes = useStyles();
-  const [copiedThumb, setCopiedThumb] = useState(false);
-
-  if (!item) {
+}) {
+  const [copied, setCopied] = useState(false);
+  if (!item)
     return (
-      <div className={mergeClasses('azv-empty', classes.emptyRoot)}>
-        <Certificate24Regular className={classes.emptyIcon} />
-        <Text size={300} weight="semibold" className={classes.emptyTitle}>
-          No certificate selected
-        </Text>
-        <Text size={200} className={classes.emptySubtitle}>
-          Click a row in the table to view certificate details, thumbprint, and expiration info.
-        </Text>
-      </div>
+      <EmptyState
+        icon={<Icon name="certificate" />}
+        title="No certificate selected"
+        description="Select a row to inspect certificate details and expiration."
+      />
     );
-  }
-
-  const extractVersion = (id: string): string => {
-    const parts = id.split('/');
-    const idx = parts.indexOf('certificates');
-    return idx >= 0 ? parts[idx + 2] || '—' : '—';
-  };
-
-  const daysUntilExpiry = item.expires
-    ? differenceInDays(new Date(item.expires), new Date())
-    : null;
-  const isExpiringSoon = daysUntilExpiry !== null && daysUntilExpiry > 0 && daysUntilExpiry <= 30;
-  const isExpired = daysUntilExpiry !== null && daysUntilExpiry <= 0;
-
-  const handleCopyThumbprint = () => {
+  const parts = item.id.split('/');
+  const index = parts.indexOf('certificates');
+  const version = index >= 0 ? parts[index + 2] || '—' : '—';
+  const days = item.expires ? differenceInDays(new Date(item.expires), new Date()) : null;
+  const expiring = days !== null && days > 0 && days <= 30;
+  const expired = days !== null && days <= 0;
+  const copyThumbprint = () => {
     if (!item.thumbprint) return;
-    navigator.clipboard.writeText(item.thumbprint);
-    setCopiedThumb(true);
-    setTimeout(() => setCopiedThumb(false), 2000);
+    void navigator.clipboard.writeText(item.thumbprint);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2000);
   };
-
   return (
-    <div className={classes.root}>
-      <div className={classes.header}>
-        <Text weight="semibold" size={400} className="azv-mono">
-          {item.name}
-        </Text>
-        <Button appearance="subtle" size="small" icon={<Dismiss24Regular />} onClick={onClose} />
-      </div>
-
-      <div className={classes.statusBadges}>
-        <div className={classes.statusRow}>
+    <div className="h-full overflow-auto p-5">
+      <header className="mb-4 flex items-center justify-between">
+        <h2 className="mono truncate text-[15px] font-semibold">{item.name}</h2>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close details"
+          className="grid size-7 place-items-center rounded-lg text-[var(--text-tertiary)] hover:bg-[var(--surface-hover)]"
+        >
+          <Icon name="close" size={14} />
+        </button>
+      </header>
+      <div className="mb-4 flex flex-wrap items-center gap-1.5">
+        <span className="inline-flex items-center gap-1.5 text-xs">
           <span
-            className="azv-status-dot"
-            style={{ background: item.enabled ? 'var(--azv-success)' : 'var(--azv-scroll-thumb)' }}
+            className={`size-1.5 rounded-full ${item.enabled ? 'bg-[var(--success)]' : 'bg-[var(--text-tertiary)]'}`}
           />
-          <Text size={200}>{item.enabled ? 'Active' : 'Disabled'}</Text>
-        </div>
-        {isExpired && (
-          <Badge appearance="filled" color="danger" size="small">
-            Expired
-          </Badge>
-        )}
-        {isExpiringSoon && (
-          <Badge appearance="filled" color="warning" size="small">
-            Expires in {daysUntilExpiry}d
-          </Badge>
-        )}
+          {item.enabled ? 'Active' : 'Disabled'}
+        </span>
+        {expired && <Badge tone="red">Expired</Badge>}
+        {expiring && <Badge tone="orange">Expires in {days}d</Badge>}
       </div>
-
-      {isExpiringSoon && (
-        <div className={classes.warningBox}>
-          <Text size={200} className={classes.warningText}>
-            This certificate expires in {daysUntilExpiry} days. Consider renewing it.
-          </Text>
+      {expiring && (
+        <div className="mb-3 rounded-xl bg-orange-500/10 p-3 text-xs text-[var(--warning)]">
+          This certificate expires in {days} days. Consider renewing it.
         </div>
       )}
-
-      <div className={classes.metaSection}>
-        <MetaField label="Name" value={item.name} mono />
-        <MetaField label="Version" value={extractVersion(item.id)} mono />
-        <MetaField label="Subject" value={item.subject || '—'} />
-        <Field label="Thumbprint">
-          <div className={classes.thumbprintRow}>
-            <Text size={200} font="monospace" className={classes.thumbprintText}>
+      <dl>
+        <DetailField label="Name" value={item.name} mono />
+        <DetailField label="Version" value={version} mono />
+        <DetailField label="Subject" value={item.subject || '—'} />
+        <DetailField label="Thumbprint">
+          <div className="flex items-center gap-2">
+            <span className="mono min-w-0 flex-1 break-all text-[11px]">
               {item.thumbprint || '—'}
-            </Text>
+            </span>
             {item.thumbprint && (
-              <Button
-                appearance="subtle"
-                size="small"
-                icon={<Copy24Regular />}
-                onClick={handleCopyThumbprint}
-                title={copiedThumb ? 'Copied!' : 'Copy thumbprint'}
-                className={classes.copyButton}
-              />
+              <button
+                type="button"
+                title={copied ? 'Copied' : 'Copy thumbprint'}
+                onClick={copyThumbprint}
+                className="grid size-7 shrink-0 place-items-center rounded-lg hover:bg-[var(--surface-hover)]"
+              >
+                <Icon name={copied ? 'check' : 'copy'} size={14} />
+              </button>
             )}
           </div>
-        </Field>
-        <MetaField
+        </DetailField>
+        <DetailField
           label="Created"
           value={item.created ? format(new Date(item.created), 'PPpp') : '—'}
         />
-        <MetaField
+        <DetailField
           label="Updated"
           value={item.updated ? format(new Date(item.updated), 'PPpp') : '—'}
         />
-        <MetaField
+        <DetailField
           label="Expires"
           value={item.expires ? format(new Date(item.expires), 'PPpp') : 'Never'}
         />
-        <MetaField
+        <DetailField
           label="Not Before"
           value={item.notBefore ? format(new Date(item.notBefore), 'PPpp') : '—'}
         />
-        <MetaField label="ID" value={item.id} mono />
-
-        {item.tags && Object.keys(item.tags).length > 0 && (
-          <Field label="Tags">
-            <div className={classes.tagsRow}>
-              {Object.entries(item.tags).map(([k, v]) => (
-                <Badge
-                  key={k}
-                  appearance="outline"
-                  size="medium"
-                  className="azv-tag-pill"
-                  title={`${k}: ${v}`}
-                >
-                  <span className="azv-tag-text">
-                    {k}: {v}
-                  </span>
+        <DetailField label="ID" value={item.id} mono />
+        {item.tags && Object.keys(item.tags).length ? (
+          <DetailField label="Tags">
+            <div className="flex flex-wrap gap-1">
+              {Object.entries(item.tags).map(([key, value]) => (
+                <Badge key={key}>
+                  {key}: {value}
                 </Badge>
               ))}
             </div>
-          </Field>
-        )}
-      </div>
+          </DetailField>
+        ) : null}
+      </dl>
     </div>
-  );
-}
-
-function MetaField({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
-  const classes = useStyles();
-  return (
-    <Field label={label}>
-      <Text size={200} font={mono ? 'monospace' : undefined} className={classes.metaValue}>
-        {value}
-      </Text>
-    </Field>
   );
 }

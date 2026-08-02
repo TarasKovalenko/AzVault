@@ -1,77 +1,100 @@
-/**
- * AzVault – Global base styles
- *
- * Provides CSS resets, scrollbar theming, and theme-aware CSS custom
- * properties consumed by components and dev-ui.css.
- */
+@import "tailwindcss";
+
+@theme {
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  --font-mono: "SFMono-Regular", "SF Mono", ui-monospace, Menlo, monospace;
+  --color-accent: #0a84ff;
+  --color-success: #30d158;
+  --color-warning: #ff9f0a;
+  --color-danger: #ff453a;
+}
+
+:root {
+  font-family: var(--font-sans);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  --app-bg: #ececf1;
+  --surface: rgba(255, 255, 255, 0.82);
+  --surface-solid: #ffffff;
+  --surface-raised: rgba(255, 255, 255, 0.94);
+  --surface-muted: rgba(118, 118, 128, 0.08);
+  --surface-hover: rgba(118, 118, 128, 0.12);
+  --stroke: rgba(60, 60, 67, 0.16);
+  --stroke-strong: rgba(60, 60, 67, 0.28);
+  --text: #1d1d1f;
+  --text-secondary: rgba(60, 60, 67, 0.72);
+  --text-tertiary: rgba(60, 60, 67, 0.52);
+  --accent: #007aff;
+  --accent-soft: rgba(0, 122, 255, 0.12);
+  --success: #248a3d;
+  --warning: #c93400;
+  --danger: #d70015;
+  --shadow-window: 0 24px 60px rgba(0, 0, 0, 0.18), 0 2px 10px rgba(0, 0, 0, 0.08);
+  --shadow-popover: 0 16px 40px rgba(0, 0, 0, 0.2), 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+body[data-theme="dark"] {
+  color-scheme: dark;
+  --app-bg: #151517;
+  --surface: rgba(37, 37, 40, 0.84);
+  --surface-solid: #242426;
+  --surface-raised: rgba(48, 48, 51, 0.96);
+  --surface-muted: rgba(235, 235, 245, 0.08);
+  --surface-hover: rgba(235, 235, 245, 0.12);
+  --stroke: rgba(235, 235, 245, 0.14);
+  --stroke-strong: rgba(235, 235, 245, 0.24);
+  --text: #f5f5f7;
+  --text-secondary: rgba(235, 235, 245, 0.72);
+  --text-tertiary: rgba(235, 235, 245, 0.48);
+  --accent: #0a84ff;
+  --accent-soft: rgba(10, 132, 255, 0.18);
+  --success: #30d158;
+  --warning: #ff9f0a;
+  --danger: #ff453a;
+  --shadow-window: 0 24px 70px rgba(0, 0, 0, 0.48), 0 2px 12px rgba(0, 0, 0, 0.3);
+  --shadow-popover: 0 18px 46px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.3);
+}
 
 * {
-  margin: 0;
-  padding: 0;
   box-sizing: border-box;
 }
 
 html,
 body,
 #root {
-  height: 100%;
   width: 100%;
+  height: 100%;
+  margin: 0;
   overflow: hidden;
 }
 
-/* ── Light theme tokens ── */
-body,
-body[data-theme="light"] {
-  --azv-scroll-thumb: #b0b8c8;
-  --azv-scroll-thumb-hover: #8892a6;
-  --azv-row-hover: rgba(0, 120, 212, 0.07);
-  --azv-accent: #0078d4;
-  --azv-accent-dim: rgba(0, 120, 212, 0.12);
-  --azv-terminal-bg: rgba(30, 30, 30, 0.96);
-  --azv-terminal-fg: #d4d4d4;
-  --azv-terminal-green: #4ec9b0;
-  --azv-terminal-cyan: #9cdcfe;
-  --azv-terminal-yellow: #dcdcaa;
-  --azv-border-subtle: rgba(0, 0, 0, 0.08);
-  --azv-danger: #d13438;
-  --azv-warning: #e8a317;
-  --azv-success: #107c10;
-  --azv-focus-ring: #0078d4;
-  --azv-skeleton-base: rgba(0, 0, 0, 0.06);
-  --azv-skeleton-shimmer: rgba(0, 0, 0, 0.1);
-  --azv-palette-overlay: rgba(255, 255, 255, 0.92);
-  --azv-split-handle: rgba(0, 0, 0, 0.12);
-  --azv-split-handle-hover: rgba(0, 120, 212, 0.4);
+body {
+  background: var(--app-bg);
+  color: var(--text);
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* ── Dark theme tokens ── */
-body[data-theme="dark"] {
-  --azv-scroll-thumb: #4a5568;
-  --azv-scroll-thumb-hover: #606d80;
-  --azv-row-hover: rgba(100, 160, 255, 0.1);
-  --azv-accent: #4fc3f7;
-  --azv-accent-dim: rgba(79, 195, 247, 0.14);
-  --azv-terminal-bg: rgba(18, 18, 22, 0.98);
-  --azv-terminal-fg: #cccccc;
-  --azv-terminal-green: #4ec9b0;
-  --azv-terminal-cyan: #9cdcfe;
-  --azv-terminal-yellow: #dcdcaa;
-  --azv-border-subtle: rgba(255, 255, 255, 0.06);
-  --azv-danger: #f48771;
-  --azv-warning: #e8a317;
-  --azv-success: #73c991;
-  --azv-focus-ring: #4fc3f7;
-  --azv-skeleton-base: rgba(255, 255, 255, 0.06);
-  --azv-skeleton-shimmer: rgba(255, 255, 255, 0.1);
-  --azv-palette-overlay: rgba(30, 30, 30, 0.95);
-  --azv-split-handle: rgba(255, 255, 255, 0.1);
-  --azv-split-handle-hover: rgba(79, 195, 247, 0.4);
+button,
+input,
+select,
+textarea {
+  font: inherit;
 }
 
-/* ── Scrollbar ── */
+button:not(:disabled),
+select:not(:disabled),
+input[type="checkbox"]:not(:disabled) {
+  cursor: default;
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
 ::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
@@ -79,149 +102,64 @@ body[data-theme="dark"] {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--azv-scroll-thumb);
-  border-radius: 4px;
+  min-height: 32px;
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-tertiary) 58%, transparent);
+  background-clip: padding-box;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: var(--azv-scroll-thumb-hover);
-}
-
-/* ── Prevent text selection on UI chrome ── */
-.fui-TreeItemLayout,
-.fui-TabList {
-  user-select: none;
-}
-
-/* ── Table row hover ── */
-.fui-TableRow:hover {
-  background: var(--azv-row-hover);
-}
-
-/* ── Focus ring for accessibility ── */
 *:focus-visible {
-  outline: 2px solid var(--azv-focus-ring);
+  outline: 3px solid color-mix(in srgb, var(--accent) 38%, transparent);
   outline-offset: 1px;
-  border-radius: 2px;
 }
 
-/* ── Split pane resize handle ── */
-.azv-split-handle {
-  width: 4px;
-  cursor: col-resize;
-  background: var(--azv-split-handle);
-  transition: background 0.15s ease;
-  flex-shrink: 0;
-  position: relative;
+.mac-vibrancy {
+  background: var(--surface);
+  backdrop-filter: saturate(160%) blur(28px);
+  -webkit-backdrop-filter: saturate(160%) blur(28px);
 }
 
-.azv-split-handle:hover,
-.azv-split-handle.dragging {
-  background: var(--azv-split-handle-hover);
+.mac-panel {
+  border: 1px solid var(--stroke);
+  background: var(--surface-solid);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
-.azv-split-handle::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: -4px;
-  right: -4px;
+.mono {
+  font-family: var(--font-mono);
 }
 
-/* ── Command palette overlay ── */
-.azv-palette-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.3);
-  z-index: 1000;
-  display: flex;
-  justify-content: center;
-  padding-top: 15vh;
+.drag-region {
+  -webkit-app-region: drag;
 }
 
-.azv-palette-container {
-  width: 560px;
-  max-width: 90vw;
-  max-height: 420px;
-  background: var(--azv-palette-overlay);
-  border: 1px solid var(--azv-border-subtle);
-  border-radius: 8px;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.22);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  backdrop-filter: blur(12px);
+.no-drag {
+  -webkit-app-region: no-drag;
 }
 
-.azv-palette-input {
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--azv-border-subtle);
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
-.azv-palette-results {
-  flex: 1;
-  overflow-y: auto;
-  padding: 4px 0;
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
-.azv-palette-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 16px;
-  cursor: pointer;
-  border: none;
-  background: transparent;
-  width: 100%;
-  text-align: left;
-  font-size: 13px;
-  color: var(--azv-accent);
-  transition: background 0.1s ease;
-}
-
-.azv-palette-item:hover,
-.azv-palette-item.active {
-  background: var(--azv-row-hover);
-}
-
-.azv-palette-item .shortcut {
-  margin-left: auto;
-  opacity: 0.5;
-  font-size: 11px;
-}
-
-/* ── Skeleton loading ── */
-@keyframes azv-skeleton-shimmer {
+@keyframes shimmer {
   0% {
-    background-position: -200px 0;
+    background-position: -240px 0;
   }
   100% {
-    background-position: 200px 0;
+    background-position: 240px 0;
   }
-}
-
-.azv-skeleton {
-  background: var(--azv-skeleton-base);
-  background-image: linear-gradient(
-    90deg,
-    var(--azv-skeleton-base) 0%,
-    var(--azv-skeleton-shimmer) 50%,
-    var(--azv-skeleton-base) 100%
-  );
-  background-size: 400px 100%;
-  animation: azv-skeleton-shimmer 1.5s ease-in-out infinite;
-  border-radius: 3px;
-}
-
-.azv-skeleton-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 9px 12px;
-}
-
-.azv-skeleton-cell {
-  height: 14px;
-  border-radius: 3px;
 }
