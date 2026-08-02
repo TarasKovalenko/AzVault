@@ -1,41 +1,13 @@
-import { Input, makeStyles, Text, tokens } from '@fluentui/react-components';
-import { Search24Regular } from '@fluentui/react-icons';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../../stores/appStore';
 import type { PaletteCommand } from '../../types';
+import { cn } from '../ui/cn';
+import { Icon } from '../ui/Icon';
 import { fuzzyFilter } from './fuzzyMatch';
 
-const useStyles = makeStyles({
-  searchIcon: {
-    fontSize: '16px',
-  },
-  input: {
-    width: '100%',
-    fontFamily: "'IBM Plex Mono', monospace",
-    fontSize: '13px',
-  },
-  noResults: {
-    padding: '16px',
-    textAlign: 'center',
-  },
-  noResultsText: {
-    color: tokens.colorNeutralForeground3,
-  },
-  itemIcon: {
-    opacity: 0.6,
-    fontSize: '16px',
-    display: 'flex',
-  },
-  categoryText: {
-    color: tokens.colorNeutralForeground3,
-    marginLeft: '8px',
-    textTransform: 'capitalize',
-  },
-});
-
 export function CommandPalette() {
-  const classes = useStyles();
-  const { commandPaletteOpen, setCommandPaletteOpen } = useAppStore();
+  const commandPaletteOpen = useAppStore((state) => state.commandPaletteOpen);
+  const setCommandPaletteOpen = useAppStore((state) => state.setCommandPaletteOpen);
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -54,10 +26,6 @@ export function CommandPalette() {
       requestAnimationFrame(() => inputRef.current?.focus());
     }
   }, [commandPaletteOpen]);
-
-  useEffect(() => {
-    setActiveIndex(0);
-  }, []);
 
   const execute = useCallback(
     (cmd: PaletteCommand) => {
@@ -95,7 +63,7 @@ export function CommandPalette() {
 
   return (
     <div
-      className="azv-palette-backdrop"
+      className="fixed inset-0 z-[1000] flex justify-center bg-black/25 px-6 pt-[14vh] backdrop-blur-[2px]"
       onClick={(e) => {
         if (e.target === e.currentTarget) setCommandPaletteOpen(false);
       }}
@@ -103,45 +71,54 @@ export function CommandPalette() {
         if (e.key === 'Escape') setCommandPaletteOpen(false);
       }}
     >
-      <div className="azv-palette-container" role="dialog" aria-label="Command palette">
-        <div className="azv-palette-input">
-          <Input
+      <div
+        className="mac-vibrancy flex h-fit max-h-[440px] w-[580px] max-w-full flex-col overflow-hidden rounded-2xl border border-[var(--stroke)] shadow-[var(--shadow-window)]"
+        role="dialog"
+        aria-label="Command palette"
+      >
+        <div className="flex items-center gap-2.5 border-b border-[var(--stroke)] px-4 py-3">
+          <Icon name="search" className="text-[var(--text-tertiary)]" />
+          <input
             ref={inputRef}
             value={query}
-            onChange={(_, d) => setQuery(d.value)}
+            onChange={(event) => setQuery(event.target.value)}
             onKeyDown={onKeyDown}
             placeholder="Search or run a command..."
-            contentBefore={<Search24Regular className={classes.searchIcon} />}
-            className={classes.input}
+            className="mono h-8 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--text-tertiary)]"
             autoComplete="off"
           />
         </div>
 
-        <div className="azv-palette-results" ref={resultsRef}>
+        <div className="overflow-y-auto p-1.5" ref={resultsRef}>
           {filtered.length === 0 ? (
-            <div className={classes.noResults}>
-              <Text size={200} className={classes.noResultsText}>
-                No matching commands
-              </Text>
+            <div className="p-5 text-center text-xs text-[var(--text-tertiary)]">
+              No matching commands
             </div>
           ) : (
             filtered.map((result, i) => (
               <button
                 type="button"
                 key={result.item.id}
-                className={`azv-palette-item ${i === activeIndex ? 'active' : ''}`}
+                className={cn(
+                  'flex min-h-10 w-full items-center gap-2.5 rounded-[10px] px-3 text-left text-[13px]',
+                  i === activeIndex
+                    ? 'bg-[var(--accent)] text-white'
+                    : 'hover:bg-[var(--surface-hover)]',
+                )}
                 onClick={() => execute(result.item)}
                 onMouseEnter={() => setActiveIndex(i)}
               >
-                {result.item.icon && <span className={classes.itemIcon}>{result.item.icon}</span>}
-                <span>
-                  <Text size={200}>{result.item.label}</Text>
-                  <Text size={100} className={classes.categoryText}>
+                {result.item.icon && <span className="opacity-65">{result.item.icon}</span>}
+                <span className="min-w-0 flex-1">
+                  <span>{result.item.label}</span>
+                  <span className="ml-2 text-[10px] capitalize opacity-55">
                     {result.item.category}
-                  </Text>
+                  </span>
                 </span>
                 {result.item.shortcut && (
-                  <span className="shortcut azv-mono">{result.item.shortcut}</span>
+                  <kbd className="mono ml-auto rounded border border-current/15 px-1.5 py-0.5 text-[10px] opacity-60">
+                    {result.item.shortcut}
+                  </kbd>
                 )}
               </button>
             ))
@@ -198,13 +175,6 @@ function useCommands(): PaletteCommand[] {
         shortcut: `${mod}5`,
         execute: () => store.setActiveTab('logs'),
         when: () => !!store.selectedVaultName,
-      },
-      {
-        id: 'toggle-sidebar',
-        label: 'Toggle Sidebar',
-        category: 'action',
-        shortcut: `${mod}B`,
-        execute: () => store.toggleSidebar(),
       },
       {
         id: 'toggle-detail',
@@ -283,38 +253,6 @@ function useCommands(): PaletteCommand[] {
           if (store.selectedVaultUri) navigator.clipboard.writeText(store.selectedVaultUri);
         },
         when: () => !!store.selectedVaultUri,
-      },
-      {
-        id: 'pin-vault',
-        label: 'Pin Current Vault',
-        category: 'vault',
-        execute: () => {
-          if (
-            store.selectedVaultName &&
-            store.selectedVaultUri &&
-            store.selectedTenantId &&
-            store.selectedSubscriptionId
-          ) {
-            store.pinVault({
-              name: store.selectedVaultName,
-              uri: store.selectedVaultUri,
-              tenantId: store.selectedTenantId,
-              subscriptionId: store.selectedSubscriptionId,
-            });
-          }
-        },
-        when: () =>
-          !!store.selectedVaultName &&
-          !store.pinnedVaults.some((v) => v.uri === store.selectedVaultUri),
-      },
-      {
-        id: 'unpin-vault',
-        label: 'Unpin Current Vault',
-        category: 'vault',
-        execute: () => {
-          if (store.selectedVaultUri) store.unpinVault(store.selectedVaultUri);
-        },
-        when: () => store.pinnedVaults.some((v) => v.uri === store.selectedVaultUri),
       },
       {
         id: 'clear-recent',

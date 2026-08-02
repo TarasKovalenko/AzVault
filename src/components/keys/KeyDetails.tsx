@@ -1,214 +1,92 @@
-import {
-  Badge,
-  Button,
-  Divider,
-  Field,
-  makeStyles,
-  Text,
-  tokens,
-} from '@fluentui/react-components';
-import { Dismiss24Regular, LockClosed24Regular } from '@fluentui/react-icons';
 import { format } from 'date-fns';
 import type { KeyItem } from '../../types';
+import { DetailField } from '../common/DetailField';
+import { EmptyState } from '../common/EmptyState';
+import { Badge } from '../ui/Badge';
+import { Icon } from '../ui/Icon';
 
-const useStyles = makeStyles({
-  emptyRoot: {
-    height: '100%',
-  },
-  emptyIcon: {
-    fontSize: '36px',
-    opacity: 0.3,
-  },
-  emptyTitle: {
-    color: tokens.colorNeutralForeground3,
-  },
-  emptyDescription: {
-    color: tokens.colorNeutralForeground3,
-    maxWidth: '240px',
-    textAlign: 'center',
-    lineHeight: 1.5,
-  },
-  contentRoot: {
-    height: '100%',
-    overflow: 'auto',
-    padding: '16px 20px',
-  },
-  header: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: '12px',
-  },
-  badgesRow: {
-    display: 'flex',
-    gap: '6px',
-    marginBottom: '16px',
-    flexWrap: 'wrap',
-  },
-  statusRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-  },
-  fieldsContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-  },
-  badgesWrap: {
-    display: 'flex',
-    gap: '4px',
-    flexWrap: 'wrap',
-    marginTop: '4px',
-  },
-  divider: {
-    margin: '16px 0',
-  },
-  infoBox: {
-    padding: '12px 14px',
-    borderRadius: '6px',
-    border: `1px solid ${tokens.colorNeutralStroke2}`,
-    background: tokens.colorNeutralBackground3,
-  },
-  infoText: {
-    color: tokens.colorNeutralForeground3,
-  },
-  metaFieldValue: {
-    wordBreak: 'break-all',
-    fontSize: '12px',
-  },
-});
-
-interface KeyDetailsProps {
-  item: KeyItem | null;
-  onClose: () => void;
-}
-
-export function KeyDetails({ item, onClose }: KeyDetailsProps) {
-  const classes = useStyles();
-
-  if (!item) {
+export function KeyDetails({ item, onClose }: { item: KeyItem | null; onClose: () => void }) {
+  if (!item)
     return (
-      <div className={`azv-empty ${classes.emptyRoot}`}>
-        <LockClosed24Regular className={classes.emptyIcon} />
-        <Text size={300} weight="semibold" className={classes.emptyTitle}>
-          No key selected
-        </Text>
-        <Text size={200} className={classes.emptyDescription}>
-          Click a row in the table to view key properties, allowed operations, and expiration info.
-        </Text>
-      </div>
+      <EmptyState
+        icon={<Icon name="key" />}
+        title="No key selected"
+        description="Select a row to inspect key properties and allowed operations."
+      />
     );
-  }
-
-  const extractVersion = (id: string): string => {
-    const parts = id.split('/');
-    const idx = parts.indexOf('keys');
-    return idx >= 0 ? parts[idx + 2] || '—' : '—';
-  };
-
+  const parts = item.id.split('/');
+  const index = parts.indexOf('keys');
+  const version = index >= 0 ? parts[index + 2] || '—' : '—';
   return (
-    <div className={classes.contentRoot}>
-      <div className={classes.header}>
-        <Text weight="semibold" size={400} className="azv-mono">
-          {item.name}
-        </Text>
-        <Button appearance="subtle" size="small" icon={<Dismiss24Regular />} onClick={onClose} />
-      </div>
-
-      <div className={classes.badgesRow}>
-        <div className={classes.statusRow}>
+    <div className="h-full overflow-auto p-5">
+      <header className="mb-4 flex items-center justify-between">
+        <h2 className="mono truncate text-[15px] font-semibold">{item.name}</h2>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close details"
+          className="grid size-7 place-items-center rounded-lg text-[var(--text-tertiary)] hover:bg-[var(--surface-hover)]"
+        >
+          <Icon name="close" size={14} />
+        </button>
+      </header>
+      <div className="mb-4 flex flex-wrap items-center gap-1.5">
+        <span className="inline-flex items-center gap-1.5 text-xs">
           <span
-            className="azv-status-dot"
-            style={{ background: item.enabled ? 'var(--azv-success)' : 'var(--azv-scroll-thumb)' }}
+            className={`size-1.5 rounded-full ${item.enabled ? 'bg-[var(--success)]' : 'bg-[var(--text-tertiary)]'}`}
           />
-          <Text size={200}>{item.enabled ? 'Active' : 'Disabled'}</Text>
-        </div>
-        {item.managed && (
-          <Badge appearance="outline" color="informative" size="small">
-            Managed
-          </Badge>
-        )}
-        {item.keyType && (
-          <Badge appearance="outline" size="small">
-            {item.keyType}
-          </Badge>
-        )}
+          {item.enabled ? 'Active' : 'Disabled'}
+        </span>
+        {item.managed && <Badge tone="blue">Managed</Badge>}
+        {item.keyType && <Badge>{item.keyType}</Badge>}
       </div>
-
-      <div className={classes.fieldsContainer}>
-        <MetaField label="Name" value={item.name} mono />
-        <MetaField label="Version" value={extractVersion(item.id)} mono />
-        <MetaField label="Key Type" value={item.keyType || '—'} />
-        <MetaField
+      <dl>
+        <DetailField label="Name" value={item.name} mono />
+        <DetailField label="Version" value={version} mono />
+        <DetailField label="Key Type" value={item.keyType || '—'} />
+        <DetailField
           label="Created"
           value={item.created ? format(new Date(item.created), 'PPpp') : '—'}
         />
-        <MetaField
+        <DetailField
           label="Updated"
           value={item.updated ? format(new Date(item.updated), 'PPpp') : '—'}
         />
-        <MetaField
+        <DetailField
           label="Expires"
           value={item.expires ? format(new Date(item.expires), 'PPpp') : 'Never'}
         />
-        <MetaField
+        <DetailField
           label="Not Before"
           value={item.notBefore ? format(new Date(item.notBefore), 'PPpp') : '—'}
         />
-        <MetaField label="ID" value={item.id} mono />
-
-        {item.keyOps && item.keyOps.length > 0 && (
-          <Field label="Operations">
-            <div className={classes.badgesWrap}>
-              {item.keyOps.map((op) => (
-                <Badge key={op} size="small" appearance="outline" color="informative">
-                  {op}
+        <DetailField label="ID" value={item.id} mono />
+        {item.keyOps?.length ? (
+          <DetailField label="Operations">
+            <div className="flex flex-wrap gap-1">
+              {item.keyOps.map((operation) => (
+                <Badge key={operation} tone="blue">
+                  {operation}
                 </Badge>
               ))}
             </div>
-          </Field>
-        )}
-
-        {item.tags && Object.keys(item.tags).length > 0 && (
-          <Field label="Tags">
-            <div className={classes.badgesWrap}>
-              {Object.entries(item.tags).map(([k, v]) => (
-                <Badge
-                  key={k}
-                  appearance="outline"
-                  size="medium"
-                  className="azv-tag-pill"
-                  title={`${k}: ${v}`}
-                >
-                  <span className="azv-tag-text">
-                    {k}: {v}
-                  </span>
+          </DetailField>
+        ) : null}
+        {item.tags && Object.keys(item.tags).length ? (
+          <DetailField label="Tags">
+            <div className="flex flex-wrap gap-1">
+              {Object.entries(item.tags).map(([key, value]) => (
+                <Badge key={key} title={`${key}: ${value}`}>
+                  {key}: {value}
                 </Badge>
               ))}
             </div>
-          </Field>
-        )}
-      </div>
-
-      <Divider className={classes.divider} />
-
-      <div className={classes.infoBox}>
-        <Text size={200} className={classes.infoText}>
-          Key private material cannot be exported through the data plane API.
-        </Text>
+          </DetailField>
+        ) : null}
+      </dl>
+      <div className="mt-5 rounded-xl bg-[var(--surface-muted)] p-3 text-xs leading-5 text-[var(--text-secondary)]">
+        Key private material cannot be exported through the data plane API.
       </div>
     </div>
-  );
-}
-
-function MetaField({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
-  const classes = useStyles();
-  return (
-    <Field label={label}>
-      <Text size={200} font={mono ? 'monospace' : undefined} className={classes.metaFieldValue}>
-        {value}
-      </Text>
-    </Field>
   );
 }

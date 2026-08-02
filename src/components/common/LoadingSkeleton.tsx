@@ -1,35 +1,25 @@
-import { makeStyles } from '@fluentui/react-components';
-
 interface LoadingSkeletonProps {
   rows?: number;
   columns?: number[];
 }
 
-const useStyles = makeStyles({
-  root: {
-    padding: '8px 0',
-  },
-});
-
 export function LoadingSkeleton({
   rows = 8,
   columns = [30, 10, 15, 20, 15, 10],
 }: LoadingSkeletonProps) {
-  const classes = useStyles();
-
   return (
-    <div className={classes.root}>
-      {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className="azv-skeleton-row">
-          {columns.map((width, j) => (
+    <output className="block py-2" aria-label="Loading">
+      {Array.from({ length: rows }).map((_, row) => (
+        <div key={row} className="flex items-center gap-3 px-3 py-2.5">
+          {columns.map((width, column) => (
             <div
-              key={j}
-              className="azv-skeleton azv-skeleton-cell"
-              style={{ width: `${width}%`, opacity: 1 - i * 0.08 }}
+              key={column}
+              className="h-3.5 rounded bg-[linear-gradient(90deg,var(--surface-muted)_0%,var(--surface-hover)_50%,var(--surface-muted)_100%)] bg-[length:480px_100%] animate-[shimmer_1.5s_ease-in-out_infinite]"
+              style={{ width: `${width}%`, opacity: Math.max(0.3, 1 - row * 0.08) }}
             />
           ))}
         </div>
       ))}
-    </div>
+    </output>
   );
 }

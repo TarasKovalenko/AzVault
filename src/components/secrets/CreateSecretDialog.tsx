@@ -1,107 +1,33 @@
-/**
- * CreateSecretDialog.tsx – Modal form for creating a new secret.
- *
- * Validates:
- * - Name: required, alphanumeric + dashes only (Azure KV constraint)
- * - Value: required, non-empty
- *
- * Supports optional content type, expiration, and tags.
- * Creating with an existing name creates a new version (Azure KV behaviour).
- */
-
-import {
-  Button,
-  Combobox,
-  Dialog,
-  DialogActions,
-  DialogBody,
-  DialogContent,
-  DialogSurface,
-  DialogTitle,
-  Field,
-  Input,
-  makeStyles,
-  Option,
-  Spinner,
-  Switch,
-  Text,
-  Textarea,
-  tokens,
-} from '@fluentui/react-components';
 import { useEffect, useState } from 'react';
 import { setSecret } from '../../services/tauri';
 import type { CreateSecretRequest } from '../../types';
+import { Button } from '../ui/Button';
+import { Field, Input, Switch, Textarea } from '../ui/Field';
+import { Modal } from '../ui/Modal';
 
-const useStyles = makeStyles({
-  formContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '14px',
-    paddingTop: '8px',
-  },
-  monoInput: {
-    fontFamily: "'IBM Plex Mono', monospace",
-    fontSize: '12px',
-  },
-  expirationColumn: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-  },
-  switchRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-  },
-  errorBox: {
-    padding: '8px',
-    background: tokens.colorPaletteRedBackground1,
-    borderRadius: '4px',
-  },
-  errorText: {
-    color: tokens.colorPaletteRedForeground1,
-  },
-  hintText: {
-    color: tokens.colorNeutralForeground3,
-  },
-});
-
-const CONTENT_TYPE_OPTIONS = [
+const CONTENT_TYPES = [
   'text/plain',
   'application/json',
   'application/octet-stream',
   'application/x-pem-file',
   'application/x-pkcs12',
   'text/csv',
-] as const;
+];
 
-interface CreateSecretDialogProps {
-  open: boolean;
-  vaultUri: string;
-  onClose: () => void;
-  onCreated: () => void;
-  mode?: 'create' | 'edit';
-  initialName?: string;
-  initialValue?: string;
-  initialContentType?: string | null;
-  initialEnabled?: boolean | null;
-  initialExpires?: string | null;
-  initialTags?: Record<string, string> | null;
-}
-
-function toDatetimeLocal(iso: string | null | undefined): string {
+function toLocalDate(iso?: string | null) {
   if (!iso) return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-function tagsToInput(tags: Record<string, string> | null | undefined): string {
-  if (!tags) return '';
-  return Object.entries(tags)
-    .map(([k, v]) => `${k}=${v}`)
-    .join(', ');
+function serializeTags(tags?: Record<string, string> | null) {
+  return tags
+    ? Object.entries(tags)
+        .map(([key, value]) => `${key}=${value}`)
+        .join(', ')
+    : '';
 }
 
 export function CreateSecretDialog({
@@ -116,29 +42,39 @@ export function CreateSecretDialog({
   initialEnabled,
   initialExpires,
   initialTags,
-}: CreateSecretDialogProps) {
+}: {
+  open: boolean;
+  vaultUri: string;
+  onClose: () => void;
+  onCreated: () => void;
+  mode?: 'create' | 'edit';
+  initialName?: string;
+  initialValue?: string;
+  initialContentType?: string | null;
+  initialEnabled?: boolean | null;
+  initialExpires?: string | null;
+  initialTags?: Record<string, string> | null;
+}) {
   const [name, setName] = useState('');
   const [value, setValue] = useState('');
   const [contentType, setContentType] = useState('');
   const [enabled, setEnabled] = useState(true);
   const [hasExpiration, setHasExpiration] = useState(false);
   const [expires, setExpires] = useState('');
-  const [tagsInput, setTagsInput] = useState('');
+  const [tags, setTags] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const isEdit = mode === 'edit';
-  const classes = useStyles();
-
+  const editing = mode === 'edit';
   useEffect(() => {
     if (!open) return;
-    const initialExpiresLocal = toDatetimeLocal(initialExpires);
+    const date = toLocalDate(initialExpires);
     setName(initialName ?? '');
     setValue(initialValue ?? '');
     setContentType(initialContentType ?? '');
     setEnabled(initialEnabled ?? true);
-    setHasExpiration(Boolean(initialExpiresLocal));
-    setExpires(initialExpiresLocal);
-    setTagsInput(tagsToInput(initialTags));
+    setHasExpiration(Boolean(date));
+    setExpires(date);
+    setTags(serializeTags(initialTags));
     setError(null);
   }, [
     open,
@@ -149,50 +85,26 @@ export function CreateSecretDialog({
     initialExpires,
     initialTags,
   ]);
-
-  /** Reset all form fields to defaults. */
-  const reset = () => {
-    setName('');
-    setValue('');
-    setContentType('');
-    setEnabled(true);
-    setHasExpiration(false);
-    setExpires('');
-    setTagsInput('');
-    setError(null);
+  const close = () => {
+    if (!loading) onClose();
   };
-
-  /** Validate input and submit the create request. */
-  const handleCreate = async () => {
-    if (!name.trim()) {
-      setError('Name is required.');
-      return;
-    }
-    if (!value.trim()) {
-      setError(isEdit ? 'Value is required when updating a secret.' : 'Value is required.');
-      return;
-    }
-
-    // Azure Key Vault secret names: alphanumeric and dashes only
-    if (!/^[a-zA-Z0-9-]+$/.test(name)) {
-      setError('Name may only contain letters, numbers, and dashes.');
-      return;
-    }
-
+  const submit = async () => {
+    if (!name.trim()) return setError('Name is required.');
+    if (!value.trim())
+      return setError(editing ? 'Value is required when updating a secret.' : 'Value is required.');
+    if (!/^[a-zA-Z0-9-]+$/.test(name))
+      return setError('Name may only contain letters, numbers, and dashes.');
     setLoading(true);
     setError(null);
-
     try {
-      // Parse comma-separated key=value pairs into a tag map
-      let tags: Record<string, string> | null = null;
-      if (tagsInput.trim()) {
-        tags = {};
-        for (const pair of tagsInput.split(',')) {
-          const [k, v] = pair.split('=').map((s) => s.trim());
-          if (k && v) tags[k] = v;
+      let parsedTags: Record<string, string> | null = null;
+      if (tags.trim()) {
+        parsedTags = {};
+        for (const pair of tags.split(',')) {
+          const [key, tagValue] = pair.split('=').map((part) => part.trim());
+          if (key && tagValue) parsedTags[key] = tagValue;
         }
       }
-
       const request: CreateSecretRequest = {
         name: name.trim(),
         value,
@@ -200,140 +112,113 @@ export function CreateSecretDialog({
         enabled,
         expires: hasExpiration && expires ? new Date(expires).toISOString() : null,
         notBefore: null,
-        tags,
+        tags: parsedTags,
       };
-
       await setSecret(vaultUri, request);
-      reset();
       onCreated();
       onClose();
-    } catch (e) {
-      setError(String(e));
+    } catch (caught) {
+      setError(String(caught));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Dialog
+    <Modal
       open={open}
-      onOpenChange={(_, d) => {
-        if (!d.open) {
-          reset();
-          onClose();
-        }
-      }}
+      onClose={close}
+      closeDisabled={loading}
+      title={editing ? 'Edit Secret' : 'Create Secret'}
+      description={
+        editing
+          ? 'Saving creates a new version of this secret.'
+          : 'Create a secret or a new version of an existing name.'
+      }
+      footer={
+        <>
+          <Button onClick={close} disabled={loading}>
+            Cancel
+          </Button>
+          <Button variant="primary" loading={loading} onClick={submit}>
+            {editing ? 'Save' : 'Create'}
+          </Button>
+        </>
+      }
     >
-      <DialogSurface>
-        <DialogBody>
-          <DialogTitle>{isEdit ? 'Edit Secret' : 'Create Secret'}</DialogTitle>
-          <DialogContent>
-            <div className={classes.formContainer}>
-              <Field label="Name" required hint="Alphanumeric and dashes only">
-                <Input
-                  value={name}
-                  onChange={(_, d) => setName(d.value)}
-                  placeholder="my-secret-name"
-                  disabled={isEdit}
-                  className={classes.monoInput}
-                />
-              </Field>
-
-              <Field label="Value" required>
-                <Textarea
-                  value={value}
-                  onChange={(_, d) => setValue(d.value)}
-                  placeholder="Secret value…"
-                  rows={3}
-                  className={classes.monoInput}
-                />
-              </Field>
-
-              <Field label="Content Type" hint="e.g., text/plain, application/json">
-                <Combobox
-                  freeform
-                  value={contentType}
-                  selectedOptions={contentType ? [contentType] : []}
-                  onOptionSelect={(_, data) =>
-                    setContentType(String(data.optionValue ?? data.optionText ?? ''))
-                  }
-                  onChange={(event) => setContentType(event.target.value)}
-                  placeholder="Select or type content type"
-                >
-                  {CONTENT_TYPE_OPTIONS.map((option) => (
-                    <Option key={option} value={option}>
-                      {option}
-                    </Option>
-                  ))}
-                </Combobox>
-              </Field>
-
-              <Field label="Expiration (Optional)">
-                <div className={classes.expirationColumn}>
-                  <div className={classes.switchRow}>
-                    <Switch
-                      checked={hasExpiration}
-                      onChange={(_, d) => {
-                        setHasExpiration(d.checked);
-                        if (!d.checked) setExpires('');
-                      }}
-                    />
-                    <Text size={200}>Set expiration</Text>
-                  </div>
-                  <Input
-                    type="datetime-local"
-                    value={expires}
-                    onChange={(_, d) => setExpires(d.value)}
-                    disabled={!hasExpiration}
-                  />
-                </div>
-              </Field>
-
-              <Field label="Tags" hint="Comma-separated key=value pairs">
-                <Input
-                  value={tagsInput}
-                  onChange={(_, d) => setTagsInput(d.value)}
-                  placeholder="env=prod, team=backend"
-                  className={classes.monoInput}
-                />
-              </Field>
-
-              <div className={classes.switchRow}>
-                <Switch checked={enabled} onChange={(_, d) => setEnabled(d.checked)} />
-                <Text size={200}>Enabled</Text>
-              </div>
-
-              {error && (
-                <div className={classes.errorBox}>
-                  <Text size={200} className={classes.errorText}>
-                    {error}
-                  </Text>
-                </div>
-              )}
-
-              <Text size={100} className={classes.hintText}>
-                {isEdit
-                  ? 'Saving creates a new version of this secret.'
-                  : 'Creating with an existing name produces a new version.'}
-              </Text>
+      <div className="grid gap-4">
+        <Field
+          label="Name"
+          hint="Alphanumeric characters and dashes only"
+          error={error?.startsWith('Name') ? error : undefined}
+        >
+          <Input
+            className="mono"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="my-secret-name"
+            disabled={editing}
+          />
+        </Field>
+        <Field label="Value">
+          <Textarea
+            className="mono"
+            value={value}
+            onChange={(event) => setValue(event.target.value)}
+            placeholder="Secret value…"
+            rows={4}
+          />
+        </Field>
+        <Field label="Content Type" hint="Choose a common type or enter your own">
+          <Input
+            list="secret-content-types"
+            value={contentType}
+            onChange={(event) => setContentType(event.target.value)}
+            placeholder="text/plain"
+          />
+          <datalist id="secret-content-types">
+            {CONTENT_TYPES.map((type) => (
+              <option key={type} value={type} />
+            ))}
+          </datalist>
+        </Field>
+        <Field label="Expiration">
+          <div className="grid gap-2">
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={hasExpiration}
+                onChange={(checked) => {
+                  setHasExpiration(checked);
+                  if (!checked) setExpires('');
+                }}
+                label="Set expiration"
+              />
+              <span className="text-xs">Set expiration</span>
             </div>
-          </DialogContent>
-          <DialogActions>
-            <Button
-              appearance="secondary"
-              onClick={() => {
-                reset();
-                onClose();
-              }}
-            >
-              Cancel
-            </Button>
-            <Button appearance="primary" onClick={handleCreate} disabled={loading}>
-              {loading ? <Spinner size="tiny" /> : isEdit ? 'Save' : 'Create'}
-            </Button>
-          </DialogActions>
-        </DialogBody>
-      </DialogSurface>
-    </Dialog>
+            <Input
+              type="datetime-local"
+              value={expires}
+              onChange={(event) => setExpires(event.target.value)}
+              disabled={!hasExpiration}
+            />
+          </div>
+        </Field>
+        <Field label="Tags" hint="Comma-separated key=value pairs">
+          <Input
+            className="mono"
+            value={tags}
+            onChange={(event) => setTags(event.target.value)}
+            placeholder="env=prod, team=backend"
+          />
+        </Field>
+        <div className="flex items-center gap-2">
+          <Switch checked={enabled} onChange={setEnabled} label="Enabled" />
+          <span className="text-xs">Enabled</span>
+        </div>
+        {error && !error.startsWith('Name') && (
+          <div className="rounded-lg bg-red-500/10 p-2.5 text-xs text-[var(--danger)]">{error}</div>
+        )}
+      </div>
+    </Modal>
   );
 }

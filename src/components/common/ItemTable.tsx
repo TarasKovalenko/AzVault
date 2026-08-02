@@ -1,24 +1,15 @@
 /* eslint-disable react-refresh/only-export-components */
-import {
-  Badge,
-  Checkbox,
-  makeStyles,
-  Spinner,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableRow,
-  Text,
-  tokens,
-} from '@fluentui/react-components';
 import { format } from 'date-fns';
+import type { ReactNode } from 'react';
+import { Badge } from '../ui/Badge';
+import { Spinner } from '../ui/Button';
+import { cn } from '../ui/cn';
 
 export interface Column<T> {
   key: string;
   label: string;
   width?: string;
-  render: (item: T) => React.ReactNode;
+  render: (item: T) => ReactNode;
 }
 
 interface ItemTableProps<T> {
@@ -36,42 +27,6 @@ interface ItemTableProps<T> {
   onToggleSelectAll?: (checked: boolean) => void;
 }
 
-const useStyles = makeStyles({
-  loading: {
-    display: 'flex',
-    justifyContent: 'center',
-    padding: '48px',
-  },
-  table: {
-    width: '100%',
-  },
-  row: {
-    cursor: 'pointer',
-  },
-  rowIndex: {
-    opacity: 0.5,
-  },
-  statusDot: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-  },
-  dateText: {
-    fontSize: '11px',
-  },
-  dimText: {
-    opacity: 0.65,
-  },
-  dimmerText: {
-    opacity: 0.55,
-  },
-  tagWrap: {
-    display: 'flex',
-    gap: '4px',
-    flexWrap: 'wrap',
-  },
-});
-
 export function ItemTable<T>({
   items,
   columns,
@@ -86,160 +41,134 @@ export function ItemTable<T>({
   onToggleSelect,
   onToggleSelectAll,
 }: ItemTableProps<T>) {
-  const classes = useStyles();
-
-  if (loading) {
+  if (loading)
     return (
-      <div className={classes.loading}>
-        <Spinner label="Loading…" />
+      <div className="grid place-items-center p-12">
+        <Spinner size="lg" />
       </div>
     );
-  }
-
-  if (items.length === 0) {
+  if (items.length === 0)
     return (
-      <div className="azv-empty">
-        <Text>{emptyMessage}</Text>
+      <div className="grid min-h-48 place-items-center text-[var(--text-secondary)]">
+        {emptyMessage}
       </div>
     );
-  }
 
   return (
-    <div className="azv-table-wrap">
-      <Table size="small" className={classes.table}>
-        <TableHeader>
-          <TableRow>
+    <div className="overflow-auto rounded-xl border border-[var(--stroke)] bg-[var(--surface-solid)]">
+      <table className="w-full table-fixed border-collapse text-left text-xs">
+        <thead className="sticky top-0 z-10 bg-[var(--surface-raised)] text-[11px] font-semibold text-[var(--text-secondary)] backdrop-blur-xl">
+          <tr className="border-b border-[var(--stroke)]">
             {selectable && (
-              <th className="azv-th" style={{ width: 38 }}>
-                <Checkbox
-                  checked={selectAllState}
-                  onChange={(_, d) => onToggleSelectAll?.(!!d.checked)}
+              <th className="w-10 px-3 py-2">
+                <input
+                  type="checkbox"
+                  aria-label="Select all"
+                  checked={selectAllState === true}
+                  ref={(node) => {
+                    if (node) node.indeterminate = selectAllState === 'mixed';
+                  }}
+                  onChange={(event) => onToggleSelectAll?.(event.target.checked)}
                 />
               </th>
             )}
-            <th className="azv-th" style={{ width: 46 }}>
-              #
-            </th>
-            {columns.map((col) => (
-              <th className="azv-th" key={col.key} style={{ width: col.width }}>
-                {col.label}
+            <th className="w-11 px-3 py-2">#</th>
+            {columns.map((column) => (
+              <th key={column.key} style={{ width: column.width }} className="px-3 py-2">
+                {column.label}
               </th>
             ))}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
+          </tr>
+        </thead>
+        <tbody>
           {items.map((item, index) => {
             const id = getItemId(item);
+            const selected = selectedId === id;
             return (
-              <TableRow
+              <tr
                 key={id}
+                tabIndex={onSelect ? 0 : undefined}
+                aria-selected={selected}
                 onClick={() => onSelect?.(item)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
                     onSelect?.(item);
                   }
                 }}
-                tabIndex={onSelect ? 0 : undefined}
-                role="button"
-                aria-selected={selectedId === id}
-                className={classes.row}
-                style={{
-                  background: selectedId === id ? tokens.colorBrandBackground2 : undefined,
-                }}
+                className={cn(
+                  'border-b border-[var(--stroke)] last:border-0 hover:bg-[var(--surface-hover)]',
+                  onSelect && 'cursor-default',
+                  selected && 'bg-[var(--accent-soft)]',
+                )}
               >
                 {selectable && (
-                  <TableCell>
-                    <div onClick={(e) => e.stopPropagation()}>
-                      <Checkbox
-                        checked={selectedIds?.has(id) ?? false}
-                        onChange={(_, d) => onToggleSelect?.(id, !!d.checked)}
-                      />
-                    </div>
-                  </TableCell>
+                  <td className="px-3 py-2" onClick={(event) => event.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      aria-label={`Select row ${index + 1}`}
+                      checked={selectedIds?.has(id) ?? false}
+                      onChange={(event) => onToggleSelect?.(id, event.target.checked)}
+                    />
+                  </td>
                 )}
-                <TableCell>
-                  <Text size={100} className={`azv-mono ${classes.rowIndex}`}>
-                    {String(index + 1).padStart(2, '0')}
-                  </Text>
-                </TableCell>
-                {columns.map((col) => (
-                  <TableCell key={col.key}>{col.render(item)}</TableCell>
+                <td className="mono px-3 py-2 text-[10px] text-[var(--text-tertiary)]">
+                  {String(index + 1).padStart(2, '0')}
+                </td>
+                {columns.map((column) => (
+                  <td key={column.key} className="truncate px-3 py-2.5 align-middle">
+                    {column.render(item)}
+                  </td>
                 ))}
-              </TableRow>
+              </tr>
             );
           })}
-        </TableBody>
-      </Table>
+        </tbody>
+      </table>
     </div>
   );
 }
 
-/** Renders an enabled/disabled status badge with dot indicator. */
 export function renderEnabled(enabled: boolean) {
   return (
-    <span className="azv-status-row">
+    <span className="inline-flex items-center gap-1.5">
       <span
-        className="azv-status-dot"
-        style={{ background: enabled ? 'var(--azv-success)' : 'var(--azv-scroll-thumb)' }}
+        className={cn(
+          'size-1.5 rounded-full',
+          enabled ? 'bg-[var(--success)]' : 'bg-[var(--text-tertiary)]',
+        )}
       />
-      <Text size={200} style={enabled ? undefined : { opacity: 0.7 }}>
+      <span className={cn(!enabled && 'text-[var(--text-secondary)]')}>
         {enabled ? 'Active' : 'Disabled'}
-      </Text>
+      </span>
     </span>
   );
 }
 
-/** Formats an ISO date string to a compact readable format. */
-export function renderDate(dateStr: string | null) {
-  if (!dateStr)
-    return (
-      <Text size={200} style={{ opacity: 0.6 }}>
-        —
-      </Text>
-    );
+export function renderDate(dateString: string | null) {
+  if (!dateString) return <span className="text-[var(--text-tertiary)]">—</span>;
   try {
     return (
-      <Text size={200} className="azv-mono" style={{ fontSize: 11 }}>
-        {format(new Date(dateStr), 'MMM d, yyyy HH:mm')}
-      </Text>
+      <span className="mono text-[11px]">{format(new Date(dateString), 'MMM d, yyyy HH:mm')}</span>
     );
   } catch {
-    return <Text size={200}>{dateStr}</Text>;
+    return <span>{dateString}</span>;
   }
 }
 
-/** Renders tag key=value pairs as compact badge pills. */
 export function renderTags(tags: Record<string, string> | null) {
-  if (!tags || Object.keys(tags).length === 0) {
-    return (
-      <Text size={200} style={{ opacity: 0.4 }}>
-        —
-      </Text>
-    );
-  }
+  if (!tags || Object.keys(tags).length === 0)
+    return <span className="text-[var(--text-tertiary)]">—</span>;
   return (
-    <span className="azv-tag-row">
+    <span className="flex flex-wrap gap-1">
       {Object.entries(tags)
         .slice(0, 3)
-        .map(([k, v]) => (
-          <Badge
-            key={k}
-            size="small"
-            appearance="outline"
-            className="azv-tag-pill"
-            title={`${k}=${v}`}
-          >
-            <span className="azv-tag-text">
-              {k}={v}
-            </span>
+        .map(([key, value]) => (
+          <Badge key={key} title={`${key}=${value}`} className="mono max-w-44 truncate">
+            {key}={value}
           </Badge>
         ))}
-      {Object.keys(tags).length > 3 && (
-        <Badge size="small" appearance="outline">
-          +{Object.keys(tags).length - 3}
-        </Badge>
-      )}
+      {Object.keys(tags).length > 3 && <Badge>+{Object.keys(tags).length - 3}</Badge>}
     </span>
   );
 }

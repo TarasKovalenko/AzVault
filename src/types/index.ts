@@ -119,15 +119,6 @@ export interface SessionSettings {
 export type AzureEnvironment = 'azurePublic' | 'azureUsGovernment' | 'azureChina';
 export type ThemeMode = 'light' | 'dark';
 
-// ── Pinned Vault ──
-
-export interface PinnedVault {
-  name: string;
-  uri: string;
-  tenantId: string;
-  subscriptionId: string;
-}
-
 // ── Error handling ──
 
 export interface UserFacingError {
