@@ -1,23 +1,9 @@
-import {
-  ArrowDownload24Regular,
-  ArrowRight20Regular,
-  Certificate24Regular,
-  Checkmark20Regular,
-  Code24Regular,
-  KeyCommand24Regular,
-  Desktop24Regular,
-  DocumentLock24Regular,
-  Key24Regular,
-  LockClosed24Regular,
-  Open24Regular,
-  ShieldCheckmark24Regular,
-  WindowConsoleRegular,
-} from '@fluentui/react-icons';
 import { useEffect, useState } from 'react';
 import commandView from '../img/azvault-command-view.png';
 import mainView from '../img/azvault-main-view.png';
 import secretView from '../img/azvault-secret-view.png';
-import appIcon from '../src-tauri/icons/icon_source.png';
+import appIcon from './assets/azvault-icon.png';
+import { Icon } from './components/ui/Icon';
 
 const REPOSITORY = 'https://github.com/TarasKovalenko/AzVault';
 const RELEASES = `${REPOSITORY}/releases/latest`;
@@ -48,25 +34,25 @@ const views = [
 
 const features = [
   {
-    icon: <LockClosed24Regular />,
+    icon: <Icon name="lock" size={24} />,
     title: 'Secrets without the sprawl',
     text: 'Create, inspect, import, export, recover, and purge secrets from one focused workspace.',
     index: '01',
   },
   {
-    icon: <Key24Regular />,
+    icon: <Icon name="key" size={24} />,
     title: 'Keys in context',
     text: 'Move between tenants, subscriptions, and vaults without losing your place or your train of thought.',
     index: '02',
   },
   {
-    icon: <Certificate24Regular />,
+    icon: <Icon name="certificate" size={24} />,
     title: 'Certificates, clearly',
     text: 'See status and metadata at a glance in a dense interface built for real operational work.',
     index: '03',
   },
   {
-    icon: <KeyCommand24Regular />,
+    icon: <Icon name="search" size={24} />,
     title: 'Keyboard first',
     text: 'Open the command palette with ⌘K or Ctrl+K and get anywhere without hunting through menus.',
     index: '04',
@@ -106,7 +92,7 @@ function App() {
           <a href="#security">Security</a>
           <a href="#workflow">How it works</a>
           <a className="nav-github" href={REPOSITORY} target="_blank" rel="noreferrer">
-            <Code24Regular /> GitHub
+            <Icon name="code" size={20} /> GitHub
           </a>
         </nav>
       </header>
@@ -122,14 +108,14 @@ function App() {
             </p>
             <div className="hero-actions">
               <a className="button button--primary" href={RELEASES}>
-                <ArrowDownload24Regular /> Download AzVault
+                <Icon name="download" size={24} /> Download AzVault
               </a>
               <a className="text-link" href={REPOSITORY} target="_blank" rel="noreferrer">
-                View source <ArrowRight20Regular />
+                View source <Icon name="arrow-right" size={20} />
               </a>
             </div>
             <div className="platform-line">
-              <span><Desktop24Regular /> macOS</span>
+              <span><Icon name="desktop" size={15} /> macOS</span>
               <span>Windows</span>
               <span>Linux</span>
               <span className="platform-line__note">Free · MIT licensed</span>
@@ -147,7 +133,7 @@ function App() {
               <img src={mainView} alt="AzVault desktop explorer showing a vault dashboard" />
             </div>
             <aside className="safety-note">
-              <ShieldCheckmark24Regular />
+              <Icon name="shield" size={24} />
               <div><strong>Local by design</strong><span>No refresh tokens stored.</span></div>
             </aside>
           </div>
@@ -196,7 +182,7 @@ function App() {
                 >
                   <span>{view.label}</span>
                   <small>{view.detail}</small>
-                  <ArrowRight20Regular />
+                  <Icon name="arrow-right" size={20} />
                 </button>
               ))}
             </div>
@@ -208,7 +194,7 @@ function App() {
         </section>
 
         <section className="security" id="security">
-          <div className="security-mark" aria-hidden="true"><DocumentLock24Regular /></div>
+          <div className="security-mark" aria-hidden="true"><Icon name="lock" size={44} /></div>
           <div className="security-copy">
             <p className="kicker">Security is the product</p>
             <h2>Trust the identity<br />you already have.</h2>
@@ -218,14 +204,14 @@ function App() {
               the app.
             </p>
             <a className="text-link text-link--light" href={`${REPOSITORY}/blob/main/SECURITY.md`}>
-              Read the security model <Open24Regular />
+              Read the security model <Icon name="external" size={18} />
             </a>
           </div>
           <ul className="security-list">
-            <li><Checkmark20Regular /><span><strong>Short-lived access</strong>Tokens come directly from Azure CLI.</span></li>
-            <li><Checkmark20Regular /><span><strong>Sanitized audit trail</strong>Useful local history without secret values.</span></li>
-            <li><Checkmark20Regular /><span><strong>Explicit reveal</strong>Sensitive values stay hidden until requested.</span></li>
-            <li><Checkmark20Regular /><span><strong>Open-source core</strong>Inspect the code and threat model yourself.</span></li>
+            <li><Icon name="check" size={20} /><span><strong>Short-lived access</strong>Tokens come directly from Azure CLI.</span></li>
+            <li><Icon name="check" size={20} /><span><strong>Sanitized audit trail</strong>Useful local history without secret values.</span></li>
+            <li><Icon name="check" size={20} /><span><strong>Explicit reveal</strong>Sensitive values stay hidden until requested.</span></li>
+            <li><Icon name="check" size={20} /><span><strong>Open-source core</strong>Inspect the code and threat model yourself.</span></li>
           </ul>
         </section>
 
@@ -236,15 +222,15 @@ function App() {
           </div>
           <ol className="steps">
             <li>
-              <span>01</span><WindowConsoleRegular />
+              <span>01</span><Icon name="terminal" size={24} />
               <div><h3>Sign in with Azure CLI</h3><code>az login</code></div>
             </li>
             <li>
-              <span>02</span><Code24Regular />
+              <span>02</span><Icon name="code" size={24} />
               <div><h3>Open AzVault</h3><p>Connect with the active CLI session.</p></div>
             </li>
             <li>
-              <span>03</span><LockClosed24Regular />
+              <span>03</span><Icon name="lock" size={24} />
               <div><h3>Choose a vault</h3><p>Start browsing. Nothing else to configure.</p></div>
             </li>
           </ol>
@@ -253,7 +239,7 @@ function App() {
         <section className="download">
           <img src={appIcon} alt="AzVault app icon" />
           <div><p className="kicker">Open source · cross-platform</p><h2>Your vaults are<br />ready when you are.</h2></div>
-          <a className="button button--light" href={RELEASES}><ArrowDownload24Regular /> Get AzVault</a>
+          <a className="button button--light" href={RELEASES}><Icon name="download" size={24} /> Get AzVault</a>
         </section>
       </main>
 

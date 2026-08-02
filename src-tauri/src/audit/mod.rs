@@ -108,18 +108,30 @@ impl AuditLogger {
     }
 
     /// Returns the most recent `limit` entries (default 100).
-    pub async fn get_entries(&self, limit: Option<usize>) -> Vec<AuditEntry> {
+    pub async fn get_entries(
+        &self,
+        limit: Option<usize>,
+        vault_name: Option<&str>,
+    ) -> Vec<AuditEntry> {
         let entries = self.entries.read().await;
-        let limit = limit.unwrap_or(100).min(entries.len());
-        entries[entries.len() - limit..].to_vec()
+        let mut matching: Vec<_> = entries
+            .iter()
+            .rev()
+            .filter(|entry| vault_name.is_none_or(|vault| entry.vault_name == vault))
+            .take(limit.unwrap_or(100))
+            .cloned()
+            .collect();
+        matching.reverse();
+        matching
     }
 
     /// Produces a sanitised JSON export where sensitive actions have
     /// their details replaced with `[REDACTED]`.
-    pub async fn get_sanitized_export(&self) -> String {
+    pub async fn get_sanitized_export(&self, vault_name: Option<&str>) -> String {
         let entries = self.entries.read().await;
         let sanitized: Vec<_> = entries
             .iter()
+            .filter(|entry| vault_name.is_none_or(|vault| entry.vault_name == vault))
             .map(|e| {
                 let mut entry = e.clone();
                 if entry.action.contains("secret")
@@ -138,9 +150,13 @@ impl AuditLogger {
     }
 
     /// Clears all in-memory and persisted audit entries.
-    pub async fn clear(&self) {
+    pub async fn clear(&self, vault_name: Option<&str>) {
         let mut entries = self.entries.write().await;
-        entries.clear();
+        if let Some(vault_name) = vault_name {
+            entries.retain(|entry| entry.vault_name != vault_name);
+        } else {
+            entries.clear();
+        }
         Self::save_entries(&self.log_dir, &entries);
     }
 
@@ -259,7 +275,7 @@ mod tests {
                 .await;
         }
 
-        let all_entries = logger.get_entries(Some(2000)).await;
+        let all_entries = logger.get_entries(Some(2000), None).await;
         assert!(
             all_entries.len() <= MAX_ENTRIES,
             "Should not exceed {} entries, got {}",
@@ -282,10 +298,10 @@ mod tests {
                 .await;
         }
 
-        let entries = logger.get_entries(Some(10)).await;
+        let entries = logger.get_entries(Some(10), None).await;
         assert_eq!(entries.len(), 10);
 
-        let entries = logger.get_entries(None).await;
+        let entries = logger.get_entries(None, None).await;
         assert_eq!(entries.len(), 50); // default limit is 100, but only 50 exist
 
         let _ = std::fs::remove_dir_all(&dir);
@@ -299,10 +315,37 @@ mod tests {
         logger
             .log_action("vault", "action", "secret", "item", "success", None)
             .await;
-        assert_eq!(logger.get_entries(None).await.len(), 1);
+        assert_eq!(logger.get_entries(None, None).await.len(), 1);
 
-        logger.clear().await;
-        assert_eq!(logger.get_entries(None).await.len(), 0);
+        logger.clear(None).await;
+        assert_eq!(logger.get_entries(None, None).await.len(), 0);
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[tokio::test]
+    async fn scopes_read_export_and_clear_to_vault() {
+        let dir = std::env::temp_dir().join(format!("azvault-audit-test-{}", uuid::Uuid::new_v4()));
+        let logger = AuditLogger::new(dir.clone());
+
+        logger
+            .log_action("vault-a", "list", "secret", "a", "success", None)
+            .await;
+        logger
+            .log_action("vault-b", "list", "secret", "b", "success", None)
+            .await;
+
+        let scoped = logger.get_entries(None, Some("vault-a")).await;
+        assert_eq!(scoped.len(), 1);
+        assert_eq!(scoped[0].vault_name, "vault-a");
+        assert!(!logger
+            .get_sanitized_export(Some("vault-a"))
+            .await
+            .contains("vault-b"));
+
+        logger.clear(Some("vault-a")).await;
+        assert!(logger.get_entries(None, Some("vault-a")).await.is_empty());
+        assert_eq!(logger.get_entries(None, Some("vault-b")).await.len(), 1);
 
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -323,7 +366,7 @@ mod tests {
             )
             .await;
 
-        let export = logger.get_sanitized_export().await;
+        let export = logger.get_sanitized_export(None).await;
         assert!(export.contains("[REDACTED]"));
         assert!(!export.contains("actual value here"));
 
@@ -345,7 +388,7 @@ mod tests {
         // Load from disk in a new instance
         {
             let logger = AuditLogger::new(dir.clone());
-            let entries = logger.get_entries(None).await;
+            let entries = logger.get_entries(None, None).await;
             assert_eq!(entries.len(), 1);
             assert_eq!(entries[0].action, "test_persist");
         }

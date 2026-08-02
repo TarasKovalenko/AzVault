@@ -1,418 +1,153 @@
-import { Badge, Button, Card, makeStyles, Text, tokens } from '@fluentui/react-components';
-import {
-  Add24Regular,
-  Certificate24Regular,
-  ClipboardTextLtr24Regular,
-  Copy24Regular,
-  Key24Regular,
-  LockClosed24Regular,
-} from '@fluentui/react-icons';
 import { useQuery } from '@tanstack/react-query';
-import { format } from 'date-fns';
 import { useState } from 'react';
 import { useAppToast } from '../../lib/toast';
 import { getAuditLog, listCertificates, listKeys, listSecrets } from '../../services/tauri';
 import { useAppStore } from '../../stores/appStore';
-
-const useStyles = makeStyles({
-  root: {
-    padding: '20px',
-    overflow: 'auto',
-    height: '100%',
-  },
-  title: {
-    marginBottom: '16px',
-  },
-  countGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(3, 1fr)',
-    gap: '12px',
-    marginBottom: '20px',
-  },
-  card: {
-    padding: '16px',
-    marginBottom: '16px',
-  },
-  cardTitle: {
-    marginBottom: '12px',
-  },
-  cardTitleSmall: {
-    marginBottom: '10px',
-  },
-  propsGrid: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '10px',
-  },
-  propRowValue: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-  },
-  vaultUriRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '4px',
-  },
-  vaultUriText: {
-    wordBreak: 'break-all',
-    fontSize: '11px',
-  },
-  copyBtn: {
-    flexShrink: 0,
-  },
-  softDeleteWarning: {
-    marginTop: '12px',
-    padding: '8px 12px',
-    borderRadius: '4px',
-    background: tokens.colorPaletteYellowBackground1,
-    fontSize: '12px',
-  },
-  softDeleteWarningText: {
-    color: tokens.colorPaletteYellowForeground1,
-  },
-  quickActions: {
-    display: 'flex',
-    gap: '8px',
-    flexWrap: 'wrap',
-  },
-  noActivityText: {
-    color: tokens.colorNeutralForeground3,
-  },
-  activityList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '4px',
-  },
-  activityRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    padding: '3px 0',
-  },
-  activityTime: {
-    opacity: 0.6,
-    width: '80px',
-    flexShrink: 0,
-  },
-  activityDot: {
-    marginLeft: 'auto',
-  },
-});
-
-const useCountCardStyles = makeStyles({
-  card: {
-    padding: '16px',
-    cursor: 'pointer',
-    textAlign: 'center',
-  },
-  inner: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: '6px',
-  },
-  icon: {
-    fontSize: '24px',
-    opacity: 0.6,
-  },
-  label: {
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-    opacity: 0.7,
-  },
-});
-
-const usePropRowStyles = makeStyles({
-  value: {
-    marginTop: '2px',
-  },
-});
+import { Button } from '../ui/Button';
+import { Icon } from '../ui/Icon';
+import { AttentionCard, type AttentionItem } from './dashboard/AttentionCard';
+import { RecentActivityCard } from './dashboard/RecentActivityCard';
+import { VaultCountCard } from './dashboard/VaultCountCard';
+import { VaultPropertiesCard } from './dashboard/VaultPropertiesCard';
 
 export function VaultDashboard() {
-  const classes = useStyles();
-  const { selectedVaultUri, selectedVaultName, keyvaults, setActiveTab } = useAppStore();
+  const selectedVaultUri = useAppStore((state) => state.selectedVaultUri);
+  const selectedVaultName = useAppStore((state) => state.selectedVaultName);
+  const vaults = useAppStore((state) => state.keyvaults);
+  const setActiveTab = useAppStore((state) => state.setActiveTab);
   const [copiedUri, setCopiedUri] = useState(false);
   const toast = useAppToast();
-
-  const currentVault = keyvaults.find((v) => v.vaultUri === selectedVaultUri);
-
-  const secretsQuery = useQuery({
+  const currentVault = vaults.find((vault) => vault.vaultUri === selectedVaultUri);
+  const secrets = useQuery({
     queryKey: ['secrets', selectedVaultUri],
     queryFn: () => listSecrets(selectedVaultUri!),
-    enabled: !!selectedVaultUri,
+    enabled: Boolean(selectedVaultUri),
   });
-  const keysQuery = useQuery({
+  const keys = useQuery({
     queryKey: ['keys', selectedVaultUri],
     queryFn: () => listKeys(selectedVaultUri!),
-    enabled: !!selectedVaultUri,
+    enabled: Boolean(selectedVaultUri),
   });
-  const certsQuery = useQuery({
+  const certificates = useQuery({
     queryKey: ['certificates', selectedVaultUri],
     queryFn: () => listCertificates(selectedVaultUri!),
-    enabled: !!selectedVaultUri,
+    enabled: Boolean(selectedVaultUri),
   });
-  const auditQuery = useQuery({
-    queryKey: ['auditLog'],
-    queryFn: () => getAuditLog(5),
+  const activity = useQuery({
+    queryKey: ['auditLog', selectedVaultName],
+    queryFn: () => getAuditLog(5, selectedVaultName!),
+    enabled: Boolean(selectedVaultName),
   });
-
-  const handleCopyUri = () => {
-    if (selectedVaultUri) {
-      navigator.clipboard.writeText(selectedVaultUri);
-      setCopiedUri(true);
-      toast.success('Vault URI copied to clipboard');
-      setTimeout(() => setCopiedUri(false), 2000);
-    }
-  };
-
   if (!selectedVaultName) return null;
 
+  const attentionCandidates = [
+    ...(secrets.data || []).map((item) => ({ ...item, type: 'Secret', tab: 'secrets' as const })),
+    ...(keys.data || []).map((item) => ({ ...item, type: 'Key', tab: 'keys' as const })),
+    ...(certificates.data || []).map((item) => ({
+      ...item,
+      type: 'Certificate',
+      tab: 'certificates' as const,
+    })),
+  ]
+    .map((item) => {
+      const days = item.expires
+        ? Math.ceil((new Date(item.expires).getTime() - Date.now()) / 86_400_000)
+        : null;
+      const reason = !item.enabled
+        ? 'Disabled'
+        : days !== null && days < 0
+          ? 'Expired'
+          : days !== null && days <= 30
+            ? `${days}d left`
+            : null;
+      return { id: item.id, name: item.name, type: item.type, tab: item.tab, reason, days };
+    })
+    .filter((item) => Boolean(item.reason));
+  const attention: AttentionItem[] = attentionCandidates
+    .map((item) => ({ ...item, reason: item.reason! }))
+    .sort((a, b) => (a.days ?? 9999) - (b.days ?? 9999));
+  const copyUri = () => {
+    if (!selectedVaultUri) return;
+    void navigator.clipboard.writeText(selectedVaultUri);
+    setCopiedUri(true);
+    toast.success('Vault URI copied');
+    window.setTimeout(() => setCopiedUri(false), 2000);
+  };
+  const createSecret = () => {
+    setActiveTab('secrets');
+    requestAnimationFrame(() => window.dispatchEvent(new CustomEvent('azv:new-secret')));
+  };
+
   return (
-    <div className={classes.root}>
-      <Text weight="semibold" size={500} block className={classes.title}>
-        {selectedVaultName}
-      </Text>
-
-      {/* Count cards */}
-      <div className={classes.countGrid}>
-        <CountCard
-          icon={<Key24Regular />}
-          label="Secrets"
-          count={secretsQuery.data?.length}
-          loading={secretsQuery.isLoading}
-          onClick={() => setActiveTab('secrets')}
-        />
-        <CountCard
-          icon={<LockClosed24Regular />}
-          label="Keys"
-          count={keysQuery.data?.length}
-          loading={keysQuery.isLoading}
-          onClick={() => setActiveTab('keys')}
-        />
-        <CountCard
-          icon={<Certificate24Regular />}
-          label="Certificates"
-          count={certsQuery.data?.length}
-          loading={certsQuery.isLoading}
-          onClick={() => setActiveTab('certificates')}
-        />
-      </div>
-
-      {/* Vault properties */}
-      <Card className={classes.card}>
-        <Text weight="semibold" size={300} block className={classes.cardTitle}>
-          Vault Properties
-        </Text>
-        <div className={classes.propsGrid}>
-          <PropRow
-            label="Soft-Delete"
-            value={
-              <div className={classes.propRowValue}>
-                <span
-                  className="azv-status-dot"
-                  style={{
-                    background: currentVault?.softDeleteEnabled
-                      ? 'var(--azv-success)'
-                      : 'var(--azv-warning)',
-                  }}
-                />
-                <Text size={200}>
-                  {currentVault?.softDeleteEnabled ? 'Enabled' : 'Unknown / Disabled'}
-                </Text>
-              </div>
-            }
-          />
-          <PropRow
-            label="Location"
-            value={<Text size={200}>{currentVault?.location || '—'}</Text>}
-          />
-          <PropRow
-            label="Resource Group"
-            value={
-              <Text size={200} className="azv-mono">
-                {currentVault?.resourceGroup || '—'}
-              </Text>
-            }
-          />
-          <PropRow
-            label="Vault URI"
-            value={
-              <div className={classes.vaultUriRow}>
-                <Text size={200} className={`azv-mono ${classes.vaultUriText}`}>
-                  {selectedVaultUri}
-                </Text>
-                <Button
-                  appearance="subtle"
-                  size="small"
-                  icon={<Copy24Regular />}
-                  onClick={handleCopyUri}
-                  title="Copy Vault URI"
-                  className={classes.copyBtn}
-                />
-              </div>
-            }
-          />
-        </div>
-
-        {currentVault?.softDeleteEnabled === false && (
-          <div className={classes.softDeleteWarning}>
-            <Text size={200} className={classes.softDeleteWarningText}>
-              Purge protection is not confirmed. Deleted items may be permanently removed.
-            </Text>
+    <div className="h-full overflow-auto">
+      <div className="mx-auto w-full max-w-6xl p-6 lg:p-8">
+        <header className="mb-6 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">{selectedVaultName}</h1>
+            <p className="mt-1 text-xs text-[var(--text-secondary)]">
+              Vault overview and security posture
+            </p>
           </div>
-        )}
-      </Card>
-
-      {/* Quick actions */}
-      <Card className={classes.card}>
-        <Text weight="semibold" size={300} block className={classes.cardTitleSmall}>
-          Quick Actions
-        </Text>
-        <div className={classes.quickActions}>
-          <Button
-            appearance="primary"
-            size="small"
-            icon={<Add24Regular />}
-            onClick={() => {
-              setActiveTab('secrets');
-              requestAnimationFrame(() => window.dispatchEvent(new CustomEvent('azv:new-secret')));
-            }}
-          >
+          <Button variant="primary" icon={<Icon name="add" />} onClick={createSecret}>
             New Secret
           </Button>
-          <Button
-            appearance="secondary"
-            size="small"
-            icon={<ClipboardTextLtr24Regular />}
-            onClick={() => setActiveTab('logs')}
-          >
-            Open Audit Log
-          </Button>
-          <Button
-            appearance="secondary"
-            size="small"
-            icon={<Copy24Regular />}
-            onClick={handleCopyUri}
-          >
-            {copiedUri ? 'Copied!' : 'Copy Vault URI'}
-          </Button>
+        </header>
+        <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <VaultCountCard
+            icon="lock"
+            label="Secrets"
+            count={secrets.data?.length}
+            loading={secrets.isLoading}
+            onClick={() => setActiveTab('secrets')}
+          />
+          <VaultCountCard
+            icon="key"
+            label="Keys"
+            count={keys.data?.length}
+            loading={keys.isLoading}
+            onClick={() => setActiveTab('keys')}
+          />
+          <VaultCountCard
+            icon="certificate"
+            label="Certificates"
+            count={certificates.data?.length}
+            loading={certificates.isLoading}
+            onClick={() => setActiveTab('certificates')}
+          />
         </div>
-      </Card>
-
-      {/* Recent activity */}
-      <Card className={classes.card}>
-        <Text weight="semibold" size={300} block className={classes.cardTitleSmall}>
-          Recent Activity
-        </Text>
-        {(auditQuery.data || []).length === 0 ? (
-          <Text size={200} className={classes.noActivityText}>
-            No activity recorded yet.
-          </Text>
-        ) : (
-          <div className={classes.activityList}>
-            {[...(auditQuery.data || [])]
-              .reverse()
-              .slice(0, 5)
-              .map((entry, i) => (
-                <div
-                  key={`${entry.timestamp}-${entry.action}-${entry.itemName ?? i}`}
-                  className={classes.activityRow}
-                >
-                  <Text size={100} className={`azv-mono ${classes.activityTime}`}>
-                    {(() => {
-                      try {
-                        return format(new Date(entry.timestamp), 'HH:mm:ss');
-                      } catch {
-                        return entry.timestamp;
-                      }
-                    })()}
-                  </Text>
-                  <Badge
-                    size="small"
-                    appearance="filled"
-                    color={
-                      entry.action.includes('delete') || entry.action.includes('purge')
-                        ? 'danger'
-                        : entry.action.includes('set')
-                          ? 'success'
-                          : entry.action.includes('get_value')
-                            ? 'warning'
-                            : 'informative'
-                    }
-                  >
-                    {entry.action}
-                  </Badge>
-                  <Text size={200} className="azv-mono">
-                    {entry.itemName || '—'}
-                  </Text>
-                  <span
-                    className={`azv-status-dot ${classes.activityDot}`}
-                    style={{
-                      background:
-                        entry.result === 'success' ? 'var(--azv-success)' : 'var(--azv-danger)',
-                    }}
-                  />
-                </div>
-              ))}
+        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(280px,.8fr)]">
+          <div className="grid gap-4">
+            <AttentionCard items={attention} onOpen={(tab) => setActiveTab(tab)} />
+            <VaultPropertiesCard
+              vault={currentVault}
+              vaultUri={selectedVaultUri}
+              onCopy={copyUri}
+            />
           </div>
-        )}
-      </Card>
-    </div>
-  );
-}
-
-function CountCard({
-  icon,
-  label,
-  count,
-  loading,
-  onClick,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  count: number | undefined;
-  loading: boolean;
-  onClick: () => void;
-}) {
-  const classes = useCountCardStyles();
-
-  return (
-    <Card
-      className={classes.card}
-      onClick={onClick}
-      role="button"
-      tabIndex={0}
-      aria-label={`View ${label}`}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onClick();
-        }
-      }}
-    >
-      <div className={classes.inner}>
-        <span className={classes.icon}>{icon}</span>
-        <Text size={500} weight="bold" className="azv-mono">
-          {loading ? '...' : (count ?? '—')}
-        </Text>
-        <Text size={200} className={classes.label}>
-          {label}
-        </Text>
+          <div className="grid gap-4">
+            <section className="mac-panel rounded-2xl p-4">
+              <h2 className="text-[13px] font-semibold">Quick Actions</h2>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button
+                  size="xs"
+                  icon={<Icon name="activity" />}
+                  onClick={() => setActiveTab('logs')}
+                >
+                  Open Activity
+                </Button>
+                <Button
+                  size="xs"
+                  icon={<Icon name={copiedUri ? 'check' : 'copy'} />}
+                  onClick={copyUri}
+                >
+                  {copiedUri ? 'Copied' : 'Copy Vault URI'}
+                </Button>
+              </div>
+            </section>
+            <RecentActivityCard entries={activity.data || []} />
+          </div>
+        </div>
       </div>
-    </Card>
-  );
-}
-
-function PropRow({ label, value }: { label: string; value: React.ReactNode }) {
-  const classes = usePropRowStyles();
-
-  return (
-    <div>
-      <Text size={100} className="azv-title" block>
-        {label}
-      </Text>
-      <div className={classes.value}>{value}</div>
     </div>
   );
 }

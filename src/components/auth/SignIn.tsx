@@ -1,404 +1,215 @@
-import {
-  Badge,
-  Button,
-  Card,
-  CardFooter,
-  CardHeader,
-  makeStyles,
-  Spinner,
-  Text,
-  Tooltip,
-  tokens,
-} from '@fluentui/react-components';
-import {
-  ArrowSync24Regular,
-  Checkmark24Regular,
-  Copy24Regular,
-  PlugConnected24Regular,
-  ShieldLock24Regular,
-} from '@fluentui/react-icons';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import azvaultIcon from '../../assets/azvault-icon.png';
 import { authStatus } from '../../services/tauri';
 import { useAppStore } from '../../stores/appStore';
 import { useMockStore } from '../../stores/mockStore';
-
-const useStyles = makeStyles({
-  shellCenter: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    height: '100vh',
-  },
-  shellCenterWithPadding: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    height: '100vh',
-    padding: '20px',
-  },
-  card: {
-    width: '580px',
-    maxWidth: '90vw',
-    padding: '28px 32px',
-  },
-  headerIcon: {
-    fontSize: '28px',
-    color: tokens.colorBrandForeground1,
-  },
-  titleLetterSpacing: {
-    letterSpacing: '-0.01em',
-  },
-  titleMargin: {
-    marginTop: '2px',
-  },
-  contentPadding: {
-    padding: '20px 0',
-  },
-  cliStatusBox: {
-    padding: '12px 14px',
-    borderRadius: '6px',
-    border: `1px solid ${tokens.colorNeutralStroke2}`,
-    background: tokens.colorNeutralBackground3,
-    marginBottom: '14px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '6px',
-  },
-  cliStatusTitle: {
-    marginBottom: '2px',
-  },
-  statusRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-  },
-  tenantText: {
-    fontSize: '11px',
-  },
-  terminalRow: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  terminalComment: {
-    opacity: 0.5,
-  },
-  terminalHint: {
-    marginTop: '6px',
-    opacity: 0.6,
-  },
-  copyBtn: {
-    color: 'var(--azv-terminal-fg)',
-  },
-  errorBox: {
-    marginTop: '14px',
-    padding: '10px 12px',
-    background: tokens.colorPaletteRedBackground1,
-    borderRadius: '4px',
-    fontSize: '12px',
-  },
-  errorTitle: {
-    color: tokens.colorPaletteRedForeground1,
-  },
-  errorBody: {
-    color: tokens.colorPaletteRedForeground1,
-    marginTop: '4px',
-  },
-  errorBodyOpacity: {
-    color: tokens.colorPaletteRedForeground1,
-    marginTop: '4px',
-    opacity: 0.85,
-  },
-  footer: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-  },
-  connectBtn: {
-    width: '100%',
-    borderRadius: '4px',
-  },
-  mockBadgeRow: {
-    display: 'flex',
-    justifyContent: 'center',
-    gap: '8px',
-    marginTop: '8px',
-  },
-  mockBadge: {
-    cursor: 'pointer',
-  },
-  mockContinueBtn: {
-    width: '100%',
-    borderRadius: '4px',
-  },
-});
+import { Badge } from '../ui/Badge';
+import { Button, Spinner } from '../ui/Button';
+import { Icon } from '../ui/Icon';
 
 interface CliCheck {
   cliFound: boolean | null;
-  cliVersion: string | null;
   sessionActive: boolean | null;
   userName: string | null;
   tenantId: string | null;
 }
 
+function StatusRow({ ok, children }: { ok: boolean | null; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-2 text-xs">
+      <span
+        className={`size-2 rounded-full ${ok === null ? 'bg-[var(--text-tertiary)]' : ok ? 'bg-[var(--success)]' : 'bg-[var(--danger)]'}`}
+      />
+      {children}
+    </div>
+  );
+}
+
+function TerminalCommand({
+  command,
+  suffix,
+  copied,
+  onCopy,
+}: {
+  command: string;
+  suffix?: React.ReactNode;
+  copied: boolean;
+  onCopy: () => void;
+}) {
+  return (
+    <div className="group flex items-center justify-between gap-3 py-1.5">
+      <code className="mono min-w-0 text-[12px]">
+        <span className="text-green-400">$</span> <span className="text-cyan-300">{command}</span>{' '}
+        {suffix}
+      </code>
+      <button
+        type="button"
+        title="Copy command"
+        onClick={onCopy}
+        className="grid size-7 shrink-0 place-items-center rounded-md text-zinc-400 opacity-0 hover:bg-white/10 hover:text-white group-hover:opacity-100"
+      >
+        <Icon name={copied ? 'check' : 'copy'} size={14} />
+      </button>
+    </div>
+  );
+}
+
 export function SignIn() {
-  const classes = useStyles();
   const [loading, setLoading] = useState(false);
+  const [autoConnecting, setAutoConnecting] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [copiedCommand, setCopiedCommand] = useState<string | null>(null);
   const [cliCheck, setCliCheck] = useState<CliCheck>({
     cliFound: null,
-    cliVersion: null,
     sessionActive: null,
     userName: null,
     tenantId: null,
   });
-  const [copiedCmd, setCopiedCmd] = useState<string | null>(null);
-  const [autoConnecting, setAutoConnecting] = useState(true);
-  const setSignedIn = useAppStore((s) => s.setSignedIn);
-  const mockMode = useMockStore((s) => s.mockMode);
-  const mockAvailable = useMockStore((s) => s.mockAvailable);
-  const setMockMode = useMockStore((s) => s.setMockMode);
+  const setSignedIn = useAppStore((state) => state.setSignedIn);
+  const mockMode = useMockStore((state) => state.mockMode);
+  const mockAvailable = useMockStore((state) => state.mockAvailable);
+  const setMockMode = useMockStore((state) => state.setMockMode);
 
-  const copyCommand = (cmd: string) => {
-    navigator.clipboard.writeText(cmd);
-    setCopiedCmd(cmd);
-    setTimeout(() => setCopiedCmd(null), 2000);
-  };
-
-  useEffect(() => {
-    let mounted = true;
-    const probeSession = async () => {
-      try {
-        const status = await authStatus();
-        if (!mounted) return;
-        setCliCheck({
-          cliFound: true,
-          cliVersion: null,
-          sessionActive: status.signed_in,
-          userName: status.user_name,
-          tenantId: status.tenant_id,
-        });
-        if (status.signed_in) {
-          setSignedIn(true, status.user_name || 'Azure CLI User');
-        }
-      } catch {
-        if (!mounted) return;
-        setCliCheck((prev) => ({
-          ...prev,
-          cliFound: false,
-          sessionActive: false,
-        }));
-      } finally {
-        if (mounted) setAutoConnecting(false);
-      }
-    };
-    probeSession();
-    return () => {
-      mounted = false;
-    };
-  }, [setSignedIn]);
-
-  const checkCliSession = async () => {
-    setError(null);
-    setLoading(true);
-    try {
-      const status = await authStatus();
-      setCliCheck((prev) => ({
-        ...prev,
+  const applyStatus = useCallback(
+    (status: Awaited<ReturnType<typeof authStatus>>) => {
+      setCliCheck({
         cliFound: true,
         sessionActive: status.signed_in,
         userName: status.user_name,
         tenantId: status.tenant_id,
-      }));
-      if (status.signed_in) {
-        setSignedIn(true, status.user_name || 'Azure CLI User');
-      } else {
-        setError("Azure CLI session not found. Run 'az login' in your terminal and retry.");
-      }
-    } catch (e) {
-      setError(String(e));
+      });
+      if (status.signed_in) setSignedIn(true, status.user_name || 'Azure CLI User');
+    },
+    [setSignedIn],
+  );
+
+  useEffect(() => {
+    let mounted = true;
+    void authStatus()
+      .then((status) => {
+        if (mounted) applyStatus(status);
+      })
+      .catch(() => {
+        if (mounted)
+          setCliCheck((current) => ({ ...current, cliFound: false, sessionActive: false }));
+      })
+      .finally(() => {
+        if (mounted) setAutoConnecting(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [applyStatus]);
+
+  const connect = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const status = await authStatus();
+      applyStatus(status);
+      if (!status.signed_in) setError("Azure CLI session not found. Run 'az login' and retry.");
+    } catch (caught) {
+      setError(String(caught));
     } finally {
       setLoading(false);
     }
   };
 
-  const StatusDot = ({ ok }: { ok: boolean | null }) => (
-    <span
-      className="azv-status-dot"
-      style={{
-        background:
-          ok === null ? 'var(--azv-scroll-thumb)' : ok ? 'var(--azv-success)' : 'var(--azv-danger)',
-      }}
-    />
-  );
+  const copy = (command: string) => {
+    void navigator.clipboard.writeText(command);
+    setCopiedCommand(command);
+    window.setTimeout(() => setCopiedCommand(null), 2000);
+  };
 
-  if (autoConnecting) {
+  if (autoConnecting)
     return (
-      <div className={`azv-shell ${classes.shellCenter}`}>
-        <Spinner label="Checking Azure CLI session..." />
+      <div className="grid h-screen place-items-center bg-[var(--app-bg)]">
+        <div className="flex items-center gap-2 text-[var(--text-secondary)]">
+          <Spinner />
+          Checking Azure CLI session…
+        </div>
       </div>
     );
-  }
 
   return (
-    <div className={`azv-shell ${classes.shellCenterWithPadding}`}>
-      <Card className={`azv-pane ${classes.card}`}>
-        <CardHeader
-          image={<ShieldLock24Regular className={classes.headerIcon} />}
-          header={
-            <div>
-              <Text weight="bold" size={500} className={classes.titleLetterSpacing}>
-                AzVault
-              </Text>
-              <Text block size={200} className={`azv-title ${classes.titleMargin}`}>
-                Azure Key Vault Explorer
-              </Text>
-            </div>
-          }
-        />
-
-        <div className={classes.contentPadding}>
-          {/* CLI Status checks */}
-          <div className={classes.cliStatusBox}>
-            <Text size={200} weight="semibold" block className={classes.cliStatusTitle}>
-              CLI Status
-            </Text>
-            <div className={classes.statusRow}>
-              <StatusDot ok={cliCheck.cliFound} />
-              <Text size={200}>
-                Azure CLI:{' '}
-                {cliCheck.cliFound === null
-                  ? 'Checking...'
-                  : cliCheck.cliFound
-                    ? 'Found'
-                    : 'Not found'}
-              </Text>
-            </div>
-            <div className={classes.statusRow}>
-              <StatusDot ok={cliCheck.sessionActive} />
-              <Text size={200}>
-                Session:{' '}
-                {cliCheck.sessionActive === null
-                  ? 'Checking...'
-                  : cliCheck.sessionActive
-                    ? `Signed in as ${cliCheck.userName}`
-                    : 'Not signed in'}
-              </Text>
-            </div>
+    <main className="relative grid h-screen place-items-center overflow-auto bg-[radial-gradient(circle_at_50%_-20%,rgba(10,132,255,.2),transparent_45%),var(--app-bg)] p-6">
+      <section className="mac-vibrancy w-full max-w-[560px] overflow-hidden rounded-[22px] border border-[var(--stroke)] shadow-[var(--shadow-window)]">
+        <header className="flex items-center gap-3 border-b border-[var(--stroke)] px-6 py-5">
+          <img src={azvaultIcon} alt="" className="size-11 shrink-0 object-contain" />
+          <div>
+            <h1 className="text-xl font-semibold tracking-tight">AzVault</h1>
+            <p className="mt-0.5 text-xs text-[var(--text-secondary)]">Azure Key Vault Explorer</p>
+          </div>
+        </header>
+        <div className="grid gap-4 p-6">
+          <div className="mac-panel grid gap-2 rounded-xl p-3.5">
+            <p className="mb-0.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
+              Azure CLI status
+            </p>
+            <StatusRow ok={cliCheck.cliFound}>
+              Azure CLI {cliCheck.cliFound ? 'detected' : 'not found'}
+            </StatusRow>
+            <StatusRow ok={cliCheck.sessionActive}>
+              {cliCheck.sessionActive ? `Signed in as ${cliCheck.userName}` : 'No active session'}
+            </StatusRow>
             {cliCheck.tenantId && (
-              <div className={classes.statusRow}>
-                <StatusDot ok={true} />
-                <Text size={200} className={`azv-mono ${classes.tenantText}`}>
-                  Tenant: {cliCheck.tenantId}
-                </Text>
-              </div>
+              <StatusRow ok>
+                <span className="mono truncate">Tenant {cliCheck.tenantId}</span>
+              </StatusRow>
             )}
           </div>
-
-          {/* Terminal instructions */}
-          <div className="azv-terminal">
-            <div className={classes.terminalRow}>
-              <p>
-                <span className="azv-prompt">$</span> <span className="azv-cmd">az login</span>
-              </p>
-              <Tooltip content={copiedCmd === 'az login' ? 'Copied!' : 'Copy'} relationship="label">
-                <Button
-                  appearance="subtle"
-                  size="small"
-                  icon={copiedCmd === 'az login' ? <Checkmark24Regular /> : <Copy24Regular />}
-                  onClick={() => copyCommand('az login')}
-                  className={classes.copyBtn}
-                />
-              </Tooltip>
-            </div>
-            <div className={classes.terminalRow}>
-              <p>
-                <span className="azv-prompt">$</span>{' '}
-                <span className="azv-cmd">az account set</span>{' '}
-                <span className="azv-comment">--subscription &lt;id&gt;</span>{' '}
-                <span className={classes.terminalComment}># optional</span>
-              </p>
-              <Tooltip
-                content={copiedCmd === 'az account set --subscription ' ? 'Copied!' : 'Copy'}
-                relationship="label"
-              >
-                <Button
-                  appearance="subtle"
-                  size="small"
-                  icon={
-                    copiedCmd === 'az account set --subscription ' ? (
-                      <Checkmark24Regular />
-                    ) : (
-                      <Copy24Regular />
-                    )
-                  }
-                  onClick={() => copyCommand('az account set --subscription ')}
-                  className={classes.copyBtn}
-                />
-              </Tooltip>
-            </div>
-            <p className={classes.terminalHint}>Then click Connect below to verify the session.</p>
+          <div className="rounded-xl border border-white/10 bg-[#1c1c1e] px-4 py-3 text-zinc-200 shadow-inner">
+            <TerminalCommand
+              command="az login"
+              copied={copiedCommand === 'az login'}
+              onCopy={() => copy('az login')}
+            />
+            <TerminalCommand
+              command="az account set"
+              suffix={<span className="text-amber-200">--subscription &lt;id&gt;</span>}
+              copied={copiedCommand === 'az account set --subscription '}
+              onCopy={() => copy('az account set --subscription ')}
+            />
+            <p className="mt-1 text-[10px] text-zinc-500">
+              Run these commands in Terminal, then connect again.
+            </p>
           </div>
-
-          {/* Error */}
           {error && (
-            <div className={classes.errorBox}>
-              <Text size={200} weight="semibold" className={classes.errorTitle}>
-                {error.includes('not found') || error.includes('not recognized')
-                  ? 'Azure CLI not detected'
-                  : error.includes('401') || error.includes('expired')
-                    ? 'Session expired'
-                    : 'Connection failed'}
-              </Text>
-              <Text size={200} block className={classes.errorBody}>
-                {error}
-              </Text>
-              <Text size={200} block className={classes.errorBodyOpacity}>
-                {error.includes('not found')
-                  ? 'Install Azure CLI: https://aka.ms/install-azure-cli'
-                  : "Run 'az login' in your terminal, then click Connect."}
-              </Text>
+            <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs text-[var(--danger)]">
+              <p className="font-semibold">Connection failed</p>
+              <p className="mt-1 leading-5">{error}</p>
             </div>
           )}
-        </div>
-
-        <CardFooter className={classes.footer}>
           <Button
-            appearance="primary"
-            size="large"
-            onClick={checkCliSession}
-            icon={loading ? <Spinner size="tiny" /> : <PlugConnected24Regular />}
-            className={classes.connectBtn}
-            disabled={loading}
+            variant="primary"
+            size="md"
+            loading={loading}
+            icon={<Icon name="plug" />}
+            onClick={connect}
+            className="w-full"
           >
-            {loading ? 'Checking Azure CLI session...' : 'Connect with Azure CLI'}
+            {loading ? 'Checking session…' : 'Connect with Azure CLI'}
           </Button>
-
           {mockAvailable && (
-            <div className={classes.mockBadgeRow}>
-              <Badge
-                appearance={mockMode ? 'filled' : 'outline'}
-                color={mockMode ? 'success' : 'informative'}
-                className={classes.mockBadge}
-                onClick={() => setMockMode(!mockMode)}
-              >
-                {mockMode ? 'Mock Mode ON' : 'Mock Mode OFF'}
-              </Badge>
+            <div className="flex items-center justify-center gap-2">
+              <button type="button" onClick={() => setMockMode(!mockMode)}>
+                <Badge tone={mockMode ? 'green' : 'neutral'}>
+                  Mock Mode {mockMode ? 'On' : 'Off'}
+                </Badge>
+              </button>
             </div>
           )}
-
           {mockAvailable && mockMode && (
             <Button
-              appearance="secondary"
-              icon={<ArrowSync24Regular />}
+              icon={<Icon name="refresh" />}
               onClick={() => setSignedIn(true, 'demo@contoso.com')}
-              className={classes.mockContinueBtn}
+              className="w-full"
             >
               Continue with Mock Data
             </Button>
           )}
-        </CardFooter>
-      </Card>
-    </div>
+        </div>
+      </section>
+    </main>
   );
 }
