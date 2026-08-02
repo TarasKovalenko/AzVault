@@ -3,6 +3,7 @@ import { defineConfig } from 'vite';
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: '/AzVault/',
   plugins: [react()],
   // Prevent vite from obscuring rust errors
   clearScreen: false,
