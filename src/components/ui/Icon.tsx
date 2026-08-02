@@ -12,12 +12,15 @@ export type IconName =
   | 'check'
   | 'chevron-down'
   | 'close'
+  | 'code'
   | 'copy'
   | 'delete'
   | 'download'
+  | 'desktop'
   | 'edit'
   | 'eye'
   | 'eye-off'
+  | 'external'
   | 'home'
   | 'info'
   | 'key'
@@ -31,6 +34,7 @@ export type IconName =
   | 'sign-out'
   | 'subscription'
   | 'sun'
+  | 'terminal'
   | 'timer'
   | 'user'
   | 'warning';
@@ -87,6 +91,12 @@ const paths: Record<IconName, React.ReactNode> = {
       <path d="m18 6-12 12" />
     </>
   ),
+  code: (
+    <>
+      <path d="m8 9-3 3 3 3M16 9l3 3-3 3" />
+      <path d="m14 5-4 14" />
+    </>
+  ),
   copy: (
     <>
       <rect x="8" y="8" width="12" height="12" rx="2" />
@@ -107,6 +117,12 @@ const paths: Record<IconName, React.ReactNode> = {
       <path d="M5 21h14" />
     </>
   ),
+  desktop: (
+    <>
+      <rect x="3" y="4" width="18" height="13" rx="2" />
+      <path d="M8 21h8M12 17v4" />
+    </>
+  ),
   edit: (
     <>
       <path d="M4 20h4L19 9l-4-4L4 16v4Z" />
@@ -123,6 +139,12 @@ const paths: Record<IconName, React.ReactNode> = {
     <>
       <path d="m3 3 18 18" />
       <path d="M10.6 6.2A10 10 0 0 1 12 6c6.5 0 10 6 10 6a17 17 0 0 1-2.1 2.8M6.6 6.6C3.7 8.4 2 12 2 12s3.5 6 10 6c1.6 0 3-.4 4.2-1" />
+    </>
+  ),
+  external: (
+    <>
+      <path d="M14 4h6v6M20 4l-9 9" />
+      <path d="M18 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h6" />
     </>
   ),
   home: (
@@ -199,6 +221,12 @@ const paths: Record<IconName, React.ReactNode> = {
     <>
       <circle cx="12" cy="12" r="4" />
       <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+    </>
+  ),
+  terminal: (
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="m7 9 3 3-3 3M13 15h4" />
     </>
   ),
   timer: (
