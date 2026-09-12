@@ -1,5 +1,6 @@
-import { useEffect, type ReactNode } from 'react';
+import { type ReactNode, useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { Icon } from './Icon';
 
 export function Modal({
@@ -21,6 +22,10 @@ export function Modal({
   size?: 'sm' | 'md' | 'lg';
   closeDisabled?: boolean;
 }) {
+  const dialogRef = useRef<HTMLElement>(null);
+  const titleId = useId();
+  useFocusTrap(dialogRef, open);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => {
@@ -40,14 +45,16 @@ export function Modal({
       }}
     >
       <section
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="modal-title"
+        aria-labelledby={titleId}
+        tabIndex={-1}
         className={`mac-vibrancy ${width} w-full overflow-hidden rounded-2xl border border-[var(--stroke)] shadow-[var(--shadow-window)]`}
       >
         <header className="flex items-start gap-3 border-b border-[var(--stroke)] px-5 py-4">
           <div className="min-w-0 flex-1">
-            <h2 id="modal-title" className="text-[15px] font-semibold">
+            <h2 id={titleId} className="text-[15px] font-semibold">
               {title}
             </h2>
             {description && (

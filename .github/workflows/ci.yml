@@ -46,7 +46,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       - name: Install dependencies
@@ -55,11 +55,29 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: React logic tests (coverage)
+      - name: Typecheck
+        run: npx tsc -b
+
+      - name: Frontend tests (coverage thresholds enforced)
         run: npm run test:react
 
-      - name: Build
+      - name: Build desktop app bundle
         run: npm run build
+
+      - name: Build marketing site bundle
+        run: npm run build:site
+
+  installer:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: POSIX syntax check
+        run: sh -n install.sh
+
+      - name: Shellcheck
+        run: shellcheck install.sh
 
   rust:
     runs-on: ubuntu-latest
@@ -94,6 +112,37 @@ jobs:
         working-directory: src-tauri
         run: cargo test
 
+      - name: Rust clippy
+        working-directory: src-tauri
+        run: cargo clippy --all-targets -- -D warnings
+
       - name: Rust check
         working-directory: src-tauri
         run: cargo check
+
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+
+      - name: Audit Rust dependencies
+        working-directory: src-tauri
+        # Warnings (unmaintained transitive crates) are reported but not fatal;
+        # unfixable advisories are documented in src-tauri/.cargo/audit.toml.
+        run: cargo audit
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Audit npm dependencies
+        run: npm audit --audit-level=high

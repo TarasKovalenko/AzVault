@@ -29,9 +29,11 @@ export function AttentionCard({
         <div className="min-w-0 flex-1">
           <h2 className="text-[13px] font-semibold">Attention</h2>
           <p className="text-[11px] text-[var(--text-secondary)]">
-            {items.length
-              ? `${items.length} item${items.length === 1 ? '' : 's'} need review`
-              : 'No disabled or soon-to-expire items'}
+            {items.length === 1
+              ? '1 item needs review'
+              : items.length
+                ? `${items.length} items need review`
+                : 'No disabled or soon-to-expire items'}
           </p>
         </div>
         {items.length > 0 && <Badge tone="orange">{items.length}</Badge>}

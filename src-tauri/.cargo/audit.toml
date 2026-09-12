@@ -1,0 +1,18 @@
+# cargo-audit configuration.
+#
+# Everything listed here is a transitive dependency of Tauri itself that has no
+# semver-compatible fix available. Each entry states why it is not reachable in
+# a way that affects AzVault. Re-check this list on every Tauri upgrade and
+# delete entries as upstream picks up the fixes.
+[advisories]
+ignore = [
+    # quick-xml <0.41 memory exhaustion / quadratic attribute parsing.
+    # Reached only through plist -> tauri, which parses bundle Info.plist files
+    # shipped inside the app itself, never attacker-supplied XML.
+    "RUSTSEC-2026-0195",
+    "RUSTSEC-2026-0194",
+    # rkyv <0.8.17 out-of-bounds read on malformed archives.
+    # Reached only through rust_decimal's optional archive support; AzVault
+    # never deserialises an rkyv archive.
+    "RUSTSEC-2026-0235",
+]

@@ -9,6 +9,31 @@ import type {
   ThemeMode,
 } from '../types';
 
+/** Per-tab list view state, kept in the store so switching tabs doesn't discard it. */
+export interface ListViewState {
+  filter: string;
+  sortKey: string | null;
+  sortDirection: 'asc' | 'desc';
+  visibleCount: number;
+  selectedId: string | null;
+}
+
+export const DEFAULT_LIST_VIEW: ListViewState = {
+  filter: '',
+  sortKey: null,
+  sortDirection: 'asc',
+  visibleCount: 50,
+  selectedId: null,
+};
+
+type ListTab = Extract<ItemTab, 'secrets' | 'keys' | 'certificates'>;
+
+const freshListViews = (): Record<ListTab, ListViewState> => ({
+  secrets: { ...DEFAULT_LIST_VIEW },
+  keys: { ...DEFAULT_LIST_VIEW },
+  certificates: { ...DEFAULT_LIST_VIEW },
+});
+
 interface AppStoreState {
   // Auth
   isSignedIn: boolean;
@@ -27,8 +52,6 @@ interface AppStoreState {
   keyvaults: KeyVaultInfo[];
   recentVaults: { name: string; uri: string }[];
 
-  // Search
-  searchQuery: string;
   environment: AzureEnvironment;
   themeMode: ThemeMode;
 
@@ -46,6 +69,15 @@ interface AppStoreState {
   auditMaxEntries: number;
   auditRefreshInterval: number;
 
+  // List views (filter/sort/paging/selection per tab)
+  listViews: Record<ListTab, ListViewState>;
+
+  /**
+   * Action requested from another view, consumed by the target view on mount.
+   * Dispatching a window event instead would race that view's mount.
+   */
+  pendingSecretsAction: 'new-secret' | null; // pragma: allowlist secret
+
   // Command palette
   commandPaletteOpen: boolean;
 
@@ -61,7 +93,6 @@ interface AppStoreState {
   selectSubscription: (subId: string) => void;
   selectVault: (name: string, uri: string) => void;
   setActiveTab: (tab: ItemTab) => void;
-  setSearchQuery: (query: string) => void;
   setEnvironment: (env: AzureEnvironment) => void;
   setThemeMode: (mode: ThemeMode) => void;
   setRequireReauthForReveal: (enabled: boolean) => void;
@@ -71,6 +102,9 @@ interface AppStoreState {
   toggleDetailPanel: () => void;
   setSplitRatio: (ratio: number) => void;
   clearRecentVaults: () => void;
+  setListView: (tab: ListTab, patch: Partial<ListViewState>) => void;
+  requestSecretsAction: (action: 'new-secret') => void;
+  consumeSecretsAction: () => 'new-secret' | null;
   setCommandPaletteOpen: (open: boolean) => void;
   setSettingsOpen: (open: boolean) => void;
   setAuditMaxEntries: (n: number) => void;
@@ -80,7 +114,7 @@ interface AppStoreState {
 
 export const useAppStore = create<AppStoreState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       isSignedIn: false,
       userName: null,
       selectedTenantId: null,
@@ -92,7 +126,6 @@ export const useAppStore = create<AppStoreState>()(
       subscriptions: [],
       keyvaults: [],
       recentVaults: [],
-      searchQuery: '',
       environment: 'azurePublic',
       themeMode: 'light',
       requireReauthForReveal: false,
@@ -101,8 +134,10 @@ export const useAppStore = create<AppStoreState>()(
       disableClipboardCopy: false,
       detailPanelOpen: true,
       splitRatio: 0.6,
-      auditMaxEntries: 10000,
+      auditMaxEntries: 1000,
       auditRefreshInterval: 10000,
+      listViews: freshListViews(),
+      pendingSecretsAction: null,
       commandPaletteOpen: false,
       settingsOpen: false,
 
@@ -138,11 +173,23 @@ export const useAppStore = create<AppStoreState>()(
             selectedVaultName: name,
             recentVaults: recent,
             activeTab: 'secrets',
+            listViews: freshListViews(),
           };
         }),
 
       setActiveTab: (tab) => set({ activeTab: tab }),
-      setSearchQuery: (query) => set({ searchQuery: query }),
+
+      setListView: (tab, patch) =>
+        set((state) => ({
+          listViews: { ...state.listViews, [tab]: { ...state.listViews[tab], ...patch } },
+        })),
+
+      requestSecretsAction: (action) => set({ activeTab: 'secrets', pendingSecretsAction: action }),
+      consumeSecretsAction: () => {
+        const pending = get().pendingSecretsAction;
+        if (pending) set({ pendingSecretsAction: null });
+        return pending;
+      },
       setEnvironment: (environment) => set({ environment }),
       setThemeMode: (themeMode) => set({ themeMode }),
       setRequireReauthForReveal: (requireReauthForReveal) => set({ requireReauthForReveal }),
@@ -170,6 +217,7 @@ export const useAppStore = create<AppStoreState>()(
           tenants: [],
           subscriptions: [],
           keyvaults: [],
+          listViews: freshListViews(),
         }),
     }),
     {

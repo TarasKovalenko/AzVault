@@ -115,10 +115,14 @@ export function SignIn() {
     }
   };
 
-  const copy = (command: string) => {
-    void navigator.clipboard.writeText(command);
-    setCopiedCommand(command);
-    window.setTimeout(() => setCopiedCommand(null), 2000);
+  const copy = async (command: string) => {
+    try {
+      await navigator.clipboard.writeText(command);
+      setCopiedCommand(command);
+      window.setTimeout(() => setCopiedCommand(null), 2000);
+    } catch {
+      setError('Could not copy the command. Copy it from the screen instead.');
+    }
   };
 
   if (autoConnecting)
@@ -162,13 +166,13 @@ export function SignIn() {
             <TerminalCommand
               command="az login"
               copied={copiedCommand === 'az login'}
-              onCopy={() => copy('az login')}
+              onCopy={() => void copy('az login')}
             />
             <TerminalCommand
               command="az account set"
               suffix={<span className="text-amber-200">--subscription &lt;id&gt;</span>}
               copied={copiedCommand === 'az account set --subscription '}
-              onCopy={() => copy('az account set --subscription ')}
+              onCopy={() => void copy('az account set --subscription ')}
             />
             <p className="mt-1 text-[10px] text-zinc-500">
               Run these commands in Terminal, then connect again.

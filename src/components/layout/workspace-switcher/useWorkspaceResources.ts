@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { listKeyvaults, listSubscriptions, listTenants, setTenant } from '../../../services/tauri';
 import { useAppStore } from '../../../stores/appStore';
+import { useToast } from '../../ui/Toast';
 
 export function useWorkspaceResources() {
   const selectedTenantId = useAppStore((state) => state.selectedTenantId);
@@ -17,6 +18,7 @@ export function useWorkspaceResources() {
   const setSubscriptions = useAppStore((state) => state.setSubscriptions);
   const setVaults = useAppStore((state) => state.setKeyvaults);
 
+  const toast = useToast();
   const tenantsQuery = useQuery({ queryKey: ['tenants'], queryFn: listTenants });
   const subscriptionsQuery = useQuery({
     queryKey: ['subscriptions', selectedTenantId],
@@ -29,12 +31,29 @@ export function useWorkspaceResources() {
     enabled: Boolean(selectedSubscriptionId),
   });
 
+  const [switchingTenant, setSwitchingTenant] = useState(false);
+
+  /**
+   * Switches the CLI tenant before the UI moves.
+   *
+   * Committing to the store first would let the subscription query run against
+   * the tenant the CLI is still pointed at — the user would browse one tenant's
+   * vaults under another tenant's name, and a failed switch was previously
+   * swallowed entirely.
+   */
   const selectTenant = useCallback(
-    (tenantId: string) => {
-      selectTenantInStore(tenantId);
-      void setTenant(tenantId).catch(() => undefined);
+    async (tenantId: string) => {
+      setSwitchingTenant(true);
+      try {
+        await setTenant(tenantId);
+        selectTenantInStore(tenantId);
+      } catch (error) {
+        toast.error('Could not switch tenant', String(error));
+      } finally {
+        setSwitchingTenant(false);
+      }
     },
-    [selectTenantInStore],
+    [selectTenantInStore, toast],
   );
 
   useEffect(() => {
@@ -51,7 +70,7 @@ export function useWorkspaceResources() {
 
   useEffect(() => {
     const firstTenant = tenantsQuery.data?.[0];
-    if (firstTenant && !selectedTenantId) selectTenant(firstTenant.tenant_id);
+    if (firstTenant && !selectedTenantId) void selectTenant(firstTenant.tenant_id);
   }, [tenantsQuery.data, selectedTenantId, selectTenant]);
 
   return {
@@ -61,7 +80,7 @@ export function useWorkspaceResources() {
     selectedTenantId,
     selectedSubscriptionId,
     selectedVaultName,
-    isLoadingTenants: tenantsQuery.isLoading,
+    isLoadingTenants: tenantsQuery.isLoading || switchingTenant,
     isLoadingSubscriptions: subscriptionsQuery.isLoading,
     isLoadingVaults: vaultsQuery.isLoading,
     selectTenant,

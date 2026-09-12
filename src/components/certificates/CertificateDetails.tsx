@@ -2,6 +2,7 @@ import { differenceInDays, format } from 'date-fns';
 import { useState } from 'react';
 import type { CertificateItem } from '../../types';
 import { DetailField } from '../common/DetailField';
+import { DetailPaneHeader } from '../common/DetailPaneHeader';
 import { EmptyState } from '../common/EmptyState';
 import { Badge } from '../ui/Badge';
 import { Icon } from '../ui/Icon';
@@ -36,27 +37,9 @@ export function CertificateDetails({
   };
   return (
     <div className="h-full overflow-auto p-5">
-      <header className="mb-4 flex items-center justify-between">
-        <h2 className="mono truncate text-[15px] font-semibold">{item.name}</h2>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close details"
-          className="grid size-7 place-items-center rounded-lg text-[var(--text-tertiary)] hover:bg-[var(--surface-hover)]"
-        >
-          <Icon name="close" size={14} />
-        </button>
-      </header>
-      <div className="mb-4 flex flex-wrap items-center gap-1.5">
-        <span className="inline-flex items-center gap-1.5 text-xs">
-          <span
-            className={`size-1.5 rounded-full ${item.enabled ? 'bg-[var(--success)]' : 'bg-[var(--text-tertiary)]'}`}
-          />
-          {item.enabled ? 'Active' : 'Disabled'}
-        </span>
+      <DetailPaneHeader title={item.name} enabled={item.enabled} onClose={onClose}>
         {expired && <Badge tone="red">Expired</Badge>}
-        {expiring && <Badge tone="orange">Expires in {days}d</Badge>}
-      </div>
+      </DetailPaneHeader>
       {expiring && (
         <div className="mb-3 rounded-xl bg-orange-500/10 p-3 text-xs text-[var(--warning)]">
           This certificate expires in {days} days. Consider renewing it.
@@ -96,7 +79,7 @@ export function CertificateDetails({
           value={item.expires ? format(new Date(item.expires), 'PPpp') : 'Never'}
         />
         <DetailField
-          label="Not Before"
+          label="Not before"
           value={item.notBefore ? format(new Date(item.notBefore), 'PPpp') : '—'}
         />
         <DetailField label="ID" value={item.id} mono />
@@ -104,8 +87,8 @@ export function CertificateDetails({
           <DetailField label="Tags">
             <div className="flex flex-wrap gap-1">
               {Object.entries(item.tags).map(([key, value]) => (
-                <Badge key={key}>
-                  {key}: {value}
+                <Badge key={key} title={`${key}=${value}`} className="mono">
+                  {key}={value}
                 </Badge>
               ))}
             </div>

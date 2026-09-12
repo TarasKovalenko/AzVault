@@ -1,3 +1,4 @@
+import { formatShortcut } from '../../hooks/useKeyboardShortcuts';
 import { useAppStore } from '../../stores/appStore';
 import { Button } from '../ui/Button';
 import { Select, Switch } from '../ui/Field';
@@ -13,6 +14,12 @@ const CLIPBOARD_OPTIONS = [
   { value: 15, label: '15 seconds' },
   { value: 30, label: '30 seconds' },
   { value: 60, label: '60 seconds' },
+];
+const MAX_ENTRY_OPTIONS = [
+  { value: 200, label: '200 entries' },
+  { value: 1000, label: '1,000 entries' },
+  { value: 5000, label: '5,000 entries' },
+  { value: 10000, label: '10,000 entries' },
 ];
 const REFRESH_OPTIONS = [
   { value: 5000, label: '5 seconds' },
@@ -82,11 +89,14 @@ export function SettingsDialog() {
   const setClipboardClearSeconds = useAppStore((state) => state.setClipboardClearSeconds);
   const disableClipboardCopy = useAppStore((state) => state.disableClipboardCopy);
   const setDisableClipboardCopy = useAppStore((state) => state.setDisableClipboardCopy);
+  const auditMaxEntries = useAppStore((state) => state.auditMaxEntries);
+  const setAuditMaxEntries = useAppStore((state) => state.setAuditMaxEntries);
   const auditRefreshInterval = useAppStore((state) => state.auditRefreshInterval);
   const setAuditRefreshInterval = useAppStore((state) => state.setAuditRefreshInterval);
   const environment = useAppStore((state) => state.environment);
   const setEnvironment = useAppStore((state) => state.setEnvironment);
-  const mod = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform) ? '⌘' : 'Ctrl+';
+  const isMacPlatform = formatShortcut('K', true).startsWith('⌘');
+  const mod = isMacPlatform ? '⌘' : 'Ctrl+';
 
   return (
     <Modal
@@ -103,7 +113,8 @@ export function SettingsDialog() {
       <div className="grid gap-5">
         <Section title="Appearance">
           <SettingRow
-            title="Appearance"
+            title="Theme"
+            description="Applies to the whole app window."
             control={
               <Select
                 value={themeMode}
@@ -176,6 +187,23 @@ export function SettingsDialog() {
         </Section>
         <Section title="Activity">
           <SettingRow
+            title="Entries to load"
+            description="How much history the Activity view requests from the local log."
+            control={
+              <Select
+                value={auditMaxEntries}
+                onChange={(event) => setAuditMaxEntries(Number(event.target.value))}
+                className="w-36"
+              >
+                {MAX_ENTRY_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </Select>
+            }
+          />
+          <SettingRow
             title="Refresh interval"
             control={
               <Select
@@ -208,16 +236,21 @@ export function SettingsDialog() {
             }
           />
         </Section>
-        <Section title="Keyboard Shortcuts">
+        <Section title="Keyboard shortcuts">
           <Shortcut label="Command palette" keys={`${mod}K`} />
           <Shortcut label="Settings" keys={`${mod},`} />
           <Shortcut label="Toggle detail panel" keys={`${mod}\\`} />
           <Shortcut label="Secrets / Keys / Certificates" keys={`${mod}1 / 2 / 3`} />
           <Shortcut label="Overview / Activity" keys={`${mod}4 / 5`} />
+          <Shortcut label="New secret" keys={`${mod}N`} />
+          <Shortcut label="Refresh data" keys={`${mod}R`} />
+          <Shortcut label="Focus filter" keys={`${mod}F`} />
+          <Shortcut label="Select all rows" keys={`${mod}A`} />
+          <Shortcut label="Delete selected" keys={`${mod}${isMacPlatform ? '⇧' : 'Shift+'}D`} />
         </Section>
         <Section title="About">
           <div className="py-2">
-            <p className="mono text-xs font-medium">AzVault v1.0.1</p>
+            <p className="mono text-xs font-medium">AzVault v{__APP_VERSION__}</p>
             <p className="mt-1 text-[11px] text-[var(--text-tertiary)]">
               Tauri v2 · React · Tailwind CSS · No telemetry
             </p>

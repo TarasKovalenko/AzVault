@@ -4,7 +4,6 @@ import {
   filterOutDeletedSecrets,
   filterSecretsByPrefix,
   getSelectedSecrets,
-  isDeleteConfirmationValid,
   nextDeleteProgress,
   pruneSelectedIds,
   removeSucceededSelection,
@@ -28,13 +27,6 @@ function makeSecret(id: string, name: string): SecretItem {
 }
 
 describe('secretsBulkDeleteLogic', () => {
-  it('validates typed confirmation exactly after trim', () => {
-    expect(isDeleteConfirmationValid('delete')).toBe(true);
-    expect(isDeleteConfirmationValid('  delete  ')).toBe(true);
-    expect(isDeleteConfirmationValid('Delete')).toBe(false);
-    expect(isDeleteConfirmationValid('')).toBe(false);
-  });
-
   it('returns selected secret items only', () => {
     const secrets = [makeSecret('1', 'a'), makeSecret('2', 'b')];
     const selected = new Set<string>(['2']);

@@ -4,6 +4,7 @@ import { deleteSecret, purgeSecret } from '../../services/tauri';
 import type { SecretItem } from '../../types';
 import { DangerConfirmDialog } from '../common/DangerConfirmDialog';
 import { DetailField } from '../common/DetailField';
+import { DetailPaneHeader } from '../common/DetailPaneHeader';
 import { EmptyState } from '../common/EmptyState';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
@@ -58,31 +59,14 @@ export function SecretDetails({
   const expired = Boolean(item.expires && new Date(item.expires) < new Date());
   return (
     <div className="h-full overflow-auto p-5">
-      <header className="mb-4 flex items-center justify-between gap-3">
-        <h2 className="mono truncate text-[15px] font-semibold">{item.name}</h2>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close details"
-          className="grid size-7 place-items-center rounded-lg text-[var(--text-tertiary)] hover:bg-[var(--surface-hover)]"
-        >
-          <Icon name="close" size={14} />
-        </button>
-      </header>
-      <div className="mb-4 flex flex-wrap items-center gap-1.5">
-        <span className="inline-flex items-center gap-1.5 text-xs">
-          <span
-            className={`size-1.5 rounded-full ${item.enabled ? 'bg-[var(--success)]' : 'bg-[var(--text-tertiary)]'}`}
-          />
-          {item.enabled ? 'Active' : 'Disabled'}
-        </span>
+      <DetailPaneHeader title={item.name} enabled={item.enabled} onClose={onClose}>
         {item.managed && <Badge tone="blue">Managed</Badge>}
         {expired && <Badge tone="red">Expired</Badge>}
-      </div>
+      </DetailPaneHeader>
       <dl>
         <DetailField label="Name" value={item.name} mono />
         <DetailField label="ID" value={item.id} mono />
-        <DetailField label="Content Type" value={item.contentType || '—'} />
+        <DetailField label="Content type" value={item.contentType || '—'} />
         <DetailField
           label="Created"
           value={item.created ? format(new Date(item.created), 'PPpp') : '—'}
@@ -96,15 +80,15 @@ export function SecretDetails({
           value={item.expires ? format(new Date(item.expires), 'PPpp') : 'Never'}
         />
         <DetailField
-          label="Not Before"
+          label="Not before"
           value={item.notBefore ? format(new Date(item.notBefore), 'PPpp') : '—'}
         />
         {item.tags && Object.keys(item.tags).length ? (
           <DetailField label="Tags">
             <div className="flex flex-wrap gap-1">
               {Object.entries(item.tags).map(([key, value]) => (
-                <Badge key={key}>
-                  {key}: {value}
+                <Badge key={key} title={`${key}=${value}`} className="mono">
+                  {key}={value}
                 </Badge>
               ))}
             </div>
@@ -157,7 +141,7 @@ export function SecretDetails({
           onClick={() => setPurgeOpen(true)}
           disabled={loading}
         >
-          Purge Permanently
+          Purge permanently
         </Button>
       </section>
       {error && (
@@ -183,7 +167,7 @@ export function SecretDetails({
       />
       <DangerConfirmDialog
         open={deleteOpen}
-        title="Delete Secret"
+        title="Delete secret"
         description={
           <>
             Delete <strong className="mono">{item.name}</strong>? It may be recoverable if
@@ -198,7 +182,7 @@ export function SecretDetails({
       />
       <DangerConfirmDialog
         open={purgeOpen}
-        title="Purge Secret Permanently"
+        title="Purge secret permanently"
         description={
           <>
             Permanently destroy <strong className="mono">{item.name}</strong> and all versions. This
@@ -206,7 +190,7 @@ export function SecretDetails({
           </>
         }
         confirmText="purge"
-        confirmLabel="Purge Permanently"
+        confirmLabel="Purge permanently"
         dangerLevel="critical"
         loading={loading}
         onConfirm={() => runAction('purge')}

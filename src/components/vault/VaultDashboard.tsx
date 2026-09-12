@@ -1,22 +1,24 @@
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
-import { useAppToast } from '../../lib/toast';
 import { getAuditLog, listCertificates, listKeys, listSecrets } from '../../services/tauri';
 import { useAppStore } from '../../stores/appStore';
 import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';
-import { AttentionCard, type AttentionItem } from './dashboard/AttentionCard';
+import { useToast } from '../ui/Toast';
+import { AttentionCard } from './dashboard/AttentionCard';
 import { RecentActivityCard } from './dashboard/RecentActivityCard';
 import { VaultCountCard } from './dashboard/VaultCountCard';
 import { VaultPropertiesCard } from './dashboard/VaultPropertiesCard';
+import { collectAttentionItems } from './vaultAttention';
+
+const RECENT_ACTIVITY_LIMIT = 5;
 
 export function VaultDashboard() {
   const selectedVaultUri = useAppStore((state) => state.selectedVaultUri);
   const selectedVaultName = useAppStore((state) => state.selectedVaultName);
   const vaults = useAppStore((state) => state.keyvaults);
   const setActiveTab = useAppStore((state) => state.setActiveTab);
-  const [copiedUri, setCopiedUri] = useState(false);
-  const toast = useAppToast();
+  const requestSecretsAction = useAppStore((state) => state.requestSecretsAction);
+  const toast = useToast();
   const currentVault = vaults.find((vault) => vault.vaultUri === selectedVaultUri);
   const secrets = useQuery({
     queryKey: ['secrets', selectedVaultUri],
@@ -34,49 +36,30 @@ export function VaultDashboard() {
     enabled: Boolean(selectedVaultUri),
   });
   const activity = useQuery({
-    queryKey: ['auditLog', selectedVaultName],
-    queryFn: () => getAuditLog(5, selectedVaultName!),
+    queryKey: ['auditLog', selectedVaultName, RECENT_ACTIVITY_LIMIT],
+    queryFn: () => getAuditLog(RECENT_ACTIVITY_LIMIT, selectedVaultName!),
     enabled: Boolean(selectedVaultName),
   });
   if (!selectedVaultName) return null;
 
-  const attentionCandidates = [
-    ...(secrets.data || []).map((item) => ({ ...item, type: 'Secret', tab: 'secrets' as const })),
-    ...(keys.data || []).map((item) => ({ ...item, type: 'Key', tab: 'keys' as const })),
-    ...(certificates.data || []).map((item) => ({
-      ...item,
-      type: 'Certificate',
-      tab: 'certificates' as const,
-    })),
-  ]
-    .map((item) => {
-      const days = item.expires
-        ? Math.ceil((new Date(item.expires).getTime() - Date.now()) / 86_400_000)
-        : null;
-      const reason = !item.enabled
-        ? 'Disabled'
-        : days !== null && days < 0
-          ? 'Expired'
-          : days !== null && days <= 30
-            ? `${days}d left`
-            : null;
-      return { id: item.id, name: item.name, type: item.type, tab: item.tab, reason, days };
-    })
-    .filter((item) => Boolean(item.reason));
-  const attention: AttentionItem[] = attentionCandidates
-    .map((item) => ({ ...item, reason: item.reason! }))
-    .sort((a, b) => (a.days ?? 9999) - (b.days ?? 9999));
-  const copyUri = () => {
+  const attention = collectAttentionItems([
+    { items: secrets.data ?? [], type: 'Secret', tab: 'secrets' },
+    { items: keys.data ?? [], type: 'Key', tab: 'keys' },
+    { items: certificates.data ?? [], type: 'Certificate', tab: 'certificates' },
+  ]);
+  const copyUri = async () => {
     if (!selectedVaultUri) return;
-    void navigator.clipboard.writeText(selectedVaultUri);
-    setCopiedUri(true);
-    toast.success('Vault URI copied');
-    window.setTimeout(() => setCopiedUri(false), 2000);
+    try {
+      await navigator.clipboard.writeText(selectedVaultUri);
+      toast.success('Vault URI copied');
+    } catch (error) {
+      // Claiming a copy that did not happen sends the user to paste nothing.
+      toast.error('Could not copy the vault URI', String(error));
+    }
   };
-  const createSecret = () => {
-    setActiveTab('secrets');
-    requestAnimationFrame(() => window.dispatchEvent(new CustomEvent('azv:new-secret')));
-  };
+  // Routed through the store: a window event would race SecretsList's mount,
+  // switching the tab without opening the dialog.
+  const createSecret = () => requestSecretsAction('new-secret');
 
   return (
     <div className="h-full overflow-auto">
@@ -89,7 +72,7 @@ export function VaultDashboard() {
             </p>
           </div>
           <Button variant="primary" icon={<Icon name="add" />} onClick={createSecret}>
-            New Secret
+            New secret
           </Button>
         </header>
         <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -121,29 +104,10 @@ export function VaultDashboard() {
             <VaultPropertiesCard
               vault={currentVault}
               vaultUri={selectedVaultUri}
-              onCopy={copyUri}
+              onCopy={() => void copyUri()}
             />
           </div>
           <div className="grid gap-4">
-            <section className="mac-panel rounded-2xl p-4">
-              <h2 className="text-[13px] font-semibold">Quick Actions</h2>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Button
-                  size="xs"
-                  icon={<Icon name="activity" />}
-                  onClick={() => setActiveTab('logs')}
-                >
-                  Open Activity
-                </Button>
-                <Button
-                  size="xs"
-                  icon={<Icon name={copiedUri ? 'check' : 'copy'} />}
-                  onClick={copyUri}
-                >
-                  {copiedUri ? 'Copied' : 'Copy Vault URI'}
-                </Button>
-              </div>
-            </section>
             <RecentActivityCard entries={activity.data || []} />
           </div>
         </div>

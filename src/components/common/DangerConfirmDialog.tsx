@@ -1,7 +1,8 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Field';
 import { Modal } from '../ui/Modal';
+import { isConfirmationValid } from './confirmation';
 
 interface DangerConfirmDialogProps {
   open: boolean;
@@ -29,7 +30,7 @@ export function DangerConfirmDialog({
   children,
 }: DangerConfirmDialogProps) {
   const [input, setInput] = useState('');
-  const valid = input.toLowerCase() === confirmText.toLowerCase();
+  const valid = isConfirmationValid(input, confirmText);
   useEffect(() => {
     if (!open) setInput('');
   }, [open]);

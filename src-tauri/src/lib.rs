@@ -160,13 +160,29 @@ pub fn run() {
             commands::purge_secret,
             // Audit
             commands::get_audit_log,
-            commands::read_audit_log,
-            commands::write_audit_log,
             commands::export_audit_log,
             commands::clear_audit_log,
             // Export
             commands::export_items,
+            commands::save_export,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app_handle, event| {
+            // Audit writes are coalesced and run off the runtime, so the last
+            // few entries of a session may still be in memory when the user
+            // quits. Flush them before the process goes away.
+            if matches!(event, tauri::RunEvent::Exit) {
+                flush_audit_log(app_handle);
+            }
+        });
+}
+
+/// Persists any audit entries that have not reached disk yet.
+///
+/// Best effort by design: a failure here must not turn "quit" into "hang".
+fn flush_audit_log<R: Runtime>(app_handle: &tauri::AppHandle<R>) {
+    if let Some(state) = app_handle.try_state::<AppState>() {
+        tauri::async_runtime::block_on(state.audit.flush());
+    }
 }

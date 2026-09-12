@@ -44,14 +44,9 @@ export function useAutoHide({ timeoutSeconds, onHide }: UseAutoHideOptions) {
     setSecondsLeft(0);
   }, [clearTimers]);
 
-  const toggle = useCallback(() => {
-    if (isRevealed) hide();
-    else reveal();
-  }, [isRevealed, hide, reveal]);
-
   useEffect(() => {
     return clearTimers;
   }, [clearTimers]);
 
-  return { isRevealed, secondsLeft, reveal, hide, toggle };
+  return { isRevealed, secondsLeft, reveal, hide };
 }

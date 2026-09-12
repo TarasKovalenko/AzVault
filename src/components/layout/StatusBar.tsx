@@ -19,7 +19,7 @@ export function StatusBar() {
           <span
             className={`size-1.5 rounded-full ${userName ? 'bg-[var(--success)]' : 'bg-[var(--danger)]'}`}
           />
-          {userName || 'not signed in'}
+          {userName || 'Not signed in'}
         </span>
         <span className="opacity-40">•</span>
         <span className="truncate">

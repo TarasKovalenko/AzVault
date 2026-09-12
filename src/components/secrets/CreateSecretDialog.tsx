@@ -129,7 +129,7 @@ export function CreateSecretDialog({
       open={open}
       onClose={close}
       closeDisabled={loading}
-      title={editing ? 'Edit Secret' : 'Create Secret'}
+      title={editing ? 'Edit secret' : 'Create secret'}
       description={
         editing
           ? 'Saving creates a new version of this secret.'
@@ -169,7 +169,7 @@ export function CreateSecretDialog({
             rows={4}
           />
         </Field>
-        <Field label="Content Type" hint="Choose a common type or enter your own">
+        <Field label="Content type" hint="Choose a common type or enter your own">
           <Input
             list="secret-content-types"
             value={contentType}

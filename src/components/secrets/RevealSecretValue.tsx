@@ -61,17 +61,35 @@ export function RevealSecretValue({
     setConfirmOpen(false);
     await fetchValue();
   };
-  const copy = () => {
-    if (!secretValue?.value || disableClipboardCopy) return;
-    void navigator.clipboard.writeText(secretValue.value);
+  const clearTimerRef = useRef<number | undefined>(undefined);
+
+  const copy = async () => {
+    const value = secretValue?.value;
+    if (!value || disableClipboardCopy) return;
+    try {
+      await navigator.clipboard.writeText(value);
+    } catch (caught) {
+      // Never report a secret as copied when it is not on the clipboard.
+      setError(caught instanceof Error ? caught.message : 'Could not copy the secret value.');
+      return;
+    }
     setCopied(true);
     setClipboardWarning(true);
     window.setTimeout(() => setCopied(false), 2000);
-    window.setTimeout(() => {
-      void navigator.clipboard.writeText('').catch(() => undefined);
+    clearTimerRef.current = window.setTimeout(() => {
+      // Only wipe the clipboard if it still holds this secret: the user may
+      // have copied something else in the meantime, and destroying that would
+      // be a worse surprise than leaving the secret a moment longer.
+      void navigator.clipboard
+        .readText()
+        .then((current) => (current === value ? navigator.clipboard.writeText('') : undefined))
+        .catch(() => undefined);
       setClipboardWarning(false);
     }, clipboardClearSeconds * 1000);
   };
+  // A pending clipboard wipe must not outlive the component that scheduled it.
+  useEffect(() => () => window.clearTimeout(clearTimerRef.current), []);
+
   const clear = () => {
     setSecretValue(null);
     hide();
@@ -83,7 +101,7 @@ export function RevealSecretValue({
   return (
     <section>
       <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
-        Secret Value
+        Secret value
       </h3>
       <div className="rounded-xl border border-[var(--stroke)] bg-[var(--surface-muted)] p-3">
         {!secretValue ? (
@@ -98,7 +116,7 @@ export function RevealSecretValue({
               icon={<Icon name="eye" />}
               onClick={() => setConfirmOpen(true)}
             >
-              Fetch Value
+              Fetch value
             </Button>
           </>
         ) : (
@@ -122,7 +140,7 @@ export function RevealSecretValue({
                 <button
                   type="button"
                   title={copied ? 'Copied' : 'Copy'}
-                  onClick={copy}
+                  onClick={() => void copy()}
                   className="grid size-8 place-items-center rounded-lg hover:bg-[var(--surface-hover)]"
                 >
                   <Icon name={copied ? 'check' : 'copy'} size={15} />
@@ -155,7 +173,7 @@ export function RevealSecretValue({
       <Modal
         open={confirmOpen}
         onClose={() => setConfirmOpen(false)}
-        title="Fetch Secret Value"
+        title="Fetch secret value"
         description={`The value stays in memory and is cleared after ${autoHideSeconds} seconds.`}
         footer={
           <>

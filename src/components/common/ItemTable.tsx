@@ -1,14 +1,18 @@
 /* eslint-disable react-refresh/only-export-components */
 import { format } from 'date-fns';
-import type { ReactNode } from 'react';
+import type { KeyboardEvent, ReactNode } from 'react';
 import { Badge } from '../ui/Badge';
 import { Spinner } from '../ui/Button';
 import { cn } from '../ui/cn';
+import { Icon } from '../ui/Icon';
+import type { SortState, SortValue } from './useTableSort';
 
 export interface Column<T> {
   key: string;
   label: string;
   width?: string;
+  /** Providing this makes the column sortable. */
+  sortValue?: (item: T) => SortValue;
   render: (item: T) => ReactNode;
 }
 
@@ -23,9 +27,15 @@ interface ItemTableProps<T> {
   selectable?: boolean;
   selectedIds?: Set<string>;
   selectAllState?: boolean | 'mixed';
+  selectAllLabel?: string;
   onToggleSelect?: (id: string, checked: boolean) => void;
   onToggleSelectAll?: (checked: boolean) => void;
+  sort?: SortState | null;
+  onSort?: (key: string) => void;
 }
+
+const ariaSort = (sort: SortState | null | undefined, key: string) =>
+  sort?.key === key ? (sort.direction === 'asc' ? 'ascending' : 'descending') : 'none';
 
 export function ItemTable<T>({
   items,
@@ -38,8 +48,11 @@ export function ItemTable<T>({
   selectable = false,
   selectedIds,
   selectAllState = false,
+  selectAllLabel = 'Select all rows',
   onToggleSelect,
   onToggleSelectAll,
+  sort,
+  onSort,
 }: ItemTableProps<T>) {
   if (loading)
     return (
@@ -54,16 +67,27 @@ export function ItemTable<T>({
       </div>
     );
 
+  // Arrow keys walk the rows so the list is fully operable without a mouse.
+  const moveFocus = (event: KeyboardEvent<HTMLTableRowElement>, offset: number) => {
+    event.preventDefault();
+    const rows = Array.from(
+      event.currentTarget.parentElement?.querySelectorAll<HTMLTableRowElement>('tr[tabindex]') ??
+        [],
+    );
+    const target = rows[rows.indexOf(event.currentTarget) + offset];
+    target?.focus();
+  };
+
   return (
     <div className="overflow-auto rounded-xl border border-[var(--stroke)] bg-[var(--surface-solid)]">
       <table className="w-full table-fixed border-collapse text-left text-xs">
         <thead className="sticky top-0 z-10 bg-[var(--surface-raised)] text-[11px] font-semibold text-[var(--text-secondary)] backdrop-blur-xl">
           <tr className="border-b border-[var(--stroke)]">
             {selectable && (
-              <th className="w-10 px-3 py-2">
+              <th scope="col" className="w-10 px-3 py-2">
                 <input
                   type="checkbox"
-                  aria-label="Select all"
+                  aria-label={selectAllLabel}
                   checked={selectAllState === true}
                   ref={(node) => {
                     if (node) node.indeterminate = selectAllState === 'mixed';
@@ -72,12 +96,48 @@ export function ItemTable<T>({
                 />
               </th>
             )}
-            <th className="w-11 px-3 py-2">#</th>
-            {columns.map((column) => (
-              <th key={column.key} style={{ width: column.width }} className="px-3 py-2">
-                {column.label}
-              </th>
-            ))}
+            <th scope="col" className="w-11 px-3 py-2">
+              <span className="sr-only">Row number</span>
+              <span aria-hidden="true">#</span>
+            </th>
+            {columns.map((column) => {
+              const sortable = Boolean(column.sortValue && onSort);
+              return (
+                <th
+                  key={column.key}
+                  scope="col"
+                  style={{ width: column.width }}
+                  aria-sort={sortable ? ariaSort(sort, column.key) : undefined}
+                  className="px-3 py-2"
+                >
+                  {sortable ? (
+                    <button
+                      type="button"
+                      onClick={() => onSort?.(column.key)}
+                      className="-mx-1 inline-flex items-center gap-1 rounded px-1 py-0.5 hover:text-[var(--text)]"
+                    >
+                      {column.label}
+                      <Icon
+                        name={
+                          sort?.key === column.key && sort.direction === 'desc'
+                            ? 'sort-desc'
+                            : 'sort-asc'
+                        }
+                        size={11}
+                        className={cn(
+                          'transition-opacity',
+                          // A hint at rest tells the user the column is sortable
+                          // at all; full strength marks the active sort.
+                          sort?.key === column.key ? 'opacity-100' : 'opacity-30',
+                        )}
+                      />
+                    </button>
+                  ) : (
+                    column.label
+                  )}
+                </th>
+              );
+            })}
           </tr>
         </thead>
         <tbody>
@@ -88,12 +148,19 @@ export function ItemTable<T>({
               <tr
                 key={id}
                 tabIndex={onSelect ? 0 : undefined}
-                aria-selected={selected}
+                aria-selected={onSelect ? selected : undefined}
                 onClick={() => onSelect?.(item)}
                 onKeyDown={(event) => {
+                  // Keys aimed at a control inside the row (the checkbox) must
+                  // reach it: preventDefault here would cancel its activation.
+                  if (event.target !== event.currentTarget) return;
                   if (event.key === 'Enter' || event.key === ' ') {
                     event.preventDefault();
                     onSelect?.(item);
+                  } else if (event.key === 'ArrowDown') {
+                    moveFocus(event, 1);
+                  } else if (event.key === 'ArrowUp') {
+                    moveFocus(event, -1);
                   }
                 }}
                 className={cn(
@@ -113,7 +180,7 @@ export function ItemTable<T>({
                   </td>
                 )}
                 <td className="mono px-3 py-2 text-[10px] text-[var(--text-tertiary)]">
-                  {String(index + 1).padStart(2, '0')}
+                  {index + 1}
                 </td>
                 {columns.map((column) => (
                   <td key={column.key} className="truncate px-3 py-2.5 align-middle">
@@ -127,6 +194,10 @@ export function ItemTable<T>({
       </table>
     </div>
   );
+}
+
+export function renderName(item: { name: string }) {
+  return <span className="mono font-semibold">{item.name}</span>;
 }
 
 export function renderEnabled(enabled: boolean) {
@@ -147,13 +218,23 @@ export function renderEnabled(enabled: boolean) {
 
 export function renderDate(dateString: string | null) {
   if (!dateString) return <span className="text-[var(--text-tertiary)]">—</span>;
-  try {
-    return (
-      <span className="mono text-[11px]">{format(new Date(dateString), 'MMM d, yyyy HH:mm')}</span>
-    );
-  } catch {
-    return <span>{dateString}</span>;
-  }
+  const parsed = new Date(dateString);
+  if (Number.isNaN(parsed.getTime())) return <span>{dateString}</span>;
+  return <span className="mono text-[11px]">{format(parsed, 'MMM d, yyyy HH:mm')}</span>;
+}
+
+/** Expiry cell shared by every resource list: never-expires reads as such, past dates read as expired. */
+export function renderExpiry(expires: string | null) {
+  if (!expires) return <span className="mono text-[11px] text-[var(--text-tertiary)]">Never</span>;
+  const expired = new Date(expires) < new Date();
+  return (
+    <span
+      className={expired ? 'text-[var(--danger)]' : undefined}
+      title={expired ? 'Expired' : undefined}
+    >
+      {renderDate(expires)}
+    </span>
+  );
 }
 
 export function renderTags(tags: Record<string, string> | null) {

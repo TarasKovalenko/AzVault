@@ -32,11 +32,15 @@ export type IconName =
   | 'settings'
   | 'shield'
   | 'sign-out'
+  | 'sort-asc'
+  | 'sort-desc'
   | 'subscription'
   | 'sun'
   | 'terminal'
   | 'timer'
+  | 'upload'
   | 'user'
+  | 'more'
   | 'warning';
 
 const paths: Record<IconName, React.ReactNode> = {
@@ -235,12 +239,22 @@ const paths: Record<IconName, React.ReactNode> = {
       <path d="M9 2h6M12 5v8l4 2" />
     </>
   ),
+  upload: (
+    <>
+      <path d="M12 21V9" />
+      <path d="m7 14 5-5 5 5" />
+      <path d="M5 3h14" />
+    </>
+  ),
   user: (
     <>
       <circle cx="12" cy="8" r="4" />
       <path d="M4 21a8 8 0 0 1 16 0" />
     </>
   ),
+  'sort-asc': <path d="m6 15 6-6 6 6" />,
+  'sort-desc': <path d="m6 9 6 6 6-6" />,
+  more: <path d="M5 12h.01M12 12h.01M19 12h.01" />,
   warning: (
     <>
       <path d="M12 8v5M12 17h.01" />

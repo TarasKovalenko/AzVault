@@ -1,6 +1,7 @@
 import { format } from 'date-fns';
 import type { KeyItem } from '../../types';
 import { DetailField } from '../common/DetailField';
+import { DetailPaneHeader } from '../common/DetailPaneHeader';
 import { EmptyState } from '../common/EmptyState';
 import { Badge } from '../ui/Badge';
 import { Icon } from '../ui/Icon';
@@ -19,31 +20,14 @@ export function KeyDetails({ item, onClose }: { item: KeyItem | null; onClose: (
   const version = index >= 0 ? parts[index + 2] || '—' : '—';
   return (
     <div className="h-full overflow-auto p-5">
-      <header className="mb-4 flex items-center justify-between">
-        <h2 className="mono truncate text-[15px] font-semibold">{item.name}</h2>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close details"
-          className="grid size-7 place-items-center rounded-lg text-[var(--text-tertiary)] hover:bg-[var(--surface-hover)]"
-        >
-          <Icon name="close" size={14} />
-        </button>
-      </header>
-      <div className="mb-4 flex flex-wrap items-center gap-1.5">
-        <span className="inline-flex items-center gap-1.5 text-xs">
-          <span
-            className={`size-1.5 rounded-full ${item.enabled ? 'bg-[var(--success)]' : 'bg-[var(--text-tertiary)]'}`}
-          />
-          {item.enabled ? 'Active' : 'Disabled'}
-        </span>
+      <DetailPaneHeader title={item.name} enabled={item.enabled} onClose={onClose}>
         {item.managed && <Badge tone="blue">Managed</Badge>}
         {item.keyType && <Badge>{item.keyType}</Badge>}
-      </div>
+      </DetailPaneHeader>
       <dl>
         <DetailField label="Name" value={item.name} mono />
         <DetailField label="Version" value={version} mono />
-        <DetailField label="Key Type" value={item.keyType || '—'} />
+        <DetailField label="Key type" value={item.keyType || '—'} />
         <DetailField
           label="Created"
           value={item.created ? format(new Date(item.created), 'PPpp') : '—'}
@@ -57,7 +41,7 @@ export function KeyDetails({ item, onClose }: { item: KeyItem | null; onClose: (
           value={item.expires ? format(new Date(item.expires), 'PPpp') : 'Never'}
         />
         <DetailField
-          label="Not Before"
+          label="Not before"
           value={item.notBefore ? format(new Date(item.notBefore), 'PPpp') : '—'}
         />
         <DetailField label="ID" value={item.id} mono />
@@ -76,8 +60,8 @@ export function KeyDetails({ item, onClose }: { item: KeyItem | null; onClose: (
           <DetailField label="Tags">
             <div className="flex flex-wrap gap-1">
               {Object.entries(item.tags).map(([key, value]) => (
-                <Badge key={key} title={`${key}: ${value}`}>
-                  {key}: {value}
+                <Badge key={key} title={`${key}=${value}`} className="mono">
+                  {key}={value}
                 </Badge>
               ))}
             </div>

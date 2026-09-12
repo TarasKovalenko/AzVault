@@ -1,7 +1,7 @@
 import { SubscriptionPicker } from './workspace-switcher/SubscriptionPicker';
 import { TenantPicker } from './workspace-switcher/TenantPicker';
-import { VaultPicker } from './workspace-switcher/VaultPicker';
 import { useWorkspaceResources } from './workspace-switcher/useWorkspaceResources';
+import { VaultPicker } from './workspace-switcher/VaultPicker';
 
 export function WorkspaceSwitcher() {
   const workspace = useWorkspaceResources();

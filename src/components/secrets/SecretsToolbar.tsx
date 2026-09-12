@@ -1,14 +1,19 @@
 import type { ChangeEvent, RefObject } from 'react';
-import { Badge } from '../ui/Badge';
+import { ListToolbar } from '../common/ListToolbar';
 import { Button } from '../ui/Button';
 import { Dropdown, DropdownItem } from '../ui/Dropdown';
-import { Input } from '../ui/Field';
 import { Icon } from '../ui/Icon';
 import type { ExportFormat } from './secretsExport';
 
+/**
+ * Secrets header. Only the primary action ("New secret") is a standing button;
+ * import/export/bulk-delete live in one overflow menu, and destructive bulk
+ * actions surface in a selection bar that appears only when rows are checked.
+ */
 export function SecretsToolbar({
   count,
   total,
+  matchCount,
   filter,
   selectedCount,
   importing,
@@ -21,9 +26,12 @@ export function SecretsToolbar({
   onCreate,
   onDeleteSelected,
   onDeletePrefix,
+  onClearSelection,
 }: {
   count?: number;
   total: number;
+  /** How many rows the current filter matches, for the selection bar. */
+  matchCount: number;
   filter: string;
   selectedCount: number;
   importing: boolean;
@@ -36,69 +44,85 @@ export function SecretsToolbar({
   onCreate: () => void;
   onDeleteSelected: () => void;
   onDeletePrefix: () => void;
+  onClearSelection: () => void;
 }) {
   return (
-    <header className="mac-vibrancy flex min-h-12 shrink-0 flex-wrap items-center gap-2 border-b border-[var(--stroke)] px-3">
-      <h1 className="text-[14px] font-semibold">Secrets</h1>
-      {count !== undefined && (
-        <span className="mono text-[11px] text-[var(--text-tertiary)]">
-          {count}
-          {filter ? ` / ${total}` : ''}
-        </span>
-      )}
-      {selectedCount > 0 && <Badge tone="blue">{selectedCount} selected</Badge>}
-      <div className="ml-auto flex items-center gap-1.5">
-        <div className="relative">
-          <Icon
-            name="search"
-            size={13}
-            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]"
-          />
-          <Input
-            data-azv-list-search
-            value={filter}
-            onChange={(event) => onFilter(event.target.value)}
-            placeholder="Filter"
-            className="w-40 pl-8"
-          />
+    <>
+      <ListToolbar
+        title="Secrets"
+        count={count}
+        total={total}
+        filter={filter}
+        onFilterChange={onFilter}
+        actions={
+          <>
+            <input
+              ref={inputRef}
+              type="file"
+              accept="application/json,.json"
+              onChange={onFile}
+              className="hidden"
+            />
+            <Button variant="primary" size="xs" icon={<Icon name="add" />} onClick={onCreate}>
+              New secret
+            </Button>
+            <Dropdown
+              align="end"
+              trigger={
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  aria-label="More secret actions"
+                  icon={<Icon name="more" />}
+                />
+              }
+            >
+              <DropdownItem icon={<Icon name="download" />} onClick={onImport} disabled={importing}>
+                {importing ? 'Importing…' : 'Import from JSON…'}
+              </DropdownItem>
+              <DropdownItem icon={<Icon name="external" />} onClick={() => onExport('json')}>
+                {selectedCount
+                  ? `Export ${selectedCount} selected as JSON`
+                  : 'Export metadata as JSON'}
+              </DropdownItem>
+              <DropdownItem icon={<Icon name="external" />} onClick={() => onExport('csv')}>
+                {selectedCount
+                  ? `Export ${selectedCount} selected as CSV`
+                  : 'Export metadata as CSV'}
+              </DropdownItem>
+              <div className="my-1 border-t border-[var(--stroke)]" />
+              <DropdownItem
+                icon={<Icon name="delete" />}
+                onClick={onDeletePrefix}
+                disabled={deleting}
+              >
+                Delete by prefix…
+              </DropdownItem>
+            </Dropdown>
+          </>
+        }
+      />
+      {selectedCount > 0 && (
+        <div className="flex shrink-0 items-center gap-2 border-b border-[var(--stroke)] bg-[var(--accent-soft)] px-3 py-1.5 text-xs">
+          <span className="font-medium">
+            {selectedCount} of {matchCount} selected
+          </span>
+          <div className="ml-auto flex items-center gap-1.5">
+            <Button variant="ghost" size="xs" onClick={onClearSelection} disabled={deleting}>
+              Clear selection
+            </Button>
+            <Button
+              variant="danger"
+              size="xs"
+              icon={<Icon name="delete" />}
+              onClick={onDeleteSelected}
+              disabled={deleting}
+            >
+              Delete selected
+            </Button>
+          </div>
         </div>
-        <input
-          ref={inputRef}
-          type="file"
-          accept="application/json,.json"
-          onChange={onFile}
-          className="hidden"
-        />
-        <Dropdown
-          trigger={
-            <Button variant="ghost" size="xs" icon={<Icon name="download" />}>
-              Export
-            </Button>
-          }
-        >
-          <DropdownItem onClick={() => onExport('json')}>Export as JSON</DropdownItem>
-          <DropdownItem onClick={() => onExport('csv')}>Export as CSV</DropdownItem>
-        </Dropdown>
-        <Button size="xs" onClick={onImport} disabled={importing}>
-          {importing ? 'Importing…' : 'Import JSON'}
-        </Button>
-        <Button variant="primary" size="xs" icon={<Icon name="add" />} onClick={onCreate}>
-          New
-        </Button>
-        <Dropdown
-          align="end"
-          trigger={
-            <Button size="xs" icon={<Icon name="delete" />} disabled={deleting}>
-              Delete
-            </Button>
-          }
-        >
-          <DropdownItem disabled={!selectedCount} onClick={onDeleteSelected}>
-            Delete Selected{selectedCount ? ` (${selectedCount})` : ''}
-          </DropdownItem>
-          <DropdownItem onClick={onDeletePrefix}>Delete by Prefix</DropdownItem>
-        </Dropdown>
-      </div>
-    </header>
+      )}
+    </>
   );
 }

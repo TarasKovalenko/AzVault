@@ -1,6 +1,8 @@
 import { format } from 'date-fns';
+import type { KeyboardEvent } from 'react';
 import type { AuditEntry } from '../../types';
 import { Badge } from '../ui/Badge';
+import { actionLabel, itemTypeLabel, resultLabel } from './auditLabels';
 
 function tone(action: string): 'blue' | 'green' | 'orange' | 'red' | 'purple' {
   if (action.includes('delete') || action.includes('purge')) return 'red';
@@ -18,31 +20,56 @@ function timestamp(value: string) {
   }
 }
 
+const COLUMNS = [
+  { label: 'Time', width: 'w-[18%]' },
+  { label: 'Action', width: 'w-[18%]' },
+  { label: 'Type', width: 'w-[11%]' },
+  { label: 'Item', width: 'w-[20%]' },
+  { label: 'Result', width: 'w-[11%]' },
+  { label: 'Details', width: 'w-[22%]' },
+];
+
 export function ActivityTable({ entries }: { entries: AuditEntry[] }) {
+  // Arrow keys walk the rows, matching the secrets, keys and certificates lists.
+  const moveFocus = (event: KeyboardEvent<HTMLTableRowElement>, offset: number) => {
+    event.preventDefault();
+    const rows = Array.from(
+      event.currentTarget.parentElement?.querySelectorAll<HTMLTableRowElement>('tr[tabindex]') ??
+        [],
+    );
+    rows[rows.indexOf(event.currentTarget) + offset]?.focus();
+  };
+
   return (
     <div className="overflow-auto rounded-xl border border-[var(--stroke)] bg-[var(--surface-solid)]">
       <table className="w-full table-fixed border-collapse text-left text-xs">
-        <thead className="sticky top-0 z-10 bg-[var(--surface-raised)] text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] backdrop-blur-xl">
+        <thead className="sticky top-0 z-10 bg-[var(--surface-raised)] text-[11px] font-semibold text-[var(--text-secondary)] backdrop-blur-xl">
           <tr className="border-b border-[var(--stroke)]">
-            <th className="w-[18%] px-3 py-2">Time</th>
-            <th className="w-[18%] px-3 py-2">Action</th>
-            <th className="w-[11%] px-3 py-2">Type</th>
-            <th className="w-[20%] px-3 py-2">Item</th>
-            <th className="w-[11%] px-3 py-2">Result</th>
-            <th className="w-[22%] px-3 py-2">Details</th>
+            {COLUMNS.map((column) => (
+              <th key={column.label} scope="col" className={`${column.width} px-3 py-2`}>
+                {column.label}
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>
           {entries.map((entry, index) => (
             <tr
               key={`${entry.timestamp}-${entry.action}-${entry.itemName}-${index}`}
+              tabIndex={0}
+              onKeyDown={(event) => {
+                if (event.key === 'ArrowDown') moveFocus(event, 1);
+                else if (event.key === 'ArrowUp') moveFocus(event, -1);
+              }}
               className="border-b border-[var(--stroke)] last:border-0 hover:bg-[var(--surface-hover)]"
             >
-              <td className="mono px-3 py-2.5 text-[10px]">{timestamp(entry.timestamp)}</td>
+              <td className="mono px-3 py-2.5 text-[11px]">{timestamp(entry.timestamp)}</td>
               <td className="px-3 py-2.5">
-                <Badge tone={tone(entry.action)}>{entry.action}</Badge>
+                <Badge tone={tone(entry.action)}>{actionLabel(entry.action)}</Badge>
               </td>
-              <td className="px-3 py-2.5 text-[var(--text-secondary)]">{entry.itemType}</td>
+              <td className="px-3 py-2.5 text-[var(--text-secondary)]">
+                {itemTypeLabel(entry.itemType)}
+              </td>
               <td className="mono truncate px-3 py-2.5" title={entry.itemName}>
                 {entry.itemName}
               </td>
@@ -51,11 +78,11 @@ export function ActivityTable({ entries }: { entries: AuditEntry[] }) {
                   <span
                     className={`size-1.5 rounded-full ${entry.result === 'success' ? 'bg-[var(--success)]' : 'bg-[var(--danger)]'}`}
                   />
-                  {entry.result}
+                  {resultLabel(entry.result)}
                 </span>
               </td>
               <td
-                className="mono truncate px-3 py-2.5 text-[10px] text-[var(--text-tertiary)]"
+                className="truncate px-3 py-2.5 text-[11px] text-[var(--text-secondary)]"
                 title={entry.details || '—'}
               >
                 {entry.details || '—'}
