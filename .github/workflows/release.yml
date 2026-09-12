@@ -3,6 +3,14 @@ name: Release Bundles
 on:
   release:
     types: [published]
+  # Lets a failed build be retried against an existing tag without deleting
+  # and re-publishing the release.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag to build and attach assets to (for example v1.1.1)
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -47,7 +55,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: refs/tags/${{ github.event.release.tag_name }}
+          ref: refs/tags/${{ github.event.release.tag_name || inputs.tag }}
           fetch-depth: 0
 
       - name: Setup Node
@@ -92,6 +100,10 @@ jobs:
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY_SECRET: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+          APPLE_ID_SECRET: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD_SECRET: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID_SECRET: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_PROVIDER_SHORT_NAME_SECRET: ${{ secrets.APPLE_PROVIDER_SHORT_NAME }}
         run: |
           if [ -z "$APPLE_CERTIFICATE" ] || [ -z "$APPLE_CERTIFICATE_PASSWORD" ]; then
             echo "No Apple signing certificate secrets found. Falling back to ad-hoc signing."
@@ -137,15 +149,27 @@ jobs:
           echo "APPLE_SIGNING_IDENTITY=$identity" >> "$GITHUB_ENV"
           echo "APPLE_TEMP_KEYCHAIN=$keychain_path" >> "$GITHUB_ENV"
 
+          # Notarization credentials are exported only when all three are
+          # present. Tauri reads these from the environment and an empty
+          # APPLE_TEAM_ID still counts as set, which fails the build with
+          # "Team ID must be at least 3 characters".
+          if [ -n "$APPLE_ID_SECRET" ] && [ -n "$APPLE_PASSWORD_SECRET" ] && [ -n "$APPLE_TEAM_ID_SECRET" ]; then
+            echo "Notarization credentials found; the bundle will be notarized."
+            echo "APPLE_ID=$APPLE_ID_SECRET" >> "$GITHUB_ENV"
+            echo "APPLE_PASSWORD=$APPLE_PASSWORD_SECRET" >> "$GITHUB_ENV"
+            echo "APPLE_TEAM_ID=$APPLE_TEAM_ID_SECRET" >> "$GITHUB_ENV"
+            if [ -n "$APPLE_PROVIDER_SHORT_NAME_SECRET" ]; then
+              echo "APPLE_PROVIDER_SHORT_NAME=$APPLE_PROVIDER_SHORT_NAME_SECRET" >> "$GITHUB_ENV"
+            fi
+          else
+            echo "No complete set of notarization credentials; skipping notarization."
+          fi
+
       - name: Build application bundles
-        env:
-          # Only pass notarization creds when a real Developer ID identity was
-          # imported. Ad-hoc signing ("-") cannot be notarized, and an empty
-          # APPLE_TEAM_ID triggers "Team ID must be at least 3 characters".
-          APPLE_ID: ${{ env.APPLE_SIGNING_IDENTITY != '-' && secrets.APPLE_ID || '' }}
-          APPLE_PASSWORD: ${{ env.APPLE_SIGNING_IDENTITY != '-' && secrets.APPLE_PASSWORD || '' }}
-          APPLE_TEAM_ID: ${{ env.APPLE_SIGNING_IDENTITY != '-' && secrets.APPLE_TEAM_ID || '' }}
-          APPLE_PROVIDER_SHORT_NAME: ${{ env.APPLE_SIGNING_IDENTITY != '-' && secrets.APPLE_PROVIDER_SHORT_NAME || '' }}
+        # Signing and notarization variables come from the macOS signing step
+        # via GITHUB_ENV. Declaring them here would define them as empty
+        # strings on every platform, and Tauri treats an empty value as
+        # configured.
         run: cargo tauri build --bundles ${{ matrix.bundles }} ${{ matrix.target && format('--target {0}', matrix.target) || '' }}
 
       - name: Verify macOS bundle architecture
@@ -244,7 +268,7 @@ jobs:
         with:
           draft: false
           prerelease: false
-          tag_name: ${{ github.event.release.tag_name }}
+          tag_name: ${{ github.event.release.tag_name || inputs.tag }}
           files: |
             release-assets/*
         env:
