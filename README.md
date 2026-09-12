@@ -148,7 +148,7 @@ Never stored locally by app logic:
 
 ## Prerequisites
 
-- Node.js 20+
+- Node.js 24+
 - Rust stable toolchain
 - Azure CLI (`az`)
 - Tauri OS prerequisites: [Tauri v2 prerequisites](https://v2.tauri.app/start/prerequisites/)

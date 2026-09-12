@@ -8,6 +8,9 @@
     "email": "bad.kto@gmail.com"
   },
   "type": "module",
+  "engines": {
+    "node": ">=24.15.0"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
