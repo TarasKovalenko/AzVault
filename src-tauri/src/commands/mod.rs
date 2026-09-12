@@ -1171,7 +1171,8 @@ mod validation_tests {
     #[test]
     fn vault_uri_ignores_userinfo_spoofing() {
         assert!(validate_vault_uri("https://demo.vault.azure.net@evil.com").is_err());
-        assert!(validate_vault_uri("https://user:pw@evil.com/demo.vault.azure.net").is_err());
+        let userinfo = "https://user:pw@evil.com/demo.vault.azure.net"; // pragma: allowlist secret
+        assert!(validate_vault_uri(userinfo).is_err());
     }
 
     // ── Item name ──

@@ -1041,7 +1041,7 @@ mod tests {
             "https://vault.azure.net".to_string(),
             "12345678-abcd-ef01-2345-6789abcdef01".to_string(),
         );
-        let secret = "eyJhbGciOiJSUzI1NiIsSUPER_SECRET_BEARER";
+        let secret = "eyJhbGciOiJSUzI1NiIsSUPER_SECRET_BEARER"; // pragma: allowlist secret
         auth.set_tenant("12345678-abcd-ef01-2345-6789abcdef01")
             .await;
         auth.store_token(

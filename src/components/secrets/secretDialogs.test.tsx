@@ -372,13 +372,15 @@ describe('ImportSecretsDialog', () => {
 });
 
 describe('RevealSecretValue', () => {
+  const renderReveal = () => render(<RevealSecretValue secretName="alpha" vaultUri="https://v/" />); // pragma: allowlist secret
+
   const fetchValue = async () => {
     await userEvent.click(screen.getByRole('button', { name: /Fetch value/ }));
     await userEvent.click(screen.getByRole('button', { name: 'Fetch' }));
   };
 
   it('fetches on confirmation and masks the value until revealed', async () => {
-    render(<RevealSecretValue secretName="alpha" vaultUri="https://v/" />);
+    renderReveal();
     await fetchValue();
     await waitFor(() => expect(screen.getByDisplayValue('super-secret')).toBeInTheDocument());
     const field = screen.getByDisplayValue('super-secret');
@@ -394,7 +396,7 @@ describe('RevealSecretValue', () => {
 
   it('requires an explicit confirmation when the setting is on', async () => {
     useAppStore.setState({ requireReauthForReveal: true });
-    render(<RevealSecretValue secretName="alpha" vaultUri="https://v/" />);
+    renderReveal();
     await userEvent.click(screen.getByRole('button', { name: /Fetch value/ }));
     await userEvent.click(screen.getByRole('button', { name: 'Fetch' }));
     expect(tauri.getSecretValue).not.toHaveBeenCalled();
@@ -409,7 +411,7 @@ describe('RevealSecretValue', () => {
 
   it('copies the value and warns that the clipboard will be cleared', async () => {
     const writeText = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined);
-    render(<RevealSecretValue secretName="alpha" vaultUri="https://v/" />);
+    renderReveal();
     await fetchValue();
     await waitFor(() => expect(screen.getByTitle('Copy')).toBeInTheDocument());
     await userEvent.click(screen.getByTitle('Copy'));
@@ -419,14 +421,14 @@ describe('RevealSecretValue', () => {
 
   it('hides the copy button when copying is disabled', async () => {
     useAppStore.setState({ disableClipboardCopy: true });
-    render(<RevealSecretValue secretName="alpha" vaultUri="https://v/" />);
+    renderReveal();
     await fetchValue();
     await waitFor(() => expect(screen.getByDisplayValue('super-secret')).toBeInTheDocument());
     expect(screen.queryByTitle('Copy')).not.toBeInTheDocument();
   });
 
   it('clears the fetched value', async () => {
-    render(<RevealSecretValue secretName="alpha" vaultUri="https://v/" />);
+    renderReveal();
     await fetchValue();
     await waitFor(() => expect(screen.getByDisplayValue('super-secret')).toBeInTheDocument());
     await userEvent.click(screen.getByRole('button', { name: 'Clear' }));
@@ -435,13 +437,13 @@ describe('RevealSecretValue', () => {
 
   it('reports a failed fetch', async () => {
     vi.mocked(tauri.getSecretValue).mockRejectedValue(new Error('403 denied'));
-    render(<RevealSecretValue secretName="alpha" vaultUri="https://v/" />);
+    renderReveal();
     await fetchValue();
     await waitFor(() => expect(screen.getByText(/403 denied/)).toBeInTheDocument());
   });
 
   it('can be dismissed without fetching', async () => {
-    render(<RevealSecretValue secretName="alpha" vaultUri="https://v/" />);
+    renderReveal();
     await userEvent.click(screen.getByRole('button', { name: /Fetch value/ }));
     await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(tauri.getSecretValue).not.toHaveBeenCalled();

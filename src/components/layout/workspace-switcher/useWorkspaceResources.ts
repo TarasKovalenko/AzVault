@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useState } from 'react';
-import { useToast } from '../../ui/Toast';
 import { listKeyvaults, listSubscriptions, listTenants, setTenant } from '../../../services/tauri';
 import { useAppStore } from '../../../stores/appStore';
+import { useToast } from '../../ui/Toast';
 
 export function useWorkspaceResources() {
   const selectedTenantId = useAppStore((state) => state.selectedTenantId);

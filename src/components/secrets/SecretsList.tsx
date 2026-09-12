@@ -1,6 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
-import { useToast } from '../ui/Toast';
 import {
   deleteSecret,
   exportItems,
@@ -26,6 +25,7 @@ import { ListPager, PAGE_SIZE } from '../common/ListPager';
 import { LoadingSkeleton } from '../common/LoadingSkeleton';
 import { SplitPane } from '../common/SplitPane';
 import { nextSortState, sortItems } from '../common/useTableSort';
+import { useToast } from '../ui/Toast';
 import { CreateSecretDialog } from './CreateSecretDialog';
 import { DeleteByPrefixDialog } from './DeleteByPrefixDialog';
 import { ImportSecretsDialog, type PendingImport } from './ImportSecretsDialog';

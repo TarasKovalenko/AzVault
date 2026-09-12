@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
-import { useToast } from '../ui/Toast';
 import { getAuditLog, listCertificates, listKeys, listSecrets } from '../../services/tauri';
 import { useAppStore } from '../../stores/appStore';
 import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';
+import { useToast } from '../ui/Toast';
 import { AttentionCard } from './dashboard/AttentionCard';
 import { RecentActivityCard } from './dashboard/RecentActivityCard';
 import { VaultCountCard } from './dashboard/VaultCountCard';

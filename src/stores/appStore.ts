@@ -76,7 +76,7 @@ interface AppStoreState {
    * Action requested from another view, consumed by the target view on mount.
    * Dispatching a window event instead would race that view's mount.
    */
-  pendingSecretsAction: 'new-secret' | null;
+  pendingSecretsAction: 'new-secret' | null; // pragma: allowlist secret
 
   // Command palette
   commandPaletteOpen: boolean;

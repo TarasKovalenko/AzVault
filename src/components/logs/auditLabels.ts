@@ -24,7 +24,7 @@ const ACTION_LABELS: Record<string, string> = {
 };
 
 const ITEM_TYPE_LABELS: Record<string, string> = {
-  secret: 'Secret',
+  secret: 'Secret', // pragma: allowlist secret
   key: 'Key',
   certificate: 'Certificate',
   vault: 'Vault',
