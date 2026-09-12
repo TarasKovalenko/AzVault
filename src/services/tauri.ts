@@ -169,3 +169,9 @@ export async function exportItems(itemsJson: string, format: string): Promise<st
   if (isMock()) return itemsJson;
   return invoke<string>('export_items', { itemsJson, format });
 }
+
+/** Writes an export to disk and resolves with the path it landed on. */
+export async function saveExport(fileName: string, contents: string): Promise<string> {
+  if (isMock()) return `~/Downloads/${fileName}`;
+  return invoke<string>('save_export', { fileName, contents });
+}

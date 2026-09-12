@@ -1,7 +1,7 @@
 import type { SelectHTMLAttributes } from 'react';
 import { Spinner } from '../../ui/Button';
-import { Icon, type IconName } from '../../ui/Icon';
 import { cn } from '../../ui/cn';
+import { Icon, type IconName } from '../../ui/Icon';
 
 interface WorkspaceSelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   icon: IconName;

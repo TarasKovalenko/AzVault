@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { formatShortcut } from '../../hooks/useKeyboardShortcuts';
 import { useAppStore } from '../../stores/appStore';
 import type { PaletteCommand } from '../../types';
 import { cn } from '../ui/cn';
@@ -12,6 +14,10 @@ export function CommandPalette() {
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const listId = useId();
+  const optionId = (index: number) => `${listId}-option-${index}`;
+  useFocusTrap(dialogRef, commandPaletteOpen);
 
   const commands = useCommands();
   const filtered = useMemo(() => {
@@ -72,8 +78,10 @@ export function CommandPalette() {
       }}
     >
       <div
+        ref={dialogRef}
         className="mac-vibrancy flex h-fit max-h-[440px] w-[580px] max-w-full flex-col overflow-hidden rounded-2xl border border-[var(--stroke)] shadow-[var(--shadow-window)]"
         role="dialog"
+        aria-modal="true"
         aria-label="Command palette"
       >
         <div className="flex items-center gap-2.5 border-b border-[var(--stroke)] px-4 py-3">
@@ -83,13 +91,17 @@ export function CommandPalette() {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={onKeyDown}
-            placeholder="Search or run a command..."
+            placeholder="Search or run a command…"
             className="mono h-8 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--text-tertiary)]"
             autoComplete="off"
+            role="combobox"
+            aria-expanded="true"
+            aria-controls={listId}
+            aria-activedescendant={filtered.length ? optionId(activeIndex) : undefined}
           />
         </div>
 
-        <div className="overflow-y-auto p-1.5" ref={resultsRef}>
+        <div className="overflow-y-auto p-1.5" ref={resultsRef} role="listbox" id={listId}>
           {filtered.length === 0 ? (
             <div className="p-5 text-center text-xs text-[var(--text-tertiary)]">
               No matching commands
@@ -99,6 +111,10 @@ export function CommandPalette() {
               <button
                 type="button"
                 key={result.item.id}
+                id={optionId(i)}
+                role="option"
+                aria-selected={i === activeIndex}
+                tabIndex={-1}
                 className={cn(
                   'flex min-h-10 w-full items-center gap-2.5 rounded-[10px] px-3 text-left text-[13px]',
                   i === activeIndex
@@ -106,7 +122,7 @@ export function CommandPalette() {
                     : 'hover:bg-[var(--surface-hover)]',
                 )}
                 onClick={() => execute(result.item)}
-                onMouseEnter={() => setActiveIndex(i)}
+                onMouseMove={() => setActiveIndex(i)}
               >
                 {result.item.icon && <span className="opacity-65">{result.item.icon}</span>}
                 <span className="min-w-0 flex-1">
@@ -130,9 +146,13 @@ export function CommandPalette() {
 }
 
 function useCommands(): PaletteCommand[] {
-  const store = useAppStore();
-  const isMac = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform);
-  const mod = isMac ? '⌘' : 'Ctrl+';
+  // Subscribe only to the fields that decide which commands are available;
+  // actions read the live store so the list is not rebuilt on every store write.
+  const activeTab = useAppStore((state) => state.activeTab);
+  const selectedVaultName = useAppStore((state) => state.selectedVaultName);
+  const selectedVaultUri = useAppStore((state) => state.selectedVaultUri);
+  const hasRecentVaults = useAppStore((state) => state.recentVaults.length > 0);
+  const mod = formatShortcut('', true);
 
   return useMemo<PaletteCommand[]>(
     () => [
@@ -141,60 +161,63 @@ function useCommands(): PaletteCommand[] {
         label: 'Go to Secrets',
         category: 'navigation',
         shortcut: `${mod}1`,
-        execute: () => store.setActiveTab('secrets'),
-        when: () => !!store.selectedVaultName,
+        execute: () => useAppStore.getState().setActiveTab('secrets'),
+        when: () => !!selectedVaultName,
       },
       {
         id: 'nav-keys',
         label: 'Go to Keys',
         category: 'navigation',
         shortcut: `${mod}2`,
-        execute: () => store.setActiveTab('keys'),
-        when: () => !!store.selectedVaultName,
+        execute: () => useAppStore.getState().setActiveTab('keys'),
+        when: () => !!selectedVaultName,
       },
       {
         id: 'nav-certs',
         label: 'Go to Certificates',
         category: 'navigation',
         shortcut: `${mod}3`,
-        execute: () => store.setActiveTab('certificates'),
-        when: () => !!store.selectedVaultName,
+        execute: () => useAppStore.getState().setActiveTab('certificates'),
+        when: () => !!selectedVaultName,
       },
       {
         id: 'nav-dashboard',
-        label: 'Go to Dashboard',
+        label: 'Go to Overview',
         category: 'navigation',
         shortcut: `${mod}4`,
-        execute: () => store.setActiveTab('dashboard'),
-        when: () => !!store.selectedVaultName,
+        execute: () => useAppStore.getState().setActiveTab('dashboard'),
+        when: () => !!selectedVaultName,
       },
       {
         id: 'nav-audit',
-        label: 'Go to Audit Log',
+        label: 'Go to Activity',
         category: 'navigation',
         shortcut: `${mod}5`,
-        execute: () => store.setActiveTab('logs'),
-        when: () => !!store.selectedVaultName,
+        execute: () => useAppStore.getState().setActiveTab('logs'),
+        when: () => !!selectedVaultName,
       },
       {
         id: 'toggle-detail',
         label: 'Toggle Detail Panel',
         category: 'action',
         shortcut: `${mod}\\`,
-        execute: () => store.toggleDetailPanel(),
+        execute: () => useAppStore.getState().toggleDetailPanel(),
       },
       {
         id: 'open-settings',
         label: 'Open Settings',
         category: 'settings',
         shortcut: `${mod},`,
-        execute: () => store.setSettingsOpen(true),
+        execute: () => useAppStore.getState().setSettingsOpen(true),
       },
       {
         id: 'toggle-theme',
         label: 'Toggle Theme',
         category: 'settings',
-        execute: () => store.setThemeMode(store.themeMode === 'dark' ? 'light' : 'dark'),
+        execute: () => {
+          const state = useAppStore.getState();
+          state.setThemeMode(state.themeMode === 'dark' ? 'light' : 'dark');
+        },
       },
       {
         id: 'refresh',
@@ -209,14 +232,14 @@ function useCommands(): PaletteCommand[] {
         category: 'action',
         shortcut: `${mod}N`,
         execute: () => window.dispatchEvent(new CustomEvent('azv:new-secret')),
-        when: () => !!store.selectedVaultName,
+        when: () => !!selectedVaultName,
       },
       {
         id: 'import-secrets-json',
         label: 'Import Secrets from JSON',
         category: 'action',
         execute: () => window.dispatchEvent(new CustomEvent('azv:import-secrets')),
-        when: () => !!store.selectedVaultName,
+        when: () => activeTab === 'secrets' && !!selectedVaultName,
       },
       {
         id: 'select-all',
@@ -224,46 +247,49 @@ function useCommands(): PaletteCommand[] {
         category: 'action',
         shortcut: `${mod}A`,
         execute: () => window.dispatchEvent(new CustomEvent('azv:select-all')),
+        when: () => activeTab === 'secrets' && !!selectedVaultName,
       },
       {
         id: 'deselect-all',
         label: 'Deselect All',
         category: 'action',
         execute: () => window.dispatchEvent(new CustomEvent('azv:deselect-all')),
+        when: () => activeTab === 'secrets' && !!selectedVaultName,
       },
       {
         id: 'export-json',
         label: 'Export as JSON',
         category: 'action',
         execute: () => window.dispatchEvent(new CustomEvent('azv:export', { detail: 'json' })),
-        when: () => !!store.selectedVaultName,
+        when: () => activeTab === 'secrets' && !!selectedVaultName,
       },
       {
         id: 'export-csv',
         label: 'Export as CSV',
         category: 'action',
         execute: () => window.dispatchEvent(new CustomEvent('azv:export', { detail: 'csv' })),
-        when: () => !!store.selectedVaultName,
+        when: () => activeTab === 'secrets' && !!selectedVaultName,
       },
       {
         id: 'copy-vault-uri',
         label: 'Copy Vault URI',
         category: 'action',
         execute: () => {
-          if (store.selectedVaultUri) navigator.clipboard.writeText(store.selectedVaultUri);
+          const uri = useAppStore.getState().selectedVaultUri;
+          if (uri) navigator.clipboard.writeText(uri);
         },
-        when: () => !!store.selectedVaultUri,
+        when: () => !!selectedVaultUri,
       },
       {
         id: 'clear-recent',
         label: 'Clear Recent Vaults',
         category: 'vault',
-        execute: () => store.clearRecentVaults(),
-        when: () => store.recentVaults.length > 0,
+        execute: () => useAppStore.getState().clearRecentVaults(),
+        when: () => hasRecentVaults,
       },
       {
         id: 'export-audit',
-        label: 'Export Audit Log',
+        label: 'Export Activity Log',
         category: 'action',
         execute: () => window.dispatchEvent(new CustomEvent('azv:export-audit')),
       },
@@ -271,7 +297,10 @@ function useCommands(): PaletteCommand[] {
         id: 'toggle-reauth',
         label: 'Toggle Fetch Confirmation',
         category: 'settings',
-        execute: () => store.setRequireReauthForReveal(!store.requireReauthForReveal),
+        execute: () => {
+          const state = useAppStore.getState();
+          state.setRequireReauthForReveal(!state.requireReauthForReveal);
+        },
       },
       {
         id: 'sign-out',
@@ -285,6 +314,7 @@ function useCommands(): PaletteCommand[] {
         category: 'action',
         shortcut: `${mod}F`,
         execute: () => window.dispatchEvent(new CustomEvent('azv:focus-search')),
+        when: () => !!selectedVaultName && activeTab !== 'dashboard',
       },
       {
         id: 'delete-selected',
@@ -292,15 +322,16 @@ function useCommands(): PaletteCommand[] {
         category: 'action',
         shortcut: `${mod}⇧D`,
         execute: () => window.dispatchEvent(new CustomEvent('azv:delete-selected')),
+        when: () => activeTab === 'secrets' && !!selectedVaultName,
       },
       {
         id: 'delete-by-prefix',
         label: 'Delete Secrets by Prefix',
         category: 'action',
         execute: () => window.dispatchEvent(new CustomEvent('azv:delete-by-prefix')),
-        when: () => !!store.selectedVaultName,
+        when: () => activeTab === 'secrets' && !!selectedVaultName,
       },
     ],
-    [store, mod],
+    [activeTab, selectedVaultName, selectedVaultUri, hasRecentVaults, mod],
   );
 }

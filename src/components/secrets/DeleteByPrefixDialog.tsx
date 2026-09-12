@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { SecretItem } from '../../types';
+import { isConfirmationValid } from '../common/confirmation';
 import { Button, Spinner } from '../ui/Button';
-import { Input } from '../ui/Field';
+import { Field, Input } from '../ui/Field';
 import { Modal } from '../ui/Modal';
-import { filterSecretsByPrefix } from './secretsBulkDeleteLogic';
+import { DELETE_BATCH_SIZE, filterSecretsByPrefix } from './secretsBulkDeleteLogic';
 
 export function DeleteByPrefixDialog({
   open,
@@ -26,7 +27,7 @@ export function DeleteByPrefixDialog({
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState({ total: 0, completed: 0, failed: 0 });
   const matches = useMemo(() => filterSecretsByPrefix(allSecrets, prefix), [allSecrets, prefix]);
-  const valid = confirmation.trim() === 'delete' && matches.length > 0;
+  const valid = isConfirmationValid(confirmation, 'delete') && matches.length > 0;
   useEffect(() => {
     if (!open) {
       setPrefix('');
@@ -41,18 +42,22 @@ export function DeleteByPrefixDialog({
     setError(null);
     setProgress({ total: matches.length, completed: 0, failed: 0 });
     try {
-      const results = await Promise.all(
-        matches.map(async (item) => {
-          try {
-            await onDelete(item.name);
-            return { id: item.id, ok: true };
-          } catch {
-            return { id: item.id, ok: false };
-          } finally {
-            setProgress((current) => ({ ...current, completed: current.completed + 1 }));
-          }
-        }),
-      );
+      const results: Array<{ id: string; ok: boolean }> = [];
+      for (let index = 0; index < matches.length; index += DELETE_BATCH_SIZE) {
+        const batch = await Promise.all(
+          matches.slice(index, index + DELETE_BATCH_SIZE).map(async (item) => {
+            try {
+              await onDelete(item.name);
+              return { id: item.id, ok: true };
+            } catch {
+              return { id: item.id, ok: false };
+            } finally {
+              setProgress((current) => ({ ...current, completed: current.completed + 1 }));
+            }
+          }),
+        );
+        results.push(...batch);
+      }
       const succeeded = results.filter((result) => result.ok).map((result) => result.id);
       const failed = results.length - succeeded.length;
       setProgress((current) => ({ ...current, failed }));
@@ -84,14 +89,17 @@ export function DeleteByPrefixDialog({
       }
     >
       <div className="grid gap-3">
-        <Input
-          className="mono"
-          value={prefix}
-          onChange={(event) => setPrefix(event.target.value)}
-          placeholder="staging-"
-          disabled={loading}
-          autoFocus
-        />
+        <Field label="Name prefix">
+          <Input
+            className="mono"
+            aria-label="Name prefix"
+            value={prefix}
+            onChange={(event) => setPrefix(event.target.value)}
+            placeholder="staging-"
+            disabled={loading}
+            autoFocus
+          />
+        </Field>
         <p className="text-xs text-[var(--text-secondary)]">
           Matching secrets:{' '}
           <strong className={matches.length ? 'text-[var(--danger)]' : ''}>{matches.length}</strong>
@@ -117,6 +125,7 @@ export function DeleteByPrefixDialog({
               Type <strong className="mono">delete</strong> to confirm:
             </span>
             <Input
+              aria-label="Type delete to confirm"
               value={confirmation}
               onChange={(event) => setConfirmation(event.target.value)}
               placeholder="delete"

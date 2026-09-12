@@ -35,6 +35,43 @@ To learn more about the war and how you can help, [click here](https://war.ukrai
 
 Download the latest bundle for your platform from the [Releases](../../releases) page.
 
+### Quick install (macOS / Linux)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/TarasKovalenko/AzVault/main/install.sh | sh
+```
+
+This detects your OS/architecture, downloads the matching release asset, verifies its
+SHA256 checksum (and build provenance via `gh attestation verify` when the GitHub CLI is
+available), and installs it:
+
+- **macOS**: installs `AzVault.app` into `/Applications` (falling back to `~/Applications`
+  when that's not writable) and strips the quarantine flag.
+- **Linux**: installs the `.AppImage` into `~/.local/bin` (or `/usr/local/bin` as root);
+  pass `--deb` to install the `.deb` package instead.
+
+Useful flags and environment variables:
+
+| Flag / env var | Purpose |
+| --- | --- |
+| `--version <tag>` / `AZVAULT_VERSION` | Install a specific release instead of latest |
+| `--install-dir <dir>` / `AZVAULT_INSTALL_DIR` | Override the install directory |
+| `--deb` | On Linux, install the `.deb` package instead of the AppImage |
+| `--skip-checksum` / `AZVAULT_SKIP_CHECKSUM=1` | Continue if a release has no `SHA256SUMS` asset |
+| `AZVAULT_VERIFY_PROVENANCE` | `auto` (default), `1` (require), or `0` (skip) provenance verification |
+| `AZVAULT_REPO` | Install from a fork (default: `TarasKovalenko/AzVault`) |
+| `--uninstall` | Remove the installed app/binary |
+
+Run `curl -fsSL .../install.sh | sh -s -- --help` (or `./install.sh --help` from a clone)
+for the full list. To uninstall:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/TarasKovalenko/AzVault/main/install.sh | sh -s -- --uninstall
+```
+
+Windows users should download the `.msi` or `.exe` installer directly from the
+[Releases](../../releases) page; this script does not support Windows.
+
 ### macOS
 
 macOS builds are **ad-hoc signed** (not notarized with an Apple Developer ID), so
@@ -58,14 +95,17 @@ After the first open, launch it normally.
 - Secret metadata + explicit value fetch flow
 - Secret CRUD lifecycle (set/delete/recover/purge)
 - Import secrets from JSON file
+- Export secret metadata (never values) as JSON or CSV, written to your
+  downloads folder — the app reports the path it wrote
 - Bulk delete safety flow:
-  - typed confirmation (`delete`)
+  - typed confirmation (`delete`, case-sensitive)
   - collapsible list of selected secrets
   - live progress + failure count during delete
   - immediate UI removal for successfully deleted items
-- Global search hotkey (`Ctrl+K` on Windows/Linux, `Cmd+K` on macOS)
+- Sortable, filterable lists with per-tab state that survives tab switches
+- Command palette and full keyboard operation (`Ctrl+K` / `Cmd+K`)
 - Local audit log with redaction/sanitized export
-- VS Code-like operator UI with light/dark themes
+- Dense operator UI with light/dark themes
 
 ## Authentication Model (CLI Only)
 

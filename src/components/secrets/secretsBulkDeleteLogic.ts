@@ -1,14 +1,13 @@
 import type { SecretItem } from '../../types';
 
+/** Enough parallelism to be quick against Key Vault, not enough to get throttled. */
+export const DELETE_BATCH_SIZE = 5;
+
 export type BulkDeleteProgress = {
   total: number;
   completed: number;
   failed: number;
 };
-
-export function isDeleteConfirmationValid(input: string): boolean {
-  return input.trim() === 'delete';
-}
 
 export function getSelectedSecrets(
   allSecrets: SecretItem[],
@@ -88,6 +87,11 @@ export function nextDeleteProgress(
   };
 }
 
+/**
+ * Secrets whose name starts with `prefix`, matched case-insensitively because
+ * Key Vault treats names that way. The dialog shows this exact list before the
+ * user confirms, so the wider match is visible rather than surprising.
+ */
 export function filterSecretsByPrefix(secrets: SecretItem[], prefix: string): SecretItem[] {
   const normalized = prefix.toLowerCase();
   if (normalized.length === 0) return [];

@@ -34,7 +34,7 @@ export function ImportSecretsDialog({
       open={open}
       onClose={onCancel}
       closeDisabled={loading}
-      title="Import Secrets"
+      title="Import secrets"
       description="Review the file before creating secrets or new versions."
       footer={
         <>
@@ -42,7 +42,7 @@ export function ImportSecretsDialog({
             Cancel
           </Button>
           <Button variant="primary" loading={loading} onClick={onConfirm}>
-            Import Secrets
+            Import secrets
           </Button>
         </>
       }

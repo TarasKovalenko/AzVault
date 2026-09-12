@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { SecretItem } from '../../types';
-import { buildSecretMetadata, exportSecretMetadata } from './secretsExport';
+import { buildSecretMetadata, exportFileName, exportSecretMetadata } from './secretsExport';
 
 function makeSecret(overrides?: Partial<SecretItem>): SecretItem {
   return {
@@ -47,24 +47,30 @@ describe('secretsExport', () => {
     ]);
   });
 
-  it('exports and downloads when primary path succeeds', async () => {
+  it('names the file by format and timestamp', () => {
+    expect(exportFileName('json', 1_700_000_000_000)).toBe('azvault-secrets-1700000000000.json');
+    expect(exportFileName('csv', 1_700_000_000_000)).toBe('azvault-secrets-1700000000000.csv');
+  });
+
+  it('saves through the backend and reports the path it actually wrote', async () => {
     const exportItems = vi.fn<(...args: [string, 'json' | 'csv']) => Promise<string>>();
     exportItems.mockResolvedValue('payload-json');
-    const download = vi.fn<(content: string, format: 'json' | 'csv') => void>();
+    const save = vi.fn<(fileName: string, content: string) => Promise<string>>();
+    save.mockResolvedValue('/Users/op/Downloads/azvault-secrets-1700000000000.json');
     const writeClipboard = vi.fn<(content: string) => Promise<void>>();
     writeClipboard.mockResolvedValue();
     const onError = vi.fn<(error: unknown) => void>();
-    const onSuccess = vi.fn<(mode: 'download' | 'clipboard') => void>();
+    const onSuccess = vi.fn<(mode: 'file' | 'clipboard', target?: string) => void>();
 
     await exportSecretMetadata([makeSecret()], 'json', {
       exportItems,
-      download,
+      save,
       writeClipboard,
       onError,
       onSuccess,
+      now: () => 1_700_000_000_000,
     });
 
-    expect(exportItems).toHaveBeenCalledTimes(1);
     expect(exportItems).toHaveBeenCalledWith(
       JSON.stringify([
         {
@@ -79,70 +85,62 @@ describe('secretsExport', () => {
       ]),
       'json',
     );
-    expect(download).toHaveBeenCalledWith('payload-json', 'json');
+    expect(save).toHaveBeenCalledWith('azvault-secrets-1700000000000.json', 'payload-json');
     expect(writeClipboard).not.toHaveBeenCalled();
     expect(onError).not.toHaveBeenCalled();
-    expect(onSuccess).toHaveBeenCalledWith('download');
+    expect(onSuccess).toHaveBeenCalledWith(
+      'file',
+      '/Users/op/Downloads/azvault-secrets-1700000000000.json',
+    );
   });
 
-  it('falls back to clipboard when download fails', async () => {
+  it('falls back to the clipboard when the save fails', async () => {
     const exportItems = vi.fn<(...args: [string, 'json' | 'csv']) => Promise<string>>();
     exportItems.mockResolvedValue('payload-csv');
-    const download = vi.fn<(content: string, format: 'json' | 'csv') => void>();
-    download.mockImplementation(() => {
-      throw new Error('download blocked');
-    });
+    const save = vi.fn<(fileName: string, content: string) => Promise<string>>();
+    save.mockRejectedValue(new Error('Could not write the export.'));
     const writeClipboard = vi.fn<(content: string) => Promise<void>>();
     writeClipboard.mockResolvedValue();
     const onError = vi.fn<(error: unknown) => void>();
-    const onSuccess = vi.fn<(mode: 'download' | 'clipboard') => void>();
+    const onSuccess = vi.fn<(mode: 'file' | 'clipboard', target?: string) => void>();
 
     await exportSecretMetadata([makeSecret()], 'csv', {
       exportItems,
-      download,
+      save,
       writeClipboard,
       onError,
       onSuccess,
     });
 
-    expect(download).toHaveBeenCalledWith('payload-csv', 'csv');
     expect(writeClipboard).toHaveBeenCalledWith('payload-csv');
     expect(onError).not.toHaveBeenCalled();
     expect(onSuccess).toHaveBeenCalledWith('clipboard');
   });
 
-  it('reports error when both download and clipboard are unavailable', async () => {
+  it('reports the save failure when there is no clipboard to fall back to', async () => {
     const exportItems = vi.fn<(...args: [string, 'json' | 'csv']) => Promise<string>>();
     exportItems.mockResolvedValue('payload-json');
-    const download = vi.fn<(content: string, format: 'json' | 'csv') => void>();
-    download.mockImplementation(() => {
-      throw new Error('download blocked');
-    });
+    const save = vi.fn<(fileName: string, content: string) => Promise<string>>();
+    save.mockRejectedValue(new Error('Could not write the export.'));
     const onError = vi.fn<(error: unknown) => void>();
+    const onSuccess = vi.fn<(mode: 'file' | 'clipboard', target?: string) => void>();
 
-    await exportSecretMetadata([makeSecret()], 'json', {
-      exportItems,
-      download,
-      onError,
-    });
+    await exportSecretMetadata([makeSecret()], 'json', { exportItems, save, onError, onSuccess });
 
+    expect(onSuccess).not.toHaveBeenCalled();
     expect(onError).toHaveBeenCalledTimes(1);
-    expect(String(onError.mock.calls[0][0])).toContain('Unable to download or copy export.');
+    expect(String(onError.mock.calls[0][0])).toContain('Could not write the export.');
   });
 
-  it('reports backend export errors', async () => {
+  it('reports backend render errors without touching the disk', async () => {
     const exportItems = vi.fn<(...args: [string, 'json' | 'csv']) => Promise<string>>();
     exportItems.mockRejectedValue(new Error('backend failed'));
-    const download = vi.fn<(content: string, format: 'json' | 'csv') => void>();
+    const save = vi.fn<(fileName: string, content: string) => Promise<string>>();
     const onError = vi.fn<(error: unknown) => void>();
 
-    await exportSecretMetadata([makeSecret()], 'json', {
-      exportItems,
-      download,
-      onError,
-    });
+    await exportSecretMetadata([makeSecret()], 'json', { exportItems, save, onError });
 
-    expect(download).not.toHaveBeenCalled();
+    expect(save).not.toHaveBeenCalled();
     expect(onError).toHaveBeenCalledTimes(1);
     expect(String(onError.mock.calls[0][0])).toContain('backend failed');
   });

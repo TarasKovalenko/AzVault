@@ -10,7 +10,7 @@ export function TenantPicker({
   tenants: Tenant[];
   selectedTenantId: string | null;
   isLoading: boolean;
-  onSelect: (tenantId: string) => void;
+  onSelect: (tenantId: string) => void | Promise<void>;
 }) {
   const current = tenants.find((tenant) => tenant.tenant_id === selectedTenantId);
   return (
@@ -20,7 +20,7 @@ export function TenantPicker({
       aria-label="Tenant"
       title={`Tenant: ${current?.display_name || selectedTenantId || 'none selected'}`}
       value={selectedTenantId || ''}
-      onChange={(event) => onSelect(event.target.value)}
+      onChange={(event) => void onSelect(event.target.value)}
       className="max-w-36"
     >
       {!selectedTenantId && <option value="">Tenant</option>}

@@ -1,11 +1,11 @@
+import { useAppStore } from '../../stores/appStore';
 import { CertificatesList } from '../certificates/CertificatesList';
 import { EmptyState } from '../common/EmptyState';
 import { KeysList } from '../keys/KeysList';
 import { AuditLog } from '../logs/AuditLog';
 import { SecretsList } from '../secrets/SecretsList';
-import { useAppStore } from '../../stores/appStore';
-import { VaultDashboard } from '../vault/VaultDashboard';
 import { Icon } from '../ui/Icon';
+import { VaultDashboard } from '../vault/VaultDashboard';
 
 export function MainContent() {
   const activeTab = useAppStore((state) => state.activeTab);

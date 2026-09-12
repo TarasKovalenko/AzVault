@@ -5,7 +5,6 @@ import { Icon } from '../../ui/Icon';
 
 export function UserMenu() {
   const userName = useAppStore((state) => state.userName);
-  const openSettings = useAppStore((state) => state.setSettingsOpen);
   const mockMode = useMockStore((state) => state.mockMode);
   const mockAvailable = useMockStore((state) => state.mockAvailable);
   const setMockMode = useMockStore((state) => state.setMockMode);
@@ -33,23 +32,23 @@ export function UserMenu() {
         <p className="truncate text-xs font-semibold">{userName || 'Azure User'}</p>
         <p className="mt-0.5 text-[10px] text-[var(--text-tertiary)]">Signed in with Azure CLI</p>
       </div>
-      <DropdownItem icon={<Icon name="settings" />} onClick={() => openSettings(true)}>
-        Settings
-      </DropdownItem>
       {mockAvailable && (
         <DropdownItem icon={<Icon name="plug" />} onClick={() => setMockMode(!mockMode)}>
-          {mockMode ? 'Disable Mock Mode' : 'Enable Mock Mode'}
+          {mockMode ? 'Disable mock mode' : 'Enable mock mode'}
         </DropdownItem>
       )}
-      <DropdownItem icon={<Icon name="info" />} disabled>
-        AzVault v1.0.1
-      </DropdownItem>
+      {/* The version is information, not a command nobody may run: a disabled
+          menu item announces as an unavailable action. */}
+      <p className="flex items-center gap-2 px-2.5 py-1.5 text-[11px] text-[var(--text-secondary)]">
+        <Icon name="info" size={13} />
+        AzVault v{__APP_VERSION__}
+      </p>
       <div className="my-1 border-t border-[var(--stroke)]" />
       <DropdownItem
         icon={<Icon name="sign-out" />}
         onClick={() => window.dispatchEvent(new CustomEvent('azv:sign-out'))}
       >
-        Sign Out
+        Sign out
       </DropdownItem>
     </Dropdown>
   );

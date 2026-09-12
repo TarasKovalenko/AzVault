@@ -1,23 +1,38 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
-import { useAppToast } from '../../lib/toast';
-import { deleteSecret, exportItems, listSecrets, setSecret } from '../../services/tauri';
+import { useToast } from '../ui/Toast';
+import {
+  deleteSecret,
+  exportItems,
+  listSecrets,
+  saveExport,
+  setSecret,
+} from '../../services/tauri';
 import { useAppStore } from '../../stores/appStore';
 import type { SecretItem } from '../../types';
 import { DangerConfirmDialog } from '../common/DangerConfirmDialog';
 import { EmptyState } from '../common/EmptyState';
 import { ErrorMessage } from '../common/ErrorMessage';
 import type { Column } from '../common/ItemTable';
-import { ItemTable, renderDate, renderEnabled, renderTags } from '../common/ItemTable';
+import {
+  ItemTable,
+  renderDate,
+  renderEnabled,
+  renderExpiry,
+  renderName,
+  renderTags,
+} from '../common/ItemTable';
+import { ListPager, PAGE_SIZE } from '../common/ListPager';
 import { LoadingSkeleton } from '../common/LoadingSkeleton';
 import { SplitPane } from '../common/SplitPane';
-import { Button } from '../ui/Button';
+import { nextSortState, sortItems } from '../common/useTableSort';
 import { CreateSecretDialog } from './CreateSecretDialog';
 import { DeleteByPrefixDialog } from './DeleteByPrefixDialog';
 import { ImportSecretsDialog, type PendingImport } from './ImportSecretsDialog';
 import { SecretDetails } from './SecretDetails';
 import { SecretsToolbar } from './SecretsToolbar';
 import {
+  DELETE_BATCH_SIZE,
   filterOutDeletedSecrets,
   getSelectedSecrets,
   nextDeleteProgress,
@@ -30,36 +45,38 @@ import { type ExportFormat, exportSecretMetadata } from './secretsExport';
 import { parseSecretsImportJson } from './secretsImport';
 
 const columns: Column<SecretItem>[] = [
+  { key: 'name', label: 'Name', width: '30%', sortValue: (item) => item.name, render: renderName },
   {
-    key: 'name',
-    label: 'Name',
-    width: '30%',
-    render: (item) => <span className="mono font-semibold">{item.name}</span>,
+    key: 'enabled',
+    label: 'Status',
+    width: '10%',
+    sortValue: (item) => Number(item.enabled),
+    render: (item) => renderEnabled(item.enabled),
   },
-  { key: 'enabled', label: 'Status', width: '10%', render: (item) => renderEnabled(item.enabled) },
   {
     key: 'contentType',
     label: 'Type',
     width: '15%',
+    sortValue: (item) => item.contentType ?? '',
     render: (item) => (
       <span className={`mono ${item.contentType ? '' : 'text-[var(--text-tertiary)]'}`}>
         {item.contentType || '—'}
       </span>
     ),
   },
-  { key: 'updated', label: 'Updated', width: '20%', render: (item) => renderDate(item.updated) },
+  {
+    key: 'updated',
+    label: 'Updated',
+    width: '20%',
+    sortValue: (item) => item.updated,
+    render: (item) => renderDate(item.updated),
+  },
   {
     key: 'expires',
     label: 'Expires',
     width: '15%',
-    render: (item) =>
-      !item.expires ? (
-        <span className="mono text-[var(--text-tertiary)]">Never</span>
-      ) : (
-        <span className={new Date(item.expires) < new Date() ? 'text-[var(--danger)]' : undefined}>
-          {renderDate(item.expires)}
-        </span>
-      ),
+    sortValue: (item) => item.expires,
+    render: (item) => renderExpiry(item.expires),
   },
   { key: 'tags', label: 'Tags', width: '10%', render: (item) => renderTags(item.tags) },
 ];
@@ -96,36 +113,22 @@ function prepareImport(file: File, content: string, existingSecrets: SecretItem[
   };
 }
 
-function download(content: string, format: ExportFormat) {
-  const url = URL.createObjectURL(
-    new Blob([content], {
-      type: format === 'json' ? 'application/json' : 'text/csv;charset=utf-8',
-    }),
-  );
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `azvault-secrets-${Date.now()}.${format}`;
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
 export function SecretsList() {
   const selectedVaultUri = useAppStore((state) => state.selectedVaultUri);
   const detailPanelOpen = useAppStore((state) => state.detailPanelOpen);
   const splitRatio = useAppStore((state) => state.splitRatio);
   const setSplitRatio = useAppStore((state) => state.setSplitRatio);
   const queryClient = useQueryClient();
-  const toast = useAppToast();
+  const toast = useToast();
   const importInputRef = useRef<HTMLInputElement>(null);
-  const [selectedSecret, setSelectedSecret] = useState<SecretItem | null>(null);
+  const view = useAppStore((state) => state.listViews.secrets);
+  const setListView = useAppStore((state) => state.setListView);
   const [createOpen, setCreateOpen] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(50);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkError, setBulkError] = useState<string | null>(null);
   const [bulkProgress, setBulkProgress] = useState({ total: 0, completed: 0, failed: 0 });
-  const [filter, setFilter] = useState('');
   const [prefixOpen, setPrefixOpen] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -136,22 +139,38 @@ export function SecretsList() {
     enabled: Boolean(selectedVaultUri),
   });
   const allSecrets = useMemo(() => query.data ?? [], [query.data]);
-  const filtered = allSecrets.filter((secret) =>
-    secret.name.toLowerCase().includes(filter.toLowerCase()),
+  const filter = view.filter;
+  const filtered = useMemo(
+    () => allSecrets.filter((secret) => secret.name.toLowerCase().includes(filter.toLowerCase())),
+    [allSecrets, filter],
   );
-  const visible = filtered.slice(0, visibleCount);
+  const { sortKey, sortDirection } = view;
+  const sort = useMemo(
+    () => (sortKey ? { key: sortKey, direction: sortDirection } : null),
+    [sortKey, sortDirection],
+  );
+  const sorted = useMemo(() => sortItems(filtered, columns, sort), [filtered, sort]);
+  const visible = sorted.slice(0, view.visibleCount);
+  const selectedSecret = allSecrets.find((secret) => secret.id === view.selectedId) ?? null;
+  // Bulk actions operate on what the filter currently shows, so the count in the
+  // selection bar can never disagree with the rows on screen.
   const selectedSecrets = useMemo(
-    () => getSelectedSecrets(allSecrets, selectedIds),
-    [allSecrets, selectedIds],
+    () => getSelectedSecrets(filtered, selectedIds),
+    [filtered, selectedIds],
   );
-  const visibleIds = useMemo(() => visible.map((secret) => secret.id), [visible]);
-  const selectedVisibleCount = visibleIds.filter((id) => selectedIds.has(id)).length;
+  const filteredIds = useMemo(() => filtered.map((secret) => secret.id), [filtered]);
+  const selectedMatchCount = filteredIds.filter((id) => selectedIds.has(id)).length;
   const selectAllState: boolean | 'mixed' =
-    selectedVisibleCount === 0
-      ? false
-      : selectedVisibleCount === visibleIds.length
-        ? true
-        : 'mixed';
+    selectedMatchCount === 0 ? false : selectedMatchCount === filteredIds.length ? true : 'mixed';
+  const setFilter = (value: string) =>
+    setListView('secrets', { filter: value, visibleCount: PAGE_SIZE });
+
+  // Command-palette handlers are registered once; refs keep them current.
+  // Written in an effect, never during render: a discarded concurrent render
+  // must not leave a stale closure behind.
+  const filteredIdsRef = useRef<string[]>([]);
+  const selectedCountRef = useRef(0);
+  const exportRef = useRef<(format: ExportFormat) => Promise<void>>(async () => {});
 
   useEffect(() => {
     const existing = new Set(allSecrets.map((secret) => secret.id));
@@ -161,18 +180,25 @@ export function SecretsList() {
     });
   }, [allSecrets]);
   useEffect(() => {
-    if (selectedSecret && !allSecrets.some((secret) => secret.id === selectedSecret.id))
-      setSelectedSecret(null);
-  }, [selectedSecret, allSecrets]);
+    filteredIdsRef.current = filteredIds;
+    // The count the shortcut acts on has to be the one the user can see, which
+    // is the selection inside the current filter.
+    selectedCountRef.current = selectedMatchCount;
+    exportRef.current = exportData;
+  });
   useEffect(() => {
     if (!bulkOpen) {
       setBulkError(null);
       setBulkProgress({ total: 0, completed: 0, failed: 0 });
     }
   }, [bulkOpen]);
+  // Honour a "new secret" requested from another view before this one existed.
+  useEffect(() => {
+    if (useAppStore.getState().consumeSecretsAction() === 'new-secret') setCreateOpen(true);
+  }, []);
+
   useEffect(() => {
     const create = () => setCreateOpen(true);
-    const focus = () => document.querySelector<HTMLInputElement>('[data-azv-list-search]')?.focus();
     const prefix = () => setPrefixOpen(true);
     const importFile = () => {
       if (importInputRef.current) {
@@ -180,15 +206,30 @@ export function SecretsList() {
         importInputRef.current.click();
       }
     };
+    const selectAll = () => setSelectedIds(new Set(filteredIdsRef.current));
+    const deselectAll = () => setSelectedIds(new Set());
+    const deleteSelected = () => {
+      if (selectedCountRef.current > 0) setBulkOpen(true);
+    };
+    const exportCurrent = (event: Event) => {
+      const format = (event as CustomEvent<ExportFormat>).detail;
+      if (format === 'json' || format === 'csv') void exportRef.current(format);
+    };
     window.addEventListener('azv:new-secret', create);
-    window.addEventListener('azv:focus-search', focus);
     window.addEventListener('azv:delete-by-prefix', prefix);
     window.addEventListener('azv:import-secrets', importFile);
+    window.addEventListener('azv:select-all', selectAll);
+    window.addEventListener('azv:deselect-all', deselectAll);
+    window.addEventListener('azv:delete-selected', deleteSelected);
+    window.addEventListener('azv:export', exportCurrent);
     return () => {
       window.removeEventListener('azv:new-secret', create);
-      window.removeEventListener('azv:focus-search', focus);
       window.removeEventListener('azv:delete-by-prefix', prefix);
       window.removeEventListener('azv:import-secrets', importFile);
+      window.removeEventListener('azv:select-all', selectAll);
+      window.removeEventListener('azv:deselect-all', deselectAll);
+      window.removeEventListener('azv:delete-selected', deleteSelected);
+      window.removeEventListener('azv:export', exportCurrent);
     };
   }, []);
 
@@ -243,18 +284,17 @@ export function SecretsList() {
     }
   };
   const exportData = async (format: ExportFormat) => {
-    await exportSecretMetadata(filtered, format, {
+    await exportSecretMetadata(selectedSecrets.length ? selectedSecrets : filtered, format, {
       exportItems,
-      download,
+      save: saveExport,
       writeClipboard: navigator.clipboard?.writeText
         ? (content) => navigator.clipboard.writeText(content)
         : undefined,
-      onError: () => toast.error('Export failed'),
-      onSuccess: (mode) =>
+      onError: (error) => toast.error('Export failed', String(error)),
+      onSuccess: (mode, target) =>
         toast.success(
-          mode === 'download'
-            ? `${format.toUpperCase()} downloaded`
-            : `${format.toUpperCase()} copied`,
+          mode === 'file' ? `${format.toUpperCase()} saved` : `${format.toUpperCase()} copied`,
+          mode === 'file' ? target : 'Saving failed, so the export went to the clipboard.',
         ),
     });
   };
@@ -266,9 +306,9 @@ export function SecretsList() {
     const succeeded: string[] = [];
     let failed = 0;
     try {
-      for (let index = 0; index < selectedSecrets.length; index += 5) {
+      for (let index = 0; index < selectedSecrets.length; index += DELETE_BATCH_SIZE) {
         await Promise.all(
-          selectedSecrets.slice(index, index + 5).map(async (secret) => {
+          selectedSecrets.slice(index, index + DELETE_BATCH_SIZE).map(async (secret) => {
             try {
               await deleteSecret(selectedVaultUri, secret.name);
               succeeded.push(secret.id);
@@ -299,8 +339,9 @@ export function SecretsList() {
       <SecretsToolbar
         count={query.data ? filtered.length : undefined}
         total={allSecrets.length}
+        matchCount={filtered.length}
         filter={filter}
-        selectedCount={selectedIds.size}
+        selectedCount={selectedMatchCount}
         importing={importLoading}
         deleting={bulkLoading}
         inputRef={importInputRef}
@@ -311,6 +352,7 @@ export function SecretsList() {
         onCreate={() => setCreateOpen(true)}
         onDeleteSelected={() => setBulkOpen(true)}
         onDeletePrefix={() => setPrefixOpen(true)}
+        onClearSelection={() => setSelectedIds(new Set())}
       />
       <div className="min-h-0 flex-1 overflow-auto p-3">
         {query.isLoading ? (
@@ -320,14 +362,14 @@ export function SecretsList() {
         ) : !allSecrets.length ? (
           <EmptyState
             title="No secrets yet"
-            description="This vault doesn't contain any secrets."
-            action={{ label: 'New Secret', onClick: () => setCreateOpen(true) }}
+            description="This vault has no secrets."
+            action={{ label: 'New secret', onClick: () => setCreateOpen(true) }}
           />
         ) : !filtered.length ? (
           <EmptyState
             title="No matches"
-            description={`No secrets match '${filter}'.`}
-            action={{ label: 'Clear Filter', onClick: () => setFilter('') }}
+            description={`No secrets match “${filter}”.`}
+            action={{ label: 'Clear filter', onClick: () => setFilter('') }}
           />
         ) : (
           <>
@@ -335,7 +377,7 @@ export function SecretsList() {
               items={visible}
               columns={columns}
               selectedId={selectedSecret?.id}
-              onSelect={setSelectedSecret}
+              onSelect={(secret) => setListView('secrets', { selectedId: secret.id })}
               getItemId={(secret) => secret.id}
               selectable
               selectedIds={selectedIds}
@@ -345,17 +387,26 @@ export function SecretsList() {
               }
               onToggleSelectAll={(checked) =>
                 setSelectedIds((current) =>
-                  toggleSelectionAll(current, visibleIds, checked, bulkLoading),
+                  toggleSelectionAll(current, filteredIds, checked, bulkLoading),
                 )
               }
+              selectAllLabel={`Select all ${filteredIds.length} matching secrets`}
+              sort={sort}
+              onSort={(key) => {
+                const next = nextSortState(sort, key);
+                setListView('secrets', {
+                  sortKey: next?.key ?? null,
+                  sortDirection: next?.direction ?? 'asc',
+                });
+              }}
             />
-            {filtered.length > visibleCount && (
-              <div className="flex justify-center p-3">
-                <Button onClick={() => setVisibleCount((count) => count + 50)}>
-                  Load 50 more ({filtered.length - visibleCount} remaining)
-                </Button>
-              </div>
-            )}
+            <ListPager
+              shown={visible.length}
+              total={filtered.length}
+              onShowMore={() =>
+                setListView('secrets', { visibleCount: view.visibleCount + PAGE_SIZE })
+              }
+            />
           </>
         )}
       </div>
@@ -367,10 +418,10 @@ export function SecretsList() {
       />
       <DangerConfirmDialog
         open={bulkOpen}
-        title={`Delete ${selectedSecrets.length} Secrets`}
+        title={`Delete ${selectedSecrets.length} secret${selectedSecrets.length === 1 ? '' : 's'}`}
         description="Delete the selected secrets from this vault?"
         confirmText="delete"
-        confirmLabel="Delete Selected"
+        confirmLabel="Delete selected"
         loading={bulkLoading}
         onConfirm={bulkDelete}
         onCancel={() => {
@@ -433,7 +484,7 @@ export function SecretsList() {
         <SecretDetails
           item={selectedSecret}
           vaultUri={selectedVaultUri!}
-          onClose={() => setSelectedSecret(null)}
+          onClose={() => setListView('secrets', { selectedId: null })}
           onRefresh={() => {
             void query.refetch();
           }}

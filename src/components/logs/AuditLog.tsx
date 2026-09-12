@@ -1,56 +1,53 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { clearAuditLog, exportAuditLog, getAuditLog } from '../../services/tauri';
+import { clearAuditLog, exportAuditLog, getAuditLog, saveExport } from '../../services/tauri';
 import { useAppStore } from '../../stores/appStore';
 import { DangerConfirmDialog } from '../common/DangerConfirmDialog';
 import { EmptyState } from '../common/EmptyState';
-import { Button, Spinner } from '../ui/Button';
+import { ErrorMessage } from '../common/ErrorMessage';
+import { ListPager, PAGE_SIZE } from '../common/ListPager';
+import { LoadingSkeleton } from '../common/LoadingSkeleton';
 import { Icon } from '../ui/Icon';
+import { useToast } from '../ui/Toast';
 import { ActivityTable } from './ActivityTable';
 import { ActivityToolbar } from './ActivityToolbar';
-
-const ACTIONS = ['All', 'list', 'get', 'get_value', 'set', 'delete', 'recover', 'purge'];
-const RESULTS = ['All', 'success', 'error'];
-const TYPES = ['All', 'secret', 'key', 'certificate'];
+import { ALL, type AuditFilterState, emptyAuditFilter, filterAuditEntries } from './auditFilter';
 
 export function AuditLog() {
   const selectedVaultName = useAppStore((state) => state.selectedVaultName);
   const refreshInterval = useAppStore((state) => state.auditRefreshInterval);
+  const maxEntries = useAppStore((state) => state.auditMaxEntries);
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [copied, setCopied] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [clearOpen, setClearOpen] = useState(false);
   const [clearing, setClearing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [action, setAction] = useState('All');
-  const [result, setResult] = useState('All');
-  const [type, setType] = useState('All');
-  const [visibleCount, setVisibleCount] = useState(200);
-  const queryKey = ['auditLog', selectedVaultName] as const;
+  // The failing action is kept with the message so the banner can offer the
+  // right retry, the way every other list does.
+  const [error, setError] = useState<{ message: string; source: 'export' | 'clear' } | null>(null);
+  const [filter, setFilter] = useState<AuditFilterState>(emptyAuditFilter);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  // The limit belongs in the key: the dashboard reads the same log with a
+  // different limit, and a shared key would serve it whichever page loaded first.
+  const queryKey = ['auditLog', selectedVaultName, maxEntries] as const;
   const query = useQuery({
     queryKey,
-    queryFn: () => getAuditLog(1000, selectedVaultName!),
+    queryFn: () => getAuditLog(maxEntries, selectedVaultName!),
     enabled: Boolean(selectedVaultName),
     refetchInterval: refreshInterval,
   });
-  const entries = useMemo(
-    () =>
-      [...(query.data || [])]
-        .reverse()
-        .filter(
-          (entry) =>
-            (action === 'All' || entry.action.includes(action)) &&
-            (result === 'All' || entry.result === result) &&
-            (type === 'All' || entry.itemType === type),
-        ),
-    [query.data, action, result, type],
-  );
+  const allEntries = useMemo(() => query.data ?? [], [query.data]);
+  const entries = useMemo(() => filterAuditEntries(allEntries, filter), [allEntries, filter]);
+  const filtersActive =
+    filter.search.trim() !== '' ||
+    filter.action !== ALL ||
+    filter.result !== ALL ||
+    filter.itemType !== ALL;
   useEffect(() => {
     if (!selectedVaultName) return;
-    setVisibleCount(200);
-    setAction('All');
-    setResult('All');
-    setType('All');
+    setVisibleCount(PAGE_SIZE);
+    setFilter(emptyAuditFilter);
     setError(null);
   }, [selectedVaultName]);
   const exportCurrentVault = useCallback(async () => {
@@ -61,22 +58,27 @@ export function AuditLog() {
       const data = await exportAuditLog(selectedVaultName);
       try {
         await navigator.clipboard.writeText(data);
+        toast.success(
+          'Activity copied',
+          `The activity JSON for ${selectedVaultName} is on your clipboard.`,
+        );
       } catch {
-        const url = URL.createObjectURL(new Blob([data], { type: 'application/json' }));
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${selectedVaultName}-activity-${Date.now()}.json`;
-        link.click();
-        URL.revokeObjectURL(url);
+        // The backend writes the file and tells us where it landed: a blob
+        // download reports nothing back and writes nothing in the desktop
+        // webview, so the toast would be claiming a file that does not exist.
+        const path = await saveExport(`azvault-activity-${Date.now()}.json`, data);
+        toast.success('Activity saved', `The clipboard was unavailable, so ${path} was written.`);
       }
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Failed to export activity.');
+      const message = caught instanceof Error ? caught.message : 'Failed to export activity.';
+      setError({ message, source: 'export' });
+      toast.error('Export failed', message);
     } finally {
       setExporting(false);
     }
-  }, [selectedVaultName, exporting]);
+  }, [selectedVaultName, exporting, toast]);
   const clearCurrentVault = async () => {
     if (!selectedVaultName) return;
     setClearing(true);
@@ -84,10 +86,15 @@ export function AuditLog() {
     try {
       await clearAuditLog(selectedVaultName);
       queryClient.setQueryData(queryKey, []);
-      await queryClient.invalidateQueries({ queryKey });
+      // Prefix match: the dashboard reads the same log under a different limit
+      // and has no refetch interval, so an exact-key invalidation would leave it
+      // showing history the user just cleared.
+      await queryClient.invalidateQueries({ queryKey: ['auditLog', selectedVaultName] });
       setClearOpen(false);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Failed to clear activity.');
+      const message = caught instanceof Error ? caught.message : 'Failed to clear activity.';
+      setError({ message, source: 'clear' });
+      toast.error('Clear failed', message);
     } finally {
       setClearing(false);
     }
@@ -113,57 +120,68 @@ export function AuditLog() {
       <ActivityToolbar
         vaultName={selectedVaultName}
         count={entries.length}
-        action={action}
-        result={result}
-        type={type}
-        actions={ACTIONS}
-        results={RESULTS}
-        types={TYPES}
+        total={allEntries.length}
+        filter={filter}
+        onFilterChange={(next) => {
+          setFilter(next);
+          setVisibleCount(PAGE_SIZE);
+        }}
         exporting={exporting}
         copied={copied}
         clearing={clearing}
-        onAction={setAction}
-        onResult={setResult}
-        onType={setType}
         onExport={() => void exportCurrentVault()}
         onClear={() => setClearOpen(true)}
       />
       {error && (
-        <div className="border-b border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-[var(--danger)]">
-          {error}
+        <div className="px-3 pt-3">
+          <ErrorMessage
+            error={error.message}
+            onRetry={
+              error.source === 'export'
+                ? () => void exportCurrentVault()
+                : () => {
+                    setError(null);
+                    setClearOpen(true);
+                  }
+            }
+            onDismiss={() => setError(null)}
+          />
         </div>
       )}
       <div className="min-h-0 flex-1 overflow-auto p-3">
         {query.isLoading ? (
-          <div className="grid place-items-center p-16">
-            <Spinner size="lg" />
-          </div>
+          <LoadingSkeleton columns={[18, 18, 11, 20, 11, 22]} />
+        ) : query.isError ? (
+          <ErrorMessage error={String(query.error)} onRetry={() => void query.refetch()} />
         ) : !entries.length ? (
           <EmptyState
             icon={<Icon name="activity" />}
-            title="No activity for this vault"
-            description="Actions performed in this Key Vault will appear here. Secret values are never recorded."
+            title={filtersActive ? 'No matching activity' : 'No activity for this vault'}
+            description={
+              filtersActive
+                ? 'No entries match the current filters.'
+                : 'Actions performed in this Key Vault will appear here. Secret values are never recorded.'
+            }
+            action={
+              filtersActive
+                ? { label: 'Clear filters', onClick: () => setFilter(emptyAuditFilter) }
+                : undefined
+            }
           />
         ) : (
           <>
             <ActivityTable entries={entries.slice(0, visibleCount)} />
-            {entries.length > visibleCount && (
-              <div className="flex justify-center p-3">
-                <Button onClick={() => setVisibleCount((count) => count + 200)}>
-                  Load more ({entries.length - visibleCount} remaining)
-                </Button>
-              </div>
-            )}
+            <ListPager
+              shown={Math.min(visibleCount, entries.length)}
+              total={entries.length}
+              onShowMore={() => setVisibleCount((count) => count + PAGE_SIZE)}
+            />
           </>
         )}
       </div>
-      <footer className="border-t border-[var(--stroke)] bg-[var(--surface-muted)] px-3 py-1.5 text-[10px] text-[var(--text-tertiary)]">
-        Secret values are never recorded. Only operation metadata for{' '}
-        <span className="mono">{selectedVaultName}</span> is displayed.
-      </footer>
       <DangerConfirmDialog
         open={clearOpen}
-        title="Clear Vault Activity"
+        title="Clear vault activity"
         description={
           <>
             Clear all activity entries for <strong className="mono">{selectedVaultName}</strong>?
@@ -171,7 +189,7 @@ export function AuditLog() {
           </>
         }
         confirmText="clear"
-        confirmLabel="Clear Activity"
+        confirmLabel="Clear activity"
         loading={clearing}
         onConfirm={clearCurrentVault}
         onCancel={() => setClearOpen(false)}
