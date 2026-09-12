@@ -321,6 +321,10 @@ impl AuthManager {
 
     /// Builds the PATH used for child processes, augmenting GUI-launched macOS
     /// apps with common Azure CLI install directories.
+    ///
+    /// Only the macOS child-process path needs it; the tests cover it on every
+    /// platform, hence the `test` arm.
+    #[cfg(any(target_os = "macos", test))]
     fn build_command_path(path_env: Option<&OsStr>) -> PathBuf {
         env::join_paths(Self::az_cli_search_paths(path_env))
             .map(PathBuf::from)
