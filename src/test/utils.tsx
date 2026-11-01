@@ -18,6 +18,7 @@ export function renderWithProviders(
   options: RenderOptions & { queryClient?: QueryClient } = {},
 ): RenderResult & { queryClient: QueryClient } {
   const { queryClient = createTestQueryClient(), ...rest } = options;
+  // biome-ignore lint/correctness/noComponentHookFactories: the wrapper must close over this call's QueryClient; it is created once per render() call.
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <QueryClientProvider client={queryClient}>

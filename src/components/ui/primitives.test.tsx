@@ -186,13 +186,14 @@ describe('Field controls', () => {
   });
 });
 
+function SwitchHarness() {
+  const [on, setOn] = useState(false);
+  return <Switch checked={on} onChange={setOn} label="Enabled" />;
+}
+
 describe('Switch', () => {
   it('reports its state and toggles on click', async () => {
-    function Harness() {
-      const [on, setOn] = useState(false);
-      return <Switch checked={on} onChange={setOn} label="Enabled" />;
-    }
-    render(<Harness />);
+    render(<SwitchHarness />);
     const toggle = screen.getByRole('switch', { name: 'Enabled' });
     expect(toggle).toHaveAttribute('aria-checked', 'false');
     await userEvent.click(toggle);
@@ -406,32 +407,32 @@ describe('Dropdown', () => {
   });
 });
 
-describe('Toast', () => {
-  function Harness() {
-    const toast = useToast();
-    return (
-      <>
-        <button type="button" onClick={() => toast.success('Saved', 'All good')}>
-          success
-        </button>
-        <button type="button" onClick={() => toast.error('Failed')}>
-          error
-        </button>
-        <button type="button" onClick={() => toast.warning('Careful')}>
-          warning
-        </button>
-        <button type="button" onClick={() => toast.info('Heads up')}>
-          info
-        </button>
-      </>
-    );
-  }
+function ToastHarness() {
+  const toast = useToast();
+  return (
+    <>
+      <button type="button" onClick={() => toast.success('Saved', 'All good')}>
+        success
+      </button>
+      <button type="button" onClick={() => toast.error('Failed')}>
+        error
+      </button>
+      <button type="button" onClick={() => toast.warning('Careful')}>
+        warning
+      </button>
+      <button type="button" onClick={() => toast.info('Heads up')}>
+        info
+      </button>
+    </>
+  );
+}
 
+describe('Toast', () => {
   it('announces politely, alerts on errors and auto-dismisses everything but errors', async () => {
     vi.useFakeTimers();
     render(
       <ToastProvider>
-        <Harness />
+        <ToastHarness />
       </ToastProvider>,
     );
     for (const tone of ['success', 'error', 'warning', 'info']) {
@@ -461,7 +462,7 @@ describe('Toast', () => {
   it('dismisses any toast from its close button', async () => {
     render(
       <ToastProvider>
-        <Harness />
+        <ToastHarness />
       </ToastProvider>,
     );
     fireEvent.click(screen.getByRole('button', { name: 'error' }));
@@ -474,7 +475,7 @@ describe('Toast', () => {
 
   it('refuses to work outside its provider', () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    expect(() => render(<Harness />)).toThrow('useToast must be used within ToastProvider');
+    expect(() => render(<ToastHarness />)).toThrow('useToast must be used within ToastProvider');
     spy.mockRestore();
   });
 });
